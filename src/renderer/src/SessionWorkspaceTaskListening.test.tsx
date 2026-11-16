@@ -6,6 +6,7 @@ beforeOwnedVoiceRuntimePolicyCase(() => { vi.stubGlobal('desktop', ownedVoiceRun
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
+import type { QwenRealtimeVoiceInput } from './QwenRealtimeVoiceInput'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ApiError, localApi, requestPetListeningAudio } from './api'
 import * as inputs from './LocalInputs'
@@ -28,13 +29,26 @@ beforeEach(() => {
 })
 
 let microphone: ComponentProps<typeof inputs.HandsFreeVoiceInput>
+let nativeRecorder: ComponentProps<typeof QwenRealtimeVoiceInput> | undefined
 vi.mock('./LocalInputs', async original => ({
   ...await original<typeof import('./LocalInputs')>(),
   HandsFreeVoiceInput: (props: typeof microphone) => { microphone = props; return null },
   VoiceInputButton: () => null,
 }))
 vi.mock('./api', async original => ({ ...await original<typeof import('./api')>(), requestPetListeningAudio: vi.fn() }))
-vi.mock('./VoiceCalibrationPanel', () => ({ VoiceCalibrationPanel: () => null }))
+// The calibration component owns device readiness. Other tests in this file
+// are not calibration tests, so this fixture reports a known synthetic binding.
+vi.mock('./VoiceCalibrationPanel', async () => {
+  const { useEffect } = await import('react')
+  return { VoiceCalibrationPanel: ({ onMicrophoneBindingReadyChange }: { onMicrophoneBindingReadyChange: (ready: boolean) => void }) => {
+    useEffect(() => { onMicrophoneBindingReadyChange(true) }, [onMicrophoneBindingReadyChange])
+    return null
+  } }
+})
+vi.mock('./QwenRealtimeVoiceInput', async original => ({
+  ...await original<typeof import('./QwenRealtimeVoiceInput')>(),
+  QwenRealtimeVoiceInput: (props: ComponentProps<typeof QwenRealtimeVoiceInput>) => { nativeRecorder = props; return null },
+}))
 vi.mock('./ContinuousDocumentMonitor', () => ({ ContinuousDocumentMonitor: () => null }))
 vi.mock('./DocumentCameraCapture', () => ({ DocumentCameraCapture: () => null }))
 
@@ -139,6 +153,8 @@ it.each([
 })
 
 beforeEach(() => {
+  microphone = undefined as unknown as typeof microphone
+  nativeRecorder = undefined
   current = workspace()
   prompt = { status: 'waiting_answer', reason: null, attempt: null, prompt: {
     prompt_id: 'original-prompt', diagnostic_item_id: 'exact-item', item_version: 'item-v1',
@@ -208,6 +224,23 @@ beforeEach(() => {
   })
 })
 afterEach(() => { cleanup(); clearVoiceCaptureContext(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+it('keeps capture blocked when native dialogue has no realtime configuration', async () => {
+  await mount()
+  await waitFor(() => expect(screen.getByText('唤醒词“小知”已保存，监听尚未启动')).toBeInTheDocument())
+  expect(nativeRecorder).toBeUndefined()
+  expect(microphone).toBeUndefined()
+  expect(localApi.agentTurn).not.toHaveBeenCalled()
+})
+
+it('mounts the native recorder after configured policy and microphone readiness', async () => {
+  Object.assign(window.desktop!, { getQwenRealtimeSettings: vi.fn(async () => ({ configured: true, enabled: true })) })
+  await mount()
+  await waitFor(() => expect(nativeRecorder?.nativeRuntime).toBeDefined())
+  expect(nativeRecorder?.audioAllowed).toBe(true)
+  expect(microphone).toBeUndefined()
+  expect(localApi.agentTurn).not.toHaveBeenCalled()
+})
 
 it('accepts the explicit writing revision prompt after the same scheduled task becomes active', async () => {
   current.plan_items[0].status = 'pending'

@@ -23,6 +23,7 @@ import { QwenRealtimeSettingsStore } from './qwen-realtime'
 import { VoiceSettingsStore } from './voice-settings'
 import { QwenRotationError, sealQwenRotation, recoverQwenKeyRotation, rotateInstalledQwenKey } from './qwen-key-rotation'
 import { QwenRotationRecovery } from './qwen-rotation-recovery'
+import { loadTutorExplanationConfig } from './tutor-explanation-settings'
 const bootstrapId = '11111111-1111-4111-8111-111111111111'
 const smtp = { host: 'smtp.qq.com' as const, port: 465 as const, security: 'ssl' as const,
   username: 'public-synthetic@qq.com', fromAddress: 'public-synthetic@qq.com', recipient: 'public-parent@example.test' }
@@ -219,10 +220,10 @@ it.each(['qwen','mixed'] as const)('main startup imports %s bootstrap then appli
   const env:any={cloudProviders:{mutate:(work:()=>any)=>work()},dataEncryptionKeyStore:{loadOrCreate:async()=> 'synthetic-data-key'},
     app:{isPackaged:true,getPath:()=>user},runtimeProfile:{mode:'formal'},process:{platform:'win32',resourcesPath:resources,env:{}},
     recoverQwenKeyRotation,importInstalledHouseholdSetup,rotateInstalledQwenKey,householdSetupDefaultsPort:port(),HouseholdProvisioningError:class extends Error{},
-    modelSettings,asrSettings,qwenRealtimeSettings,voiceSettings,reportDeliverySecrets:report(),ensureDashScopeTextFallback,
+    modelSettings,asrSettings,qwenRealtimeSettings,voiceSettings,reportDeliverySecrets:report(),ensureDashScopeTextFallback,loadTutorExplanationConfig,
     petAudioSettings:{runtimeConfig:()=>null},diagnosticRecorder:{record:diagnostics},
     localService:{setModelConfig:(v:any)=>{stateApplied.model=v},setAsrConfig:(v:any)=>{stateApplied.asr=v},setVoiceConfig:(v:any)=>{stateApplied.voice=v},
-      setPetAudioConfig:vi.fn(),setDataEncryptionKey:vi.fn(),setReportDeliverySecrets:vi.fn(),async start(){backendStarts++},reportProtectedStartupFailure:vi.fn()},
+      setPetAudioConfig:vi.fn(),setTutorExplanationConfig:(v:any)=>{stateApplied.tutor=v},setDataEncryptionKey:vi.fn(),setReportDeliverySecrets:vi.fn(),async start(){backendStarts++},reportProtectedStartupFailure:vi.fn()},
     pilotTestEmail:{start:vi.fn()},QwenRotationError,QwenRotationRecovery,qwenRotationRecoveryBinding:async()=> 'synthetic-binding',ipcMain:{handle:vi.fn()},MediaKeyRecoveryRequiredError:class extends Error{},console:{error:vi.fn(),warn:vi.fn()},createWindow:vi.fn()}
   let rotationOrder=100
   const bootstrapCiphertexts:Buffer[]=[]
@@ -233,7 +234,7 @@ it.each(['qwen','mixed'] as const)('main startup imports %s bootstrap then appli
     await writeFile(join(resources,'qwen-rotation.bin'),sealQwenRotation(randomUUID(),secret,wrapping,++rotationOrder));await writeFile(join(resources,'qwen-rotation.key'),wrapping)
   }
   await writeInstall(first);await evaluate(startupSource(),env)
-  expect(backendStarts).toBe(1);expect(stateApplied.model.apiKey).toBe(mode==='mixed'?old:first);expect(stateApplied.asr.apiKey).toBe(first)
+  expect(backendStarts).toBe(1);expect(stateApplied.tutor).toBeNull();expect(stateApplied.model.apiKey).toBe(mode==='mixed'?old:first);expect(stateApplied.asr.apiKey).toBe(first)
   if(mode==='mixed') expect(stateApplied.model.voiceIntentApiKey).toBe(first)
   expect((await qwenRealtimeSettings.load())?.apiKey).toBe(first);expect(stateApplied.voice.apiKey).toBe(old)
   await writeInstall(second);await evaluate(startupSource(),env)
@@ -270,9 +271,9 @@ it.each(['normal', 'data_key_failure', 'recovery_failure', 'import_failure', 'pa
     async rotateInstalledQwenKey() { order.push('rotation'); if (mode === 'rotation_failure') throw Error('PUBLIC_ROTATION_FAILURE'); if (mode === 'rotation_unknown') throw new QwenRotationError('ROTATION_MODEL_UNCLASSIFIED') },
     householdSetupDefaultsPort: port(), HouseholdProvisioningError: class extends Error {}, modelSettings: settings, asrSettings: settings,
     qwenRealtimeSettings: { async loadOrImport() { order.push('settings'); return null } }, reportDeliverySecrets: { async load() { order.push('settings'); return {} } },
-    ensureDashScopeTextFallback: (value: unknown) => value, petAudioSettings: { runtimeConfig: () => null },
+    ensureDashScopeTextFallback: (value: unknown) => value, loadTutorExplanationConfig, petAudioSettings: { runtimeConfig: () => null },
     voiceSettings: { loadEffective: async () => null }, diagnosticRecorder: { record: vi.fn() },
-    localService: { setModelConfig: vi.fn(), setPetAudioConfig: vi.fn(), setAsrConfig: vi.fn(), setVoiceConfig: vi.fn(), setDataEncryptionKey: vi.fn(), setReportDeliverySecrets: vi.fn(),
+    localService: { setModelConfig: vi.fn(), setTutorExplanationConfig: vi.fn(), setPetAudioConfig: vi.fn(), setAsrConfig: vi.fn(), setVoiceConfig: vi.fn(), setDataEncryptionKey: vi.fn(), setReportDeliverySecrets: vi.fn(),
       setRotationRecoveryGuard:vi.fn(),async start() { order.push('backend_start') }, async startRotationAuthOnly() { order.push('parent_auth_only') }, reportProtectedStartupFailure: vi.fn(() => { order.push('protected_error') }) },
     pilotTestEmail: { start: vi.fn() }, QwenRotationError,QwenRotationRecovery,qwenRotationRecoveryBinding:async()=> 'synthetic-binding',ipcMain:{handle:vi.fn()}, MediaKeyRecoveryRequiredError: class extends Error {}, console: { error: vi.fn(), warn: vi.fn() }, createWindow: vi.fn(),
   }
@@ -297,8 +298,8 @@ it('actual Main offers one parent-authorized continuation after an unknown model
     rotateInstalledQwenKey:vi.fn(async()=>{throw new QwenRotationError('ROTATION_MODEL_UNCLASSIFIED')}),
     householdSetupDefaultsPort:port(),HouseholdProvisioningError:class extends Error{},modelSettings:settings,asrSettings:settings,
     qwenRealtimeSettings:{loadOrImport:async()=>null},voiceSettings:{loadEffective:async()=>null},reportDeliverySecrets:{load:async()=>({})},
-    ensureDashScopeTextFallback:(x:any)=>x,petAudioSettings:{runtimeConfig:()=>null},diagnosticRecorder:{record:vi.fn()},
-    localService:{setModelConfig:vi.fn(),setPetAudioConfig:vi.fn(),setAsrConfig:vi.fn(),setVoiceConfig:vi.fn(),setDataEncryptionKey:vi.fn(),setReportDeliverySecrets:vi.fn(),
+    ensureDashScopeTextFallback:(x:any)=>x,loadTutorExplanationConfig,petAudioSettings:{runtimeConfig:()=>null},diagnosticRecorder:{record:vi.fn()},
+    localService:{setModelConfig:vi.fn(),setTutorExplanationConfig:vi.fn(),setPetAudioConfig:vi.fn(),setAsrConfig:vi.fn(),setVoiceConfig:vi.fn(),setDataEncryptionKey:vi.fn(),setReportDeliverySecrets:vi.fn(),
       getRuntime:()=>({...runtime}),async startRotationAuthOnly(){runtime.status='ready';runtime.rotationAuthOnly=true},
       async stopRotationAuthOnly(){state.stopped++;runtime.status='stopped';runtime.rotationAuthOnly=false;runtime.runtimeEpoch++},
       markRotationKeyUpdatePending(value=true){state.warning=value},setRotationRecoveryGuard:vi.fn(),async start(){state.started++;runtime.status='ready'},reportProtectedStartupFailure:vi.fn()},
