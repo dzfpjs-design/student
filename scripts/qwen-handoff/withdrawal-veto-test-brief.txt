@@ -1,0 +1,18 @@
+Generate a small pytest parameter matrix (not a rewrite) to challenge this Chinese voice-control denial veto.
+All examples must be invented, contain no real children or household records, and target cancellation of an unscored saved answer.
+Passing the veto is NOT write authority: a separate runtime checks the exact current utterance, saved-operation digest,
+same child/session, verified model intent receipt and transaction version. This function is only a second rejection layer.
+
+def permits_withdraw(text):
+    return not re.search(
+        r'["“”「」『』]|(?:老师|他|她|妈妈|爸爸)说|假如|假设|如果|什么意思|还没决定|[?？]'
+        r'|(?:不要|不用|不需要|不必|先别|暂时不|不|别)[^，,。.!！?？;；]*(?:撤回|撤销|取消)'
+        r'|(?:先不|先别|不要|不用|不|别)[\s，,。]*?(?:撤回|撤销|取消)'
+        r"|\b(?:if|don't|do not|never)\b", text, re.I)
+
+Already-covered negative cases: 不要撤回刚才的回答; 先别，撤销那份回答; 如果我说撤回刚才的回答呢; 老师说撤回刚才的回答.
+Covered positive: 我不打算用刚才保存的那份回答了，把它撤销掉吧.
+Focus on ASR hesitation/punctuation, negation of a different action, child quoting someone, questions without question marks,
+and multi-clause reversals. Supply 10-15 new cases with expected veto-pass boolean and a one-line rationale.
+Distinguish certain denial from merely lacking positive authorization. Do not call an ambiguous case a reliable positive.
+Do not claim to have run anything; there are no tools. Do not request data or credentials.

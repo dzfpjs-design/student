@@ -1,0 +1,16 @@
+.behavior-goal-review { width: 100%; min-width: 0; }
+.behavior-goal-content { display: grid; gap: 12px; padding-block: 12px; min-width: 0; border-top: 1px solid #d4d9d5; }
+.behavior-goal-content h4, .behavior-goal-content p { margin: 0; overflow-wrap: anywhere; }
+.behavior-goal-content h4 { font-size: 16px; line-height: 1.5; }
+.behavior-goal-content label { display: grid; gap: 6px; min-width: 0; }
+.behavior-goal-content select, .behavior-goal-content textarea { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+.behavior-goal-content fieldset { display: grid; gap: 12px; min-width: 0; margin: 12px 0 0; border: 0; padding: 0; }
+.behavior-goal-content legend { padding: 8px 0; font-weight: 600; }
+.behavior-goal-content button { display: inline-flex; gap: 6px; align-items: center; justify-content: center; width: fit-content; max-width: 100%; min-height: 40px; white-space: normal; }
+.behavior-goal-content button svg { flex: 0 0 auto; }
+.behavior-goal-opportunity, .behavior-goal-current, .behavior-goal-criterion { display: grid; gap: 8px; min-width: 0; }
+.behavior-goal-current { padding: 10px 0; border-block: 1px solid #d4d9d5; }
+.behavior-goal-current strong { overflow-wrap: anywhere; }
+.behavior-goal-limit, .behavior-goal-criterion small { color: #565d60; font-size: 13px; line-height: 1.6; }
+.behavior-goal-readback { color: #246547; }
+.behavior-goal-pending { border-left: 3px solid #876313; padding-left: 10px; display: grid; gap: 8px; }

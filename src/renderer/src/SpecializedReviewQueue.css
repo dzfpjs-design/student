@@ -1,0 +1,13 @@
+.specialized-review-queue { min-width: 0; }
+.specialized-review-queue .variant-review-item { padding: 20px 0; border-bottom: 1px solid #dfe2e7; min-width: 0; }
+.specialized-review-queue .panel-heading { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.specialized-review-queue h3 { margin: 0; font-size: 18px; }
+.specialized-review-queue p { line-height: 1.6; overflow-wrap: anywhere; }
+.specialized-review-queue fieldset { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: 12px; }
+.specialized-review-queue label { display: grid; gap: 6px; min-width: 0; }
+.specialized-review-queue select { min-width: 0; max-width: 100%; }
+.specialized-review-queue .review-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.specialized-review-queue button { display: inline-flex; gap: 6px; align-items: center; justify-content: center; white-space: normal; max-width: 100%; min-height: 36px; }
+.specialized-review-queue fieldset > button { justify-self: start; }
+.specialized-review-queue [role='alert'] { color: #943d39; }
+.specialized-review-queue [role='status'] { color: #286650; }

@@ -1,0 +1,211 @@
+.parent-shell {
+  --parent-gutter: var(--layout-gutter, clamp(16px, 3.25vw, 44px));
+  --parent-width: min(var(--layout-max, 72rem), calc(100% - 2 * var(--parent-gutter)));
+  --parent-inset: clamp(14px, 2.6vw, 24px);
+  --parent-section-gap: clamp(14px, 2.4vw, 22px);
+}
+
+.parent-shell .parent-header {
+  display: block;
+  min-height: 0;
+  padding: 0;
+}
+
+.parent-header .parent-header-inner {
+  width: var(--parent-width);
+  margin-inline: auto;
+  padding-block: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, max-content);
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.parent-header-inner .icon-button {
+  width: 44px;
+  height: 44px;
+}
+
+.parent-header-title {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.parent-shell .parent-header .model-badge {
+  max-width: min(42vw, 28rem);
+  min-width: 0;
+  grid-column: auto;
+  border-radius: 5px;
+}
+
+.parent-header .model-badge span {
+  color: inherit;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.parent-header .model-badge svg { flex: none; }
+
+.parent-shell .parent-unlock {
+  width: min(28rem, var(--parent-width));
+  min-height: 0;
+  margin: clamp(20px, 8vh, 88px) auto 28px;
+  padding: clamp(18px, 4vw, 32px);
+  border: 1px solid #dfe2e7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.parent-shell .parent-unlock input {
+  width: min(100%, 14rem);
+  min-height: 44px;
+}
+
+.parent-shell .parent-unlock .primary-button {
+  width: min(100%, 14rem);
+  min-height: 44px;
+  white-space: normal;
+}
+
+.parent-shell .parent-workspace {
+  width: var(--parent-width);
+  padding-top: var(--parent-section-gap);
+}
+
+.parent-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--parent-section-gap);
+  padding: 5px;
+  border: 1px solid #dfe2e7;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.parent-section-nav a {
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 6px clamp(8px, 2vw, 20px);
+  border-radius: 4px;
+  color: #244d70;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  text-decoration: none;
+}
+
+.parent-section-nav a:hover { background: #eef4f8; }
+.parent-section-nav a:focus-visible,
+.parent-shell .parent-tabs button:focus-visible { outline: 2px solid #2b6a94; outline-offset: -2px; }
+.parent-shell :is(#parent-overview, #parent-reports, #parent-settings) { scroll-margin-top: 16px; }
+
+.parent-shell .parent-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: 8px;
+  overflow: visible;
+}
+
+.parent-shell .parent-tabs button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px clamp(8px, 1.8vw, 16px);
+  overflow-wrap: anywhere;
+}
+
+.parent-shell .parent-tabs button.is-active {
+  border-bottom-color: #2b6a94;
+  background: #eef4f8;
+}
+
+.parent-shell .parent-advanced-workspace {
+  min-width: 0;
+  padding: clamp(8px, 1.5vw, 16px);
+  border-radius: 6px;
+}
+
+.parent-shell .parent-advanced-workspace > summary { min-height: 44px; }
+
+.parent-shell .child-profile-panel {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .8fr) minmax(0, 1fr) auto;
+}
+
+.parent-shell .learning-tracks { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17.5rem), 1fr)); }
+.parent-shell .mastery-row.is-current { grid-template-columns: minmax(0, 1fr) 44px; }
+.parent-shell .mastery-row.is-current .icon-button { width: 44px; height: 44px; }
+
+.parent-shell .operations-heading > div,
+.parent-shell .device-setup-heading > div,
+.parent-shell .model-operations-heading > div { min-width: 0; }
+
+.parent-shell .operations-heading > .icon-button { flex: 0 0 44px; width: 44px; height: 44px; }
+.parent-shell .operations-diagnostics button {
+  min-width: 0;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.parent-report-section { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--parent-section-gap); }
+.parent-report-section > :is(.period-reports, .report-layout) { margin-top: 0; }
+.parent-report-section .period-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17.5rem), 1fr)); }
+.parent-report-section .period-list article { min-width: 0; overflow-wrap: anywhere; }
+
+.parent-shell .parent-report-section > :is(.report-delivery-panel, .parent-diagnostic-email) {
+  min-width: 0;
+  padding: var(--parent-inset);
+  border: 1px solid #dfe2e7;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.parent-shell .parent-report-section > .report-delivery-panel > header h2 { margin-top: 0; }
+.parent-shell .parent-report-section > .report-delivery-panel > header > button {
+  flex: 0 0 44px;
+  height: 44px;
+  margin-top: 0;
+}
+
+.parent-diagnostic-email { display: grid; gap: 8px; overflow-wrap: anywhere; }
+.parent-diagnostic-email h2 { margin: 0; font-size: 18px; }
+.parent-diagnostic-email p { margin: 0; color: #59636f; line-height: 1.55; }
+.parent-diagnostic-email-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.parent-diagnostic-email-actions button { min-width: 0; min-height: 44px; white-space: normal; }
+.parent-diagnostic-email-recipient { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 10px; min-width: 0; }
+.parent-diagnostic-email-recipient > p, .parent-diagnostic-email-recipient > .parent-diagnostic-email-actions { grid-column: 1 / -1; }
+.parent-diagnostic-email-recipient label { display: grid; gap: 4px; min-width: 0; }
+.parent-diagnostic-email-recipient input { width: 100%; min-width: 0; box-sizing: border-box; }
+
+.parent-shell .report-layout { min-height: 0; }
+.parent-shell .report-list button { min-height: 64px; overflow-wrap: anywhere; }
+.parent-shell .report-detail { padding: clamp(16px, 3vw, 38px); }
+.parent-shell .report-detail h2 { overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .parent-shell .child-profile-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .parent-shell .child-profile-panel > div:first-child,
+  .parent-shell .child-profile-panel > button { grid-column: 1 / -1; }
+}
+
+@media (max-width: 600px) {
+  .parent-header .parent-header-inner { grid-template-columns: 44px minmax(0, 1fr); padding-block: 10px; }
+  .parent-shell .parent-header .model-badge { max-width: 100%; grid-column: 2; justify-self: start; }
+  .parent-section-nav a { flex: 1 1 5.2rem; }
+  .parent-shell .child-profile-panel { grid-template-columns: minmax(0, 1fr); }
+  .parent-shell .operations-device-list > div { grid-template-columns: 20px minmax(0, 1fr) auto; padding: 11px 8px; }
+  .parent-shell .operations-device-list b { grid-column: 3; }
+  .parent-shell .operations-diagnostics { align-items: start; }
+  .parent-shell .operations-diagnostics button { grid-column: 1 / -1; justify-self: stretch; }
+  .parent-diagnostic-email-actions button { flex: 1 1 min(100%, 11rem); }
+}
+
+.tutor-explanation-settings { display: grid; gap: .65rem; margin-block: 1rem; padding: 1rem; border: 1px solid #d9e4df; border-radius: .75rem; }
+.tutor-explanation-settings label:not(.tutor-explanation-confirm) { display: grid; gap: .3rem; }
+.tutor-explanation-settings input:not([type="checkbox"]) { width: 100%; min-width: 0; }
+.tutor-explanation-confirm { display: flex; align-items: flex-start; gap: .5rem; }

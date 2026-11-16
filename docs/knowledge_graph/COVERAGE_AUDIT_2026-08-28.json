@@ -1,0 +1,1457 @@
+{
+  "snapshot": {
+    "database_sha256": "e39566d06e378fc0915d2462a57592bdaf9a5c5af6563f13e8a3036a67ea40ff",
+    "generated_at": "2026-08-28T11:43:34.823717+00:00",
+    "consistency": "sqlite_backup_read_transaction",
+    "integrity_check": "ok",
+    "schema_version": 18,
+    "counts": {
+      "resources": 3971,
+      "segments": 34482,
+      "nodes": 309,
+      "mappings": 7992
+    },
+    "corpora": [
+      {
+        "corpus_id": "bili-local-v1",
+        "version_label": "local-2026-08",
+        "source_kind": "bilibili",
+        "resources": 183
+      },
+      {
+        "corpus_id": "seyk-local-v1",
+        "version_label": "local-2026-08",
+        "source_kind": "seyk",
+        "resources": 3788
+      }
+    ]
+  },
+  "job": {
+    "idempotency_key": "coverage-stage-full-v14",
+    "status": "completed",
+    "checkpoint_resource_id": "kg-res-ffe9f915c77d728b800ef5fa",
+    "total_resources": 3971,
+    "processed_resources": 3971,
+    "mapped_rows": 2389,
+    "failed_resources": 0,
+    "source_ref": "coverage_exact_terms_v1",
+    "created_at": "2026-08-28T10:30:15.251197+00:00",
+    "updated_at": "2026-08-28T10:30:40.562820+00:00",
+    "completed_at": "2026-08-28T10:30:40.562808+00:00",
+    "active_at_snapshot": 0
+  },
+  "matrix": [
+    {
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school",
+      "atomic_nodes": 29,
+      "covered_nodes": 16,
+      "segments": 83
+    },
+    {
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school",
+      "atomic_nodes": 64,
+      "covered_nodes": 34,
+      "segments": 502
+    },
+    {
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school",
+      "atomic_nodes": 30,
+      "covered_nodes": 18,
+      "segments": 781
+    },
+    {
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school",
+      "atomic_nodes": 16,
+      "covered_nodes": 4,
+      "segments": 42
+    },
+    {
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school",
+      "atomic_nodes": 16,
+      "covered_nodes": 2,
+      "segments": 4
+    },
+    {
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school",
+      "atomic_nodes": 50,
+      "covered_nodes": 26,
+      "segments": 546
+    },
+    {
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school",
+      "atomic_nodes": 18,
+      "covered_nodes": 0,
+      "segments": 0
+    },
+    {
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school",
+      "atomic_nodes": 12,
+      "covered_nodes": 1,
+      "segments": 2
+    },
+    {
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet",
+      "atomic_nodes": 9,
+      "covered_nodes": 4,
+      "segments": 1936
+    },
+    {
+      "grade": "四年级竞赛",
+      "subject": "数学",
+      "track": "competition_math",
+      "atomic_nodes": 10,
+      "covered_nodes": 9,
+      "segments": 3157
+    }
+  ],
+  "uncovered_atomic_nodes": [
+    {
+      "knowledge_point": "元素与元素符号",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "化学与环境",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "化肥基础",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "复分解反应条件",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "实验探究变量控制",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "实验结论与证据",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "常见碱的性质",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "常见酸的性质",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "氧气制取与性质",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "物质的变化与性质",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "碳和碳的氧化物",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "酸碱盐基础",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "金属锈蚀与防护",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "一元二次方程公式法",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "一元二次方程因式分解法",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "一元二次方程定义",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "一元二次方程根与系数关系",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "一元二次方程直接开平方法",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "一次函数性质",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "三角形相似判定",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "二次函数与一元二次方程关系",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "二次函数实际问题建模",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "二次函数开口与对称轴",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "二次函数最值",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "二次根式化简",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "代入检查",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "代数式化简",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "位似变换",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "几何证明步骤",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "分式化简",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "因式分解公式法",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "因式分解提公因式",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "图形轴对称",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "坐标系中的图形变换",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "尺规作图基本操作",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "平均数中位数众数",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "平方根与立方根",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "总体样本与抽样",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "方差与数据波动",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "树状图求概率",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "正多边形与圆",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "相似比与面积比",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "科学记数法",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "功与功率",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "压强",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "声音的产生与传播",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "家庭电路安全",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "浮力",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "电功",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "电荷与电路",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "磁场",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "能量转化与守恒",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "运动状态判断",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "重力",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "长度时间测量",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "书面表达任务点",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "书面表达衔接",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "口语交际策略",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "定语从句基本理解",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "推断作者意图",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "时态：一般将来时",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "时态：一般现在时",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "时态：一般过去时",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "时态：现在完成时",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "细节定位",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "词义猜测",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "非谓语动词基础",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "修改与润色",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "修辞手法作用",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "古诗文意象",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "应用文格式",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "文言句式翻译",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "文言实词",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "材料作文审题",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "现代文信息筛选",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "现代文概括主旨",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "表达方式辨析",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "议论文结构",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "记叙文结构",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "论点论据论证",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "说明方法作用",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "乘法交换律",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "乘法结合律",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "亿以内数的读写",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "从统计图读取信息",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "估算乘除结果",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "十进制计数法与数位顺序",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "含括号的四则混合运算",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "四则混合运算顺序",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "垂线",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "大数改写成万或亿作单位的数",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "数据收集与整理",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "数量关系：单价数量总价",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "数量关系：工作效率工作时间工作总量",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "数量关系：速度时间路程",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "有余数除法检验",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "梯形",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "用数据解释结论",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "用表格整理数量关系",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "线段直线射线",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "自然数与整数",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "质量单位换算",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "运算律简便计算",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "近似数与四舍五入",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "面积单位换算",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "人物信息询问",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "喜欢与偏好表达",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "地点与方位表达",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "天气与穿着表达",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "字母与常见拼读规则",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "感谢道歉与请求",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "日常活动表达",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "日常问候与回应",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "时间日期表达",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "现在时基本表达",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "短文本主旨理解",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "简单句基本语序",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "简单对话轮次",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "简单邀请与建议",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "读图获取显性信息",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "课堂指令理解",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "食物与购物表达",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "高频词块理解",
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "写人记事基本结构",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "句子成分基本认识",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "常用汉字书写",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "常用汉字识读",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "按顺序观察与表达",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "朗读与默读策略",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "标点符号使用",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "段落中心句",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "病句基本修改",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "词语理解与积累",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "近义词反义词辨析",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school"
+    },
+    {
+      "knowledge_point": "交际功能",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet"
+    },
+    {
+      "knowledge_point": "句子控制",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet"
+    },
+    {
+      "knowledge_point": "朗读参考",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet"
+    },
+    {
+      "knowledge_point": "短消息与通知",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet"
+    },
+    {
+      "knowledge_point": "语境词汇",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet"
+    },
+    {
+      "knowledge_point": "画图、列表与表格",
+      "grade": "四年级竞赛",
+      "subject": "数学",
+      "track": "competition_math"
+    }
+  ],
+  "candidate_count_distribution": [
+    {
+      "bucket": "0",
+      "atomic_nodes": 140
+    },
+    {
+      "bucket": "1",
+      "atomic_nodes": 17
+    },
+    {
+      "bucket": "11+",
+      "atomic_nodes": 53
+    },
+    {
+      "bucket": "2-3",
+      "atomic_nodes": 23
+    },
+    {
+      "bucket": "4-10",
+      "atomic_nodes": 21
+    }
+  ],
+  "label_free_precision_proxy": "exact lexical evidence only; not human precision",
+  "label_free_recall_proxy": "covered_nodes / atomic_nodes",
+  "stratified_audit_samples": [
+    {
+      "knowledge_point": "分子原子离子",
+      "resource_title": "初三化学九年级化学上册 2026新版 初中化学9年级化学上册九年级上册9年级上册化学初三化学初3化学上册化学",
+      "evidence_sha256": "cad39c63a6363b1b350ef966011d096486c2c677f2ddeaea837dc43e86bfd587",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "化合价",
+      "resource_title": "B站本地教育课程 · BV12b411k7b9",
+      "evidence_sha256": "24f8c330c9ef88906aea1794a327cd8b479d6fa1c315ee411bed921104c704d5",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "化合价",
+      "resource_title": "B站本地教育课程 · BV12b411k7b9",
+      "evidence_sha256": "8158894f179572fcb0d2136b1c0ccab9c71af492d0905a3d572438e7d07aa89e",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "化合价",
+      "resource_title": "苏e优课本地课程 · 14526",
+      "evidence_sha256": "ece135e2d89e676f74cd8fcfd319bf09c07ae4adcad6279727f7d2205edb0699",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "化合价",
+      "resource_title": "B站本地教育课程 · BV12b411k7b9",
+      "evidence_sha256": "609767cc1221cc9f7bb7ca897928e967e2c155c17424c8b4583be2cf006776b8",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "化学",
+      "track": "school",
+      "pos": 5
+    },
+    {
+      "knowledge_point": "一元一次不等式",
+      "resource_title": "【中考数学一轮复习】中考数学总复习名师精讲课程，九年级数学中考总复习视频课程，七八九年级上下册数学知识点汇总，初三中考总复习数学解题技巧，中考数学实用教学视频",
+      "evidence_sha256": "9c7b0f36ef97bb479636cf66f6dd32a967c77cf08c6dbcf8e935dc890dbbebab",
+      "confidence": 0.68,
+      "source_ref": "official_catalog_exact_local_evidence_v2",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "一元一次不等式",
+      "resource_title": "苏e优课本地课程 · 14522",
+      "evidence_sha256": "44f4e4857dfb42d1f8eb7e4074d2a85bf7dd9b420fb4869e080ce1579d9dc043",
+      "confidence": 0.68,
+      "source_ref": "official_catalog_exact_local_evidence_v2",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "一元一次不等式",
+      "resource_title": "【中考数学一轮复习】中考数学总复习名师精讲课程，九年级数学中考总复习视频课程，七八九年级上下册数学知识点汇总，初三中考总复习数学解题技巧，中考数学实用教学视频",
+      "evidence_sha256": "38713e24c664460d11d19cb97c33e5b8e103ad3ac295c0e19fdbc6f4178b8e51",
+      "confidence": 0.68,
+      "source_ref": "official_catalog_exact_local_evidence_v2",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "一元一次不等式",
+      "resource_title": "苏e优课本地课程 · 14628",
+      "evidence_sha256": "a1ce8b8b731873684baf81a3beacc463f9b8e118501d6ec48b3fd60c7467f249",
+      "confidence": 0.68,
+      "source_ref": "official_catalog_exact_local_evidence_v2",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "一元一次不等式",
+      "resource_title": "苏e优课本地课程 · 14736",
+      "evidence_sha256": "47a2031b3e9dbf7ce01a6c0523b16b214c9486b2fd59af15152bda5c792fdde6",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "数学",
+      "track": "school",
+      "pos": 5
+    },
+    {
+      "knowledge_point": "串联电路",
+      "resource_title": "苏e优课本地课程 · 12963",
+      "evidence_sha256": "8842b5723fc0829bcfd5e8fec54d6d3b64550c4f07d3a737c83658b5a402a3a7",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "串联电路",
+      "resource_title": "初三物理九年级物理  全一册上册下册 物理9年级物理上册九年级上册9年级上册9年级上册九年级上册",
+      "evidence_sha256": "df8f85d016e85dfd2b2da4cf1facd3aaed802e811dda82c7b2f36ec6e8b7e3f1",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "串联电路",
+      "resource_title": "B站本地教育课程 · BV1BL4y1w761",
+      "evidence_sha256": "078abe95d33ad7fd682c02c3ae377b88f6e1d411b29a51435ffc97a4b5e732a8",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "串联电路",
+      "resource_title": "苏e优课本地课程 · 12972",
+      "evidence_sha256": "66e1d40764a72cd1eb1dec2ffc125847dcc638c7ead9b60f522e1cc267a094ce",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "串联电路",
+      "resource_title": "B站本地教育课程 · BV1CG4y1n7Eg",
+      "evidence_sha256": "4f4187c1001167169b28125e398a50284c6293d0ffa5d855cc09ceb12aa14011",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "物理",
+      "track": "school",
+      "pos": 5
+    },
+    {
+      "knowledge_point": "宾语从句",
+      "resource_title": "【初中英语】初三英语 九年级上册同步基础教材教学网课丨人教版 部编 统编 新课标 上下册初3 9年级丨2021重点学习完整版最新视频",
+      "evidence_sha256": "a2d3ed717638fb597e7dfff975ec61fb18e672c8cb3e755091b183c156ffb426",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "宾语从句",
+      "resource_title": "B站本地教育课程 · BV1ce411H7pN",
+      "evidence_sha256": "96582b8bb465346b382b4327d65ca2fe4b157c36693978c7daaa546333b3d2a4",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "宾语从句",
+      "resource_title": "B站本地教育课程 · BV1tM4y1g7mm",
+      "evidence_sha256": "e11ca101d874313ad2c1f0c7aa0a4d49ed6589ee073a5abaeb04203880c3b145",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "宾语从句",
+      "resource_title": "B站本地教育课程 · BV1ce411H7pN",
+      "evidence_sha256": "a0acdf3ab874d3fbace8a6edcfb521e40462cf7abd8f8e4ffb1571a81614c14a",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "宾语从句",
+      "resource_title": "B站本地教育课程 · BV1ce411H7pN",
+      "evidence_sha256": "3877205a7e1ba11665f575ab469a65bec35e7bc9f494f91ab8c8ac042b5c7cc9",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "英语",
+      "track": "school",
+      "pos": 5
+    },
+    {
+      "knowledge_point": "人物形象分析",
+      "resource_title": "苏e优课本地课程 · 14483",
+      "evidence_sha256": "7df2789f0d157938d65929bef31ab0964fae146b990508d4190de4a35f653fce",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "文言虚词",
+      "resource_title": "苏e优课本地课程 · 15895",
+      "evidence_sha256": "eb8b068457d4245128bca9056394cdc7e21738b1f98e11ed017359400b4eaac2",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "文言虚词",
+      "resource_title": "苏e优课本地课程 · 15895",
+      "evidence_sha256": "32bfab4388baedcba561cef314fdefd86e081a816a9d810d57cf5738698f903e",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "文言虚词",
+      "resource_title": "苏e优课本地课程 · 15895",
+      "evidence_sha256": "b32e2aaed99abc94f4f32497088c60c1357d11fef0accdee5592c62de685bf9d",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "初三",
+      "subject": "语文",
+      "track": "school",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "三位数乘两位数",
+      "resource_title": "数学四年级上册数学 2026新版 新插图 小学数学4年级上册数学四年级数学4年级数学上册四年级上册数学 含课件ppt",
+      "evidence_sha256": "2f1d046aee9f5ebc058fc82ba811a6a9740c8737e8bf06606c3feaa486e02d1b",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "三位数乘两位数",
+      "resource_title": "苏e优课本地课程 · 16083",
+      "evidence_sha256": "b7714e7b7e7ec350dc001c80164a5229c37d45f19d3992aa255ecab04c09006e",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "三位数乘两位数",
+      "resource_title": "数学四年级上册数学 2026新版 新插图 小学数学4年级上册数学四年级数学4年级数学上册四年级上册数学 含课件ppt",
+      "evidence_sha256": "b7d4da5f4ba2084bbf44de492b14cfbbf252f58748d45115e29412379763ef98",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "三位数乘两位数",
+      "resource_title": "苏e优课本地课程 · 16054",
+      "evidence_sha256": "cbd6c6f54c675f86e5417081e737c9fcbe543cec522990389d75d4d60671a4af",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "三位数乘两位数",
+      "resource_title": "数学四年级上册数学 2026新版 新插图 小学数学4年级上册数学四年级数学4年级数学上册四年级上册数学 含课件ppt",
+      "evidence_sha256": "8d2eaa82fda182df940ba52741e058301333ecd7a1c5fbcb3be4df0df466825b",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "四年级",
+      "subject": "数学",
+      "track": "school",
+      "pos": 5
+    },
+    {
+      "knowledge_point": "说明一个事物",
+      "resource_title": "苏e优课本地课程 · 15303",
+      "evidence_sha256": "57e5a532fbfa33478f8841ca05a6abc9558c0f6c5e1ff6e10caeb8f5e6fa9f9e",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "说明一个事物",
+      "resource_title": "苏e优课本地课程 · 15798",
+      "evidence_sha256": "3ed05e3b8bba1ee03f78f83994e870fd56c398610a2b3264006dac08d40c821a",
+      "confidence": 0.66,
+      "source_ref": "coverage_exact_terms_v1",
+      "grade": "四年级",
+      "subject": "语文",
+      "track": "school",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "听力细节",
+      "resource_title": "B站本地教育课程 · BV1CE411L78e",
+      "evidence_sha256": "a3572d2e2bde7bf0ded544ba59177a405f6a7456d8d67ebd3fafb43db792edf1",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "听力细节",
+      "resource_title": "苏e优课本地课程 · 18817",
+      "evidence_sha256": "b2e8786c878eecb2a3dbd099957620ebc50e8471c98ff3109554b5c4cf7c1738",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "听力细节",
+      "resource_title": "苏e优课本地课程 · 12179",
+      "evidence_sha256": "2299baacaa3d2136be36974dc624b4155d0c90a5a5180f0cc5df40e8005c676f",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "听力细节",
+      "resource_title": "苏e优课本地课程 · 14845",
+      "evidence_sha256": "f2293254c91a0dcfdccd98564daa2c7c57e726466a2881b4f687f3104efb785a",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "听力细节",
+      "resource_title": "小学五年级英语下册【Ellie43讲】",
+      "evidence_sha256": "be73ffd90ec7c185b999520dcc998c452bdc7d645e9f2584c4236732abb601b9",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级-PET",
+      "subject": "英语",
+      "track": "pet",
+      "pos": 5
+    },
+    {
+      "knowledge_point": "应用建模",
+      "resource_title": "苏e优课本地课程 · 11738",
+      "evidence_sha256": "0dd3d9dd41d912e0c9708429e0be9b8634a215813a082399b3d42c8c1226aa27",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级竞赛",
+      "subject": "数学",
+      "track": "competition_math",
+      "pos": 1
+    },
+    {
+      "knowledge_point": "应用建模",
+      "resource_title": "数学六年级上册数学2026新版 新插图 小学数学6年级上册数学六年级数学上册6年级数学上册数学上册六年级上册数学 含课件ppt",
+      "evidence_sha256": "3ee970969ea51cd579dffbf804394ace35b0fdbba9979efc585e38a067db2d52",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级竞赛",
+      "subject": "数学",
+      "track": "competition_math",
+      "pos": 2
+    },
+    {
+      "knowledge_point": "应用建模",
+      "resource_title": "B站本地教育课程 · BV1vM41127d2",
+      "evidence_sha256": "dafc24077a2accf4b7eef5b750d92fc9230bf49d55283070f27dae70a166e629",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级竞赛",
+      "subject": "数学",
+      "track": "competition_math",
+      "pos": 3
+    },
+    {
+      "knowledge_point": "应用建模",
+      "resource_title": "数学五年级上册数学 2026新版 新插图 小学数学5年级上册数学五年级数学5年级数学上册五年级上册数学 含课件ppt",
+      "evidence_sha256": "e79fe7379d6802d64f6a26603ce1c6f0f7207364c06327baed021c9e937c9b21",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级竞赛",
+      "subject": "数学",
+      "track": "competition_math",
+      "pos": 4
+    },
+    {
+      "knowledge_point": "应用建模",
+      "resource_title": "苏e优课本地课程 · 17175",
+      "evidence_sha256": "a4eb48013724c8fbd7f51c351fa1083616d5f09ea4827a34e014040609bfc477",
+      "confidence": 0.55,
+      "source_ref": "local_keyword_mapper_v3",
+      "grade": "四年级竞赛",
+      "subject": "数学",
+      "track": "competition_math",
+      "pos": 5
+    }
+  ],
+  "audit_strata_without_samples": [
+    {
+      "grade": "四年级",
+      "subject": "英语",
+      "track": "school",
+      "reason": "no candidate segment available for sampling"
+    }
+  ],
+  "private_audit": {
+    "status": "written_local_untracked",
+    "sha256": "7da687d12157e803cce28a411ee7d03400be03f76afa236adc047c21f52d8642",
+    "path_status": "local_data_audit"
+  }
+}

@@ -1,0 +1,8 @@
+.report-plan-adjustments { margin-block: 16px; min-width: 0; }
+.report-plan-adjustments fieldset { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; padding: 12px 0; border: 0; min-width: 0; }
+.report-plan-adjustments label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.report-plan-adjustments input, .report-plan-adjustments select { width: 100%; min-width: 0; box-sizing: border-box; }
+.report-plan-adjustments ul { padding-left: 20px; }
+.report-plan-adjustments li { padding-block: 12px; border-bottom: 1px solid #d9dee5; overflow-wrap: anywhere; }
+.report-plan-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-plan-adjustments button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: normal; }

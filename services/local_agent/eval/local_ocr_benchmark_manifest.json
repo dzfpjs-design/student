@@ -1,0 +1,11 @@
+{
+  "version": "local-ocr-benchmark-v1",
+  "privacy": "Only de-identified local images may be referenced. Do not commit raw child homework images.",
+  "asset_status": "No saved non-sensitive physical document pages were found in this worktree or the main local project at implementation time. Synthetic cases cover failure plumbing only; real accuracy remains pending a parent-approved, de-identified local set.",
+  "required_strata": [
+    {"grade_band": "primary_grade_4", "cases": ["printed", "handwriting_field", "math_expression", "marked_page", "blur", "double_page"]},
+    {"grade_band": "junior_grade_3", "cases": ["printed", "handwriting_field", "math_expression", "marked_page", "blur", "double_page"]}
+  ],
+  "metrics": ["page_detection_rate", "question_block_exact_rate", "printed_cer", "handwriting_field_accuracy", "math_structure_accuracy", "end_to_end_mistake_entry_success_rate", "latency_seconds"],
+  "truthfulness": "Do not report printed CER as handwriting, formula, or end-to-end success."
+}

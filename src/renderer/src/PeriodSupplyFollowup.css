@@ -1,0 +1,20 @@
+.period-supply-followup { min-width: 0; margin: 16px 0; border-top: 1px solid #cbd5d0; padding-top: 12px; color: #243d33; }
+.period-supply-followup > summary { cursor: pointer; font-weight: 650; padding: 6px 0; }
+.period-supply-followup section { min-width: 0; }
+.period-supply-followup header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.period-supply-followup h4 { font-size: 16px; margin: 8px 0; }
+.period-supply-followup h5 { font-size: 16px; margin: 8px 0; }
+.period-supply-followup article { border-top: 1px solid #d6ddda; padding: 12px 0; margin: 0; background: none; min-width: 0; }
+.period-list .period-supply-followup article { border: 0; border-top: 1px solid #d6ddda; padding: 12px 0; }
+.period-supply-followup dl { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px 12px; margin: 12px 0; }
+.period-supply-followup dd { margin: 0; min-width: 0; }
+.period-supply-followup p,.period-supply-followup h4,.period-supply-followup h5,.period-supply-followup dd { overflow-wrap: anywhere; }
+.period-supply-followup button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 10px; border: 1px solid #a5b4ad; border-radius: 4px; background: white; color: #234d3b; font: inherit; cursor: pointer; }
+.period-supply-followup button:disabled { opacity: .55; cursor: default; }
+.period-supply-followup button:focus-visible { outline: 2px solid #267d83; outline-offset: 2px; }
+.period-supply-followup .icon-button { width: 36px; height: 36px; flex: 0 0 36px; padding: 8px; }
+.period-supply-followup [role="alert"] { color: #713718; padding: 10px; background: #fff2df; }
+@media (max-width: 600px) {
+  .period-supply-followup dl { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .period-supply-followup dd { margin-bottom: 10px; }
+}

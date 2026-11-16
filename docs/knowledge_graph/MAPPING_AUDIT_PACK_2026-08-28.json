@@ -1,0 +1,96 @@
+{
+  "pack": {
+    "audit_pack_id": "edbe4b4d-cb78-4ab3-8700-74649c72a4b8",
+    "snapshot_sha256": "07bd6dd90a84ac7498f494008046a8c136773372db32f40dcd44e3b6149b98ba",
+    "criteria_version": "strict-lexical-proxy-v2",
+    "status": "open",
+    "item_count": 41,
+    "created_at": "2026-08-28T08:11:32.636915+00:00",
+    "updated_at": "2026-08-28T08:11:32.636915+00:00"
+  },
+  "breakdown": [
+    {
+      "grade_scope": "初三",
+      "subject_scope": "化学",
+      "track": "school",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 5
+    },
+    {
+      "grade_scope": "初三",
+      "subject_scope": "数学",
+      "track": "school",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 5
+    },
+    {
+      "grade_scope": "初三",
+      "subject_scope": "物理",
+      "track": "school",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 5
+    },
+    {
+      "grade_scope": "初三",
+      "subject_scope": "英语",
+      "track": "school",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 5
+    },
+    {
+      "grade_scope": "初三",
+      "subject_scope": "语文",
+      "track": "school",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 4
+    },
+    {
+      "grade_scope": "四年级",
+      "subject_scope": "数学",
+      "track": "school",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 5
+    },
+    {
+      "grade_scope": "四年级",
+      "subject_scope": "语文",
+      "track": "school",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 2
+    },
+    {
+      "grade_scope": "四年级-PET",
+      "subject_scope": "英语",
+      "track": "pet",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 5
+    },
+    {
+      "grade_scope": "四年级竞赛",
+      "subject_scope": "数学",
+      "track": "competition_math",
+      "human_verdict": null,
+      "error_category": null,
+      "count": 5
+    }
+  ],
+  "metrics": {
+    "total": 41,
+    "reviewed": 0,
+    "accepted": 0,
+    "rejected": 0,
+    "needs_split": 0,
+    "review_coverage": 0.0,
+    "human_precision": null,
+    "mean_candidate_confidence": 0.6370731707317073
+  },
+  "metric_boundary": "human_precision is available only after accept/reject review; candidate confidence is not precision"
+}

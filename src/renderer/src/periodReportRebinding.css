@@ -1,0 +1,16 @@
+.period-report-rebinding { margin-block: 20px; min-width: 0; }
+.period-report-rebinding h5 { font-size: 15px; margin: 8px 0; }
+.period-report-rebinding p, .period-report-rebinding li, .period-report-rebinding blockquote { overflow-wrap: anywhere; }
+.period-report-rebinding blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid #568478; }
+.rebinding-evidence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding-block: 12px; }
+.rebinding-evidence section { min-width: 0; border-top: 1px solid #b9c8c1; padding-top: 8px; }
+.period-report-rebinding fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border: 0; padding: 12px 0; min-width: 0; }
+.period-report-rebinding label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.period-report-rebinding input, .period-report-rebinding select { box-sizing: border-box; width: 100%; min-width: 0; }
+.period-report-rebinding button { display: inline-flex; gap: 6px; align-items: center; justify-content: center; white-space: normal; margin: 4px 8px 4px 0; }
+.period-report-rebinding button svg { flex-shrink: 0; }
+.period-report-rebinding .rebinding-confirm { flex-direction: row; align-items: flex-start; margin-block: 12px; }
+.period-report-rebinding .rebinding-confirm input { width: 18px; height: 18px; flex: 0 0 18px; }
+.rebinding-records { list-style: none; padding: 0; }
+.rebinding-record { border-top: 1px solid #b9c8c1; padding-block: 16px; }
+@media (max-width: 600px) { .rebinding-evidence, .period-report-rebinding fieldset { grid-template-columns: minmax(0, 1fr); } }

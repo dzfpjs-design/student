@@ -1,0 +1,11 @@
+.original-source-review { min-width: 0; padding: 18px 0; border-block: 1px solid #b7c6c1; overflow-wrap: anywhere; }
+.original-source-review > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.original-source-review header > div, .original-source-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.original-source-review h4 { font-size: 15px; margin: 14px 0 4px; }
+.original-source-review label { display: grid; gap: 6px; min-width: 0; margin: 12px 0; }
+.original-source-review textarea, .original-source-review input, .original-source-review select { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; padding: 8px; border: 1px solid #a6b5b0; border-radius: 4px; color: #25322f; background: #fff; }
+.original-source-review textarea { min-height: 84px; resize: vertical; }
+.original-source-text { white-space: pre-wrap; }
+.original-source-search { display: flex; align-items: center; gap: 8px; }
+.original-source-search label { flex: 1; }
+.original-source-actions > p { flex-basis: 100%; }

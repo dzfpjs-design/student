@@ -1,0 +1,222 @@
+{
+  "snapshot": {
+    "database_sha256": "e39566d06e378fc0915d2462a57592bdaf9a5c5af6563f13e8a3036a67ea40ff",
+    "generated_at": "2026-08-28T11:43:38.685279+00:00",
+    "consistency": "sqlite_backup_read_transaction",
+    "integrity_check": "ok",
+    "schema_version": 18,
+    "table_counts": {
+      "resources": 3971,
+      "transcript_resources": 3869,
+      "segments": 34482,
+      "embeddings": 34482,
+      "nodes": 309,
+      "edges": 292,
+      "open_failures": 0
+    },
+    "corpora": [
+      {
+        "corpus_id": "bili-local-v1",
+        "version_label": "local-2026-08",
+        "source_kind": "bilibili",
+        "resources": 183
+      },
+      {
+        "corpus_id": "seyk-local-v1",
+        "version_label": "local-2026-08",
+        "source_kind": "seyk",
+        "resources": 3788
+      }
+    ]
+  },
+  "integrity": "ok",
+  "counts": {
+    "resources": 3971,
+    "transcript_resources": 3869,
+    "segments": 34482,
+    "embeddings": 34482,
+    "nodes": 309,
+    "edges": 292,
+    "open_failures": 0
+  },
+  "corpora": [
+    {
+      "corpus_id": "bili-local-v1",
+      "version_label": "local-2026-08",
+      "source_kind": "bilibili",
+      "resources": 183
+    },
+    {
+      "corpus_id": "seyk-local-v1",
+      "version_label": "local-2026-08",
+      "source_kind": "seyk",
+      "resources": 3788
+    }
+  ],
+  "node_types": [
+    {
+      "node_type": "exercise",
+      "count": 37
+    },
+    {
+      "node_type": "knowledge_point",
+      "count": 254
+    },
+    {
+      "node_type": "misconception",
+      "count": 2
+    },
+    {
+      "node_type": "unit",
+      "count": 16
+    }
+  ],
+  "quality": {
+    "edge_breakdown": [
+      {
+        "relation_type": "assessed_by",
+        "review_status": "approved",
+        "source_ref": "hsc_original_v1",
+        "count": 42
+      },
+      {
+        "relation_type": "contains",
+        "review_status": "unreviewed",
+        "source_ref": "curriculum_standard_unresolved:moe-2022-chemistry",
+        "count": 29
+      },
+      {
+        "relation_type": "contains",
+        "review_status": "unreviewed",
+        "source_ref": "curriculum_standard_unresolved:moe-2022-chinese",
+        "count": 28
+      },
+      {
+        "relation_type": "contains",
+        "review_status": "unreviewed",
+        "source_ref": "curriculum_standard_unresolved:moe-2022-english",
+        "count": 34
+      },
+      {
+        "relation_type": "contains",
+        "review_status": "unreviewed",
+        "source_ref": "curriculum_standard_unresolved:moe-2022-mathematics",
+        "count": 111
+      },
+      {
+        "relation_type": "contains",
+        "review_status": "unreviewed",
+        "source_ref": "curriculum_standard_unresolved:moe-2022-physics",
+        "count": 30
+      },
+      {
+        "relation_type": "contains",
+        "review_status": "approved",
+        "source_ref": "hsc_original_v1",
+        "count": 8
+      },
+      {
+        "relation_type": "explained_by",
+        "review_status": "approved",
+        "source_ref": "hsc_original_v1",
+        "count": 3
+      },
+      {
+        "relation_type": "misconception_of",
+        "review_status": "approved",
+        "source_ref": "hsc_original_v1",
+        "count": 2
+      },
+      {
+        "relation_type": "prerequisite_of",
+        "review_status": "approved",
+        "source_ref": "hsc_original_v1",
+        "count": 3
+      },
+      {
+        "relation_type": "related_to",
+        "review_status": "approved",
+        "source_ref": "hsc_original_v1",
+        "count": 2
+      }
+    ],
+    "mapping_source_breakdown": [
+      {
+        "source_ref": "local_keyword_mapper_v3",
+        "review_status": "unreviewed",
+        "count": 5594
+      },
+      {
+        "source_ref": "coverage_exact_terms_v1",
+        "review_status": "unreviewed",
+        "count": 2389
+      },
+      {
+        "source_ref": "official_catalog_exact_local_evidence_v2",
+        "review_status": "unreviewed",
+        "count": 9
+      }
+    ],
+    "mapping": {
+      "rows": 7992,
+      "approved_rows": 0,
+      "unreviewed_rows": 7992,
+      "rejected_rows": 0,
+      "candidate_or_approved_mapped_segments": 6497,
+      "approved_mapped_segments": 0,
+      "mapped_segments": 6497,
+      "total_segments": 34482,
+      "unmapped_segment_rate": 0.8116,
+      "potential_conflict_segments": 39,
+      "human_reviewed_rows": 0,
+      "human_mapping_accuracy": null,
+      "human_decision_acceptance_rate": null
+    },
+    "target_coverage": [
+      {
+        "grade_scope": "初三",
+        "track": "school",
+        "nodes": 155,
+        "candidate_or_approved_covered_nodes": 74,
+        "approved_covered_nodes": 0,
+        "candidate_or_approved_mapped_segments": 1412,
+        "approved_mapped_segments": 0,
+        "candidate_atom_coverage_ratio": 0.4774,
+        "approved_atom_coverage_ratio": 0.0
+      },
+      {
+        "grade_scope": "四年级",
+        "track": "school",
+        "nodes": 80,
+        "candidate_or_approved_covered_nodes": 27,
+        "approved_covered_nodes": 0,
+        "candidate_or_approved_mapped_segments": 548,
+        "approved_mapped_segments": 0,
+        "candidate_atom_coverage_ratio": 0.3375,
+        "approved_atom_coverage_ratio": 0.0
+      },
+      {
+        "grade_scope": "四年级-PET",
+        "track": "pet",
+        "nodes": 9,
+        "candidate_or_approved_covered_nodes": 4,
+        "approved_covered_nodes": 0,
+        "candidate_or_approved_mapped_segments": 1936,
+        "approved_mapped_segments": 0,
+        "candidate_atom_coverage_ratio": 0.4444,
+        "approved_atom_coverage_ratio": 0.0
+      },
+      {
+        "grade_scope": "四年级竞赛",
+        "track": "competition_math",
+        "nodes": 10,
+        "candidate_or_approved_covered_nodes": 9,
+        "approved_covered_nodes": 0,
+        "candidate_or_approved_mapped_segments": 3157,
+        "approved_mapped_segments": 0,
+        "candidate_atom_coverage_ratio": 0.9,
+        "approved_atom_coverage_ratio": 0.0
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+.document-trial-panel select { max-width: 100%; }
+.document-trial-replay { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 16px; }
+.document-trial-frame-list { max-height: 440px; overflow: auto; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.document-trial-frame-list button { text-align: left; white-space: normal; padding: 8px; border-radius: 4px; }
+.document-trial-frame-list .is-active { outline: 2px solid #227568; outline-offset: -2px; }
+.document-trial-frame-detail { min-width: 0; overflow-wrap: anywhere; }
+.document-trial-frame-detail img { width: 100%; max-height: 480px; object-fit: contain; background: #eef0f1; }
+.document-trial-pagination { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+@media (max-width: 640px) { .document-trial-replay { grid-template-columns: minmax(0, 1fr); } .document-trial-frame-list { max-height: 150px; } }

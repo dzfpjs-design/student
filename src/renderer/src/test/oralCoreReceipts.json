@@ -1,0 +1,2521 @@
+{
+  "evidence": "Actual isolated FastAPI/SQLite; synthetic PCM/recognizer; no network model.",
+  "scenario": "request_retry",
+  "packets": [
+    {
+      "method": "POST",
+      "path": "/v1/sessions/4403c187-c4f5-4953-8ec0-47d8de3ba797/agent-turn",
+      "status_code": 200,
+      "response": {
+        "agent_turn_id": "2766ec1e-d167-425e-9607-fb057815abfc",
+        "child_id": "child-primary-4",
+        "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+        "transcript": "我想练习口语，回答接下来的题目",
+        "intent": "diagnostic.start",
+        "response_text": "好的，我来处理你刚才说的事情。",
+        "orchestrator_version": "agent_runtime_cloud_first_v2",
+        "tool_status": "pending",
+        "tool_error_code": null,
+        "completed_at": null,
+        "created_at": "2026-09-09T15:38:37.672557+00:00",
+        "action": {
+          "type": "start_diagnostic",
+          "capability": "diagnostic.start",
+          "execution_location": "client_device_bridge",
+          "source": "agent_runtime_planner",
+          "confidence": 0.95,
+          "local_only": true,
+          "cloud_transmission_allowed": false,
+          "risk_level": "medium",
+          "agent_runtime": {
+            "plan_id": "e3a2b8ae-bdb3-4665-9f16-e121bc3590cd",
+            "step_id": "52d62df6-7606-489e-b6d3-7700fe2157e0",
+            "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+            "objective": {
+              "mode": "new",
+              "type": "learning",
+              "summary": "处理孩子当前请求",
+              "success_criteria": [
+                "Address the complete original task",
+                "Include supporting details"
+              ],
+              "phase": "diagnose"
+            },
+            "capability": {
+              "capability": "diagnostic.start",
+              "capability_version": "1",
+              "arguments": {},
+              "reason": "根据当前话语语义和上下文选择",
+              "expected_evidence": [
+                "diagnostic_item_presented"
+              ],
+              "execution_location": "client_device_bridge",
+              "risk_level": "medium"
+            },
+            "requires_child_reply": true,
+            "after_execution": "stop"
+          }
+        },
+        "requires_control_admission": false,
+        "runtime_execution_location": "client_device_bridge",
+        "runtime_capability": "diagnostic.start",
+        "after_execution": "stop"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/agent-turns/2766ec1e-d167-425e-9607-fb057815abfc/outcome",
+      "status_code": 200,
+      "response": {
+        "agent_turn_id": "2766ec1e-d167-425e-9607-fb057815abfc",
+        "child_id": "child-primary-4",
+        "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+        "transcript": "我想练习口语，回答接下来的题目",
+        "intent": "diagnostic.start",
+        "response_text": "原题已返回，等待孩子作答。",
+        "orchestrator_version": "agent_runtime_cloud_first_v2",
+        "tool_status": "completed",
+        "tool_error_code": null,
+        "completed_at": "2026-09-09T15:38:37.731128+00:00",
+        "created_at": "2026-09-09T15:38:37.672557+00:00",
+        "action": {
+          "type": "start_diagnostic",
+          "capability": "diagnostic.start",
+          "execution_location": "client_device_bridge",
+          "source": "agent_runtime_planner",
+          "confidence": 0.95,
+          "local_only": true,
+          "cloud_transmission_allowed": false,
+          "risk_level": "medium",
+          "agent_runtime": {
+            "plan_id": "e3a2b8ae-bdb3-4665-9f16-e121bc3590cd",
+            "step_id": "52d62df6-7606-489e-b6d3-7700fe2157e0",
+            "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+            "objective": {
+              "mode": "new",
+              "type": "learning",
+              "summary": "处理孩子当前请求",
+              "success_criteria": [
+                "Address the complete original task",
+                "Include supporting details"
+              ],
+              "phase": "diagnose"
+            },
+            "capability": {
+              "capability": "diagnostic.start",
+              "capability_version": "1",
+              "arguments": {},
+              "reason": "根据当前话语语义和上下文选择",
+              "expected_evidence": [
+                "diagnostic_item_presented"
+              ],
+              "execution_location": "client_device_bridge",
+              "risk_level": "medium"
+            },
+            "requires_child_reply": true,
+            "after_execution": "stop"
+          }
+        },
+        "requires_control_admission": false,
+        "runtime_execution_location": "client_device_bridge",
+        "runtime_capability": "diagnostic.start",
+        "after_execution": "stop"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/sessions/4403c187-c4f5-4953-8ec0-47d8de3ba797/agent-turn",
+      "status_code": 200,
+      "response": {
+        "agent_turn_id": "5a11fbb1-5ef3-4a78-a477-6ca24151198e",
+        "child_id": "child-primary-4",
+        "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+        "transcript": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+        "intent": "pending_answer_clarification",
+        "response_text": "刚才这句我先不算作答案。你是在回答当前这道题、问题目里的意思，还是要处理另一件事？原题和这句话都留着。",
+        "orchestrator_version": "agent_runtime_deterministic_v1",
+        "tool_status": "pending",
+        "tool_error_code": null,
+        "completed_at": null,
+        "created_at": "2026-09-09T15:38:37.977664+00:00",
+        "action": {
+          "type": "none",
+          "source": "pending_answer_clarification",
+          "local_only": true,
+          "cloud_transmission_allowed": false,
+          "mastery_update_allowed": false,
+          "independent_evidence": false,
+          "requires_child_reply": true,
+          "pending_answer_candidate": {
+            "target": {
+              "action": "submit_diagnostic_answer",
+              "binding": {
+                "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8"
+              },
+              "answer_type": "speaking"
+            },
+            "answer": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+          },
+          "voice_input_id": "c03025ec-152b-46f4-b0dc-28120acad55f",
+          "voice_input_binding": {
+            "voice_input_id": "c03025ec-152b-46f4-b0dc-28120acad55f",
+            "child_id": "child-primary-4",
+            "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+            "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+            "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+            "status": "completed",
+            "question_reference": {
+              "kind": "diagnostic",
+              "binding": {
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0"
+              }
+            },
+            "question_validation": "valid"
+          }
+        },
+        "requires_control_admission": false,
+        "runtime_execution_location": "server",
+        "runtime_capability": "conversation.respond",
+        "after_execution": "stop"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/agent-turns/5a11fbb1-5ef3-4a78-a477-6ca24151198e/execute",
+      "status_code": 200,
+      "response": {
+        "turn": {
+          "agent_turn_id": "5a11fbb1-5ef3-4a78-a477-6ca24151198e",
+          "child_id": "child-primary-4",
+          "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "transcript": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+          "intent": "pending_answer_clarification",
+          "response_text": "刚才这句我先不算作答案。你是在回答当前这道题、问题目里的意思，还是要处理另一件事？原题和这句话都留着。",
+          "orchestrator_version": "agent_runtime_deterministic_v1",
+          "tool_status": "completed",
+          "tool_error_code": null,
+          "completed_at": "2026-09-09T15:38:38.027312+00:00",
+          "created_at": "2026-09-09T15:38:37.977664+00:00",
+          "action": {
+            "type": "none",
+            "source": "pending_answer_clarification",
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "mastery_update_allowed": false,
+            "independent_evidence": false,
+            "requires_child_reply": true,
+            "pending_answer_candidate": {
+              "target": {
+                "action": "submit_diagnostic_answer",
+                "binding": {
+                  "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+                  "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8"
+                },
+                "answer_type": "speaking"
+              },
+              "answer": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+            },
+            "voice_input_id": "c03025ec-152b-46f4-b0dc-28120acad55f",
+            "voice_input_binding": {
+              "voice_input_id": "c03025ec-152b-46f4-b0dc-28120acad55f",
+              "child_id": "child-primary-4",
+              "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+              "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "status": "completed",
+              "question_reference": {
+                "kind": "diagnostic",
+                "binding": {
+                  "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                  "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0"
+                }
+              },
+              "question_validation": "valid"
+            }
+          },
+          "requires_control_admission": false,
+          "runtime_execution_location": "server",
+          "runtime_capability": "conversation.respond",
+          "after_execution": "stop"
+        },
+        "execution": {
+          "capability": "conversation.respond",
+          "response_text": "刚才这句我先不算作答案。你是在回答当前这道题、问题目里的意思，还是要处理另一件事？原题和这句话都留着。",
+          "result": {
+            "status": "responded"
+          },
+          "evidence": []
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/sessions/4403c187-c4f5-4953-8ec0-47d8de3ba797/agent-turn",
+      "status_code": 200,
+      "response": {
+        "agent_turn_id": "79cfe1e5-f7c0-4989-8124-34dded67b9af",
+        "child_id": "child-primary-4",
+        "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+        "transcript": "刚才那句就是我的答案",
+        "intent": "submit_diagnostic_answer",
+        "response_text": "好，按你刚才确认的原话核对这道题。",
+        "orchestrator_version": "agent_runtime_deterministic_v1",
+        "tool_status": "pending",
+        "tool_error_code": null,
+        "completed_at": null,
+        "created_at": "2026-09-09T15:38:38.265730+00:00",
+        "action": {
+          "type": "submit_diagnostic_answer",
+          "answer": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+          "answer_source_turn_id": "5a11fbb1-5ef3-4a78-a477-6ca24151198e",
+          "local_only": true,
+          "cloud_transmission_allowed": false,
+          "diagnostic_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+          "diagnostic_item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+          "voice_input_id": "f13540ca-5cc6-44c3-af28-b28fa75fd92d",
+          "voice_input_binding": {
+            "voice_input_id": "f13540ca-5cc6-44c3-af28-b28fa75fd92d",
+            "child_id": "child-primary-4",
+            "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+            "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+            "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+            "status": "completed",
+            "question_reference": {
+              "kind": "diagnostic",
+              "binding": {
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0"
+              }
+            },
+            "question_validation": "valid"
+          },
+          "source_voice_input_id": "c03025ec-152b-46f4-b0dc-28120acad55f"
+        },
+        "requires_control_admission": false,
+        "runtime_execution_location": "client_device_bridge",
+        "runtime_capability": "diagnostic.submit",
+        "after_execution": "stop"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/sessions/4403c187-c4f5-4953-8ec0-47d8de3ba797/diagnostic-prompt/answer",
+      "status_code": 200,
+      "response": {
+        "status": "answered",
+        "prompt": {
+          "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+          "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+          "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+          "review_task_id": null,
+          "child_id": "child-primary-4",
+          "origin_session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "created_at": "2026-09-09T15:38:37.715974+00:00",
+          "item": {
+            "answer_type": "speaking",
+            "assessment_mode": "pet_reference_rubric",
+            "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+            "difficulty": 1,
+            "knowledge_node_id": "node-pet-speaking-picture",
+            "prompt": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+            "stimulus_asset": null,
+            "stimulus_text": null,
+            "subject": "英语",
+            "title": "看图描述",
+            "track": "pet",
+            "pet_audio_modality": "speaking"
+          },
+          "pet_audio_modality": "speaking"
+        },
+        "attempt": {
+          "attempt_id": "34d122f6-4b07-47c4-be16-739b7c6cb657",
+          "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+          "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+          "child_id": "child-primary-4",
+          "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "submitted_answer": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+          "correctness": 0.6,
+          "feedback": "作答已保存，当前评分方式不能可靠确认对错，需要进一步核实。",
+          "review_task_id": null,
+          "created_at": "2026-09-09T15:38:38.309205+00:00",
+          "question_identity": "exact_question_v1:105a490a5fd5a3498c82ea6bc5d9e1876e581eca9579aad441aa01e00de976b8",
+          "identity_version": "exact_question_v1",
+          "score_status": "needs_review",
+          "mastery_update_allowed": false,
+          "score_reason": "unreliable_score",
+          "learning_adaptation": {
+            "status": "refreshed",
+            "snapshot_id": "bff04c7f-2d36-490b-aaa1-708f22c10b1f",
+            "evidence_fingerprint": "8bfda8f7be8fc9a064d01e0b8bad183c545cdb7287eb57f85d1559a83474288d"
+          },
+          "mistake": null,
+          "knowledge_graph": {
+            "status": "manual_confirmation_required",
+            "reason": "this assessment mode is reference-only and is not calibrated mastery evidence",
+            "result_source": "host_attempt_not_approved_for_kg_mastery"
+          },
+          "specialized_assessment": null,
+          "next_specialized_item": null,
+          "pet_baseline": {
+            "definition_version": "pet_baseline_v1",
+            "status": "not_started",
+            "completed_tasks": 0,
+            "required_tasks": 5,
+            "evidence_count": 0,
+            "reference_only": true,
+            "boundary": "完成仅表示听说读写规定任务已有证据，不代表达到PET通过水平；写作、口语和朗读均为未校准参考评估。",
+            "dimensions": [
+              {
+                "key": "reading",
+                "label": "阅读",
+                "score_kind": "objective",
+                "completed_tasks": 0,
+                "required_tasks": 1,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "reading_objective",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              },
+              {
+                "key": "listening",
+                "label": "听力",
+                "score_kind": "objective",
+                "completed_tasks": 0,
+                "required_tasks": 1,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "listening_objective",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              },
+              {
+                "key": "writing",
+                "label": "写作",
+                "score_kind": "reference",
+                "completed_tasks": 0,
+                "required_tasks": 1,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "short_writing",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              },
+              {
+                "key": "speaking",
+                "label": "口语",
+                "score_kind": "reference",
+                "completed_tasks": 0,
+                "required_tasks": 2,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "spoken_response",
+                    "completed": false,
+                    "last_attempt_at": null
+                  },
+                  {
+                    "task": "read_aloud",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "reason": null,
+        "local_learning_evaluation": {
+          "status": "feedback_ready",
+          "feedback_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+          "local_only": true,
+          "cloud_transmission_allowed": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/agent-turns/63fe96e9-f70c-470e-8ce1-9ed711584cf7/execution-status",
+      "status_code": 200,
+      "response": {
+        "status": "completed",
+        "execution": {
+          "turn": {
+            "agent_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+            "child_id": "child-primary-4",
+            "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+            "transcript": "",
+            "intent": "local_evaluation",
+            "response_text": "",
+            "orchestrator_version": "agent_runtime_planner_v1",
+            "tool_status": "completed",
+            "tool_error_code": null,
+            "completed_at": "2026-09-09T15:38:38.436262+00:00",
+            "created_at": "2026-09-09T15:38:38.429815+00:00",
+            "action": {
+              "type": "none",
+              "source": "local_evaluation",
+              "original_objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+              "source_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+            },
+            "requires_control_admission": false,
+            "runtime_execution_location": "local_model",
+            "runtime_capability": "learning.evaluate_response",
+            "after_execution": "stop"
+          },
+          "execution": {
+            "capability": "learning.evaluate_response",
+            "response_text": "我们核对一下：Address the complete original task。你想补充一句吗？",
+            "result": {
+              "understanding": "partial",
+              "confidence": 0,
+              "evidence_summary": "本地作答已保存，标准覆盖尚待复核。",
+              "spoken_feedback": "我们核对一下：Address the complete original task。你想补充一句吗？",
+              "next_check": "",
+              "criterion_evidence": [],
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742",
+              "outcome_level": "understood_now",
+              "mastery_gate": {
+                "version": "learning_outcome_gate_v1",
+                "status": "unknown",
+                "outcome_level": "understood_now",
+                "local_only": true,
+                "cloud_transmission_allowed": false,
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                "next_phase": "remediate",
+                "missing": [
+                  "reliable_response_receipt_missing"
+                ],
+                "covered_criteria": [],
+                "basis_outcome_ids": [],
+                "question_identities": [],
+                "eligible": false,
+                "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742"
+              },
+              "certification_status": "candidate",
+              "rubric_assessment": {
+                "assessment_modality": "text_only",
+                "automatic_certification": false,
+                "automatic_quality_status": "not_calibrated",
+                "condition_authority": "unknown_until_human_observation_review",
+                "criteria": [
+                  "Address the complete original task",
+                  "Include supporting details"
+                ],
+                "dimensions": [
+                  {
+                    "criterion": "完成交际目的和题目要求的要点，事实与信息完整；堆词不算完成任务。",
+                    "dimension_id": "task",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  },
+                  {
+                    "criterion": "句子和要点间关系清楚，组织适合文本类型，不以连接词数量代替连贯性。",
+                    "dimension_id": "coherence",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  },
+                  {
+                    "criterion": "词汇、语法和语域能准确表达意图；仅评价文字，不推断发音或口语流利度。",
+                    "dimension_id": "language",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  }
+                ],
+                "independence_eligible": null,
+                "material": {
+                  "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                  "source_version_hash": "f2a4ee6e4a2083d0985932965f2721a8e1cc7c0fd2a24745e20175ce3795427d",
+                  "status": "bound",
+                  "stimulus_asset": null,
+                  "stimulus_text": null
+                },
+                "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+                "profile": "english_open",
+                "question": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+                "responded_at": "2026-09-09T15:38:38.429815+00:00",
+                "response": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+                "rubric_version": "open_answer_rubric_v1",
+                "scorer_provenance": null,
+                "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                "source_evidence_version_hash": "4da854b8ccbf432ecf0a0b4adb32c4ba482332def65855000463be310f6a6ed3",
+                "source_kind": "local_open_review",
+                "subject": "英语",
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "step_id": "96d9b5b7-8c88-4719-a9da-159fd3f2b25b",
+                "child_id": "child-primary-4",
+                "local_only": true,
+                "cloud_transmission_allowed": false,
+                "fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+                "created_at": "2026-09-09T15:38:38.434544+00:00",
+                "score_status": "candidate",
+                "source_status": "current",
+                "review_revision": 0,
+                "review": null
+              },
+              "objective_phase": "diagnose",
+              "objective_update_applied": false,
+              "oral_feedback": {
+                "version": "oral_teaching_v2",
+                "status": "content_self_check",
+                "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "feedback_version": "c31d8b3dfbd34ba8982c5605a5b83c36c3752bce203c1713bb3a16186ec47a88",
+                "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+                "review_ref": null,
+                "reason": "original_audio_review_required",
+                "mastery_claim_allowed": false,
+                "local_only": true,
+                "cloud_transmission_allowed": false
+              },
+              "feedback_delivery_allowed": true,
+              "feedback_status": "ready"
+            },
+            "evidence": [
+              "child_response",
+              "model_rubric"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/agent-turns/63fe96e9-f70c-470e-8ce1-9ed711584cf7/execute",
+      "status_code": 200,
+      "response": {
+        "turn": {
+          "agent_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+          "child_id": "child-primary-4",
+          "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "transcript": "",
+          "intent": "local_evaluation",
+          "response_text": "",
+          "orchestrator_version": "agent_runtime_planner_v1",
+          "tool_status": "completed",
+          "tool_error_code": null,
+          "completed_at": "2026-09-09T15:38:38.436262+00:00",
+          "created_at": "2026-09-09T15:38:38.429815+00:00",
+          "action": {
+            "type": "none",
+            "source": "local_evaluation",
+            "original_objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+            "source_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+          },
+          "requires_control_admission": false,
+          "runtime_execution_location": "local_model",
+          "runtime_capability": "learning.evaluate_response",
+          "after_execution": "stop"
+        },
+        "execution": {
+          "capability": "learning.evaluate_response",
+          "response_text": "我们核对一下：Address the complete original task。你想补充一句吗？",
+          "result": {
+            "understanding": "partial",
+            "confidence": 0,
+            "evidence_summary": "本地作答已保存，标准覆盖尚待复核。",
+            "spoken_feedback": "我们核对一下：Address the complete original task。你想补充一句吗？",
+            "next_check": "",
+            "criterion_evidence": [],
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742",
+            "outcome_level": "understood_now",
+            "mastery_gate": {
+              "version": "learning_outcome_gate_v1",
+              "status": "unknown",
+              "outcome_level": "understood_now",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+              "next_phase": "remediate",
+              "missing": [
+                "reliable_response_receipt_missing"
+              ],
+              "covered_criteria": [],
+              "basis_outcome_ids": [],
+              "question_identities": [],
+              "eligible": false,
+              "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742"
+            },
+            "certification_status": "candidate",
+            "rubric_assessment": {
+              "assessment_modality": "text_only",
+              "automatic_certification": false,
+              "automatic_quality_status": "not_calibrated",
+              "condition_authority": "unknown_until_human_observation_review",
+              "criteria": [
+                "Address the complete original task",
+                "Include supporting details"
+              ],
+              "dimensions": [
+                {
+                  "criterion": "完成交际目的和题目要求的要点，事实与信息完整；堆词不算完成任务。",
+                  "dimension_id": "task",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                },
+                {
+                  "criterion": "句子和要点间关系清楚，组织适合文本类型，不以连接词数量代替连贯性。",
+                  "dimension_id": "coherence",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                },
+                {
+                  "criterion": "词汇、语法和语域能准确表达意图；仅评价文字，不推断发音或口语流利度。",
+                  "dimension_id": "language",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                }
+              ],
+              "independence_eligible": null,
+              "material": {
+                "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                "source_version_hash": "f2a4ee6e4a2083d0985932965f2721a8e1cc7c0fd2a24745e20175ce3795427d",
+                "status": "bound",
+                "stimulus_asset": null,
+                "stimulus_text": null
+              },
+              "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+              "profile": "english_open",
+              "question": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+              "responded_at": "2026-09-09T15:38:38.429815+00:00",
+              "response": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+              "rubric_version": "open_answer_rubric_v1",
+              "scorer_provenance": null,
+              "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+              "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+              "source_evidence_version_hash": "4da854b8ccbf432ecf0a0b4adb32c4ba482332def65855000463be310f6a6ed3",
+              "source_kind": "local_open_review",
+              "subject": "英语",
+              "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+              "step_id": "96d9b5b7-8c88-4719-a9da-159fd3f2b25b",
+              "child_id": "child-primary-4",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+              "created_at": "2026-09-09T15:38:38.434544+00:00",
+              "score_status": "candidate",
+              "source_status": "current",
+              "review_revision": 0,
+              "review": null
+            },
+            "objective_phase": "diagnose",
+            "objective_update_applied": false,
+            "oral_feedback": {
+              "version": "oral_teaching_v2",
+              "status": "content_self_check",
+              "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "feedback_version": "c31d8b3dfbd34ba8982c5605a5b83c36c3752bce203c1713bb3a16186ec47a88",
+              "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+              "review_ref": null,
+              "reason": "original_audio_review_required",
+              "mastery_claim_allowed": false,
+              "local_only": true,
+              "cloud_transmission_allowed": false
+            },
+            "feedback_delivery_allowed": true,
+            "feedback_status": "ready"
+          },
+          "evidence": [
+            "independent_response",
+            "model_rubric"
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/agent-turns/63fe96e9-f70c-470e-8ce1-9ed711584cf7/execution-status",
+      "status_code": 200,
+      "response": {
+        "status": "completed",
+        "execution": {
+          "turn": {
+            "agent_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+            "child_id": "child-primary-4",
+            "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+            "transcript": "",
+            "intent": "local_evaluation",
+            "response_text": "",
+            "orchestrator_version": "agent_runtime_planner_v1",
+            "tool_status": "completed",
+            "tool_error_code": null,
+            "completed_at": "2026-09-09T15:38:38.436262+00:00",
+            "created_at": "2026-09-09T15:38:38.429815+00:00",
+            "action": {
+              "type": "none",
+              "source": "local_evaluation",
+              "original_objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+              "source_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+            },
+            "requires_control_admission": false,
+            "runtime_execution_location": "local_model",
+            "runtime_capability": "learning.evaluate_response",
+            "after_execution": "stop"
+          },
+          "execution": {
+            "capability": "learning.evaluate_response",
+            "response_text": "Try connecting your chosen place to one concrete reason.",
+            "result": {
+              "understanding": "partial",
+              "confidence": 0,
+              "evidence_summary": "本地作答已保存，标准覆盖尚待复核。",
+              "spoken_feedback": "Try connecting your chosen place to one concrete reason.",
+              "next_check": "",
+              "criterion_evidence": [],
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742",
+              "outcome_level": "exposed",
+              "mastery_gate": {
+                "version": "learning_outcome_gate_v1",
+                "status": "blocked",
+                "outcome_level": "exposed",
+                "local_only": true,
+                "cloud_transmission_allowed": false,
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                "next_phase": "remediate",
+                "missing": [
+                  "response_evidence_not_current_independent_correct"
+                ],
+                "covered_criteria": [],
+                "basis_outcome_ids": [],
+                "question_identities": [],
+                "eligible": false,
+                "evidence_id": "rubric:37b41d7a-4a88-43ae-bf2c-756dbd41969a:1",
+                "question_identity": "exact_question_v1:105a490a5fd5a3498c82ea6bc5d9e1876e581eca9579aad441aa01e00de976b8",
+                "occurred_at": "2026-09-09T15:38:38.309205+00:00",
+                "knowledge_node_id": null,
+                "score_status": "reviewed_human",
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "review_revision": 1,
+                "criterion_mapping_status": "reviewed_human",
+                "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742"
+              },
+              "certification_status": "candidate",
+              "rubric_assessment": {
+                "assessment_modality": "text_only",
+                "automatic_certification": false,
+                "automatic_quality_status": "not_calibrated",
+                "condition_authority": "unknown_until_human_observation_review",
+                "criteria": [
+                  "Address the complete original task",
+                  "Include supporting details"
+                ],
+                "dimensions": [
+                  {
+                    "criterion": "完成交际目的和题目要求的要点，事实与信息完整；堆词不算完成任务。",
+                    "dimension_id": "task",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  },
+                  {
+                    "criterion": "句子和要点间关系清楚，组织适合文本类型，不以连接词数量代替连贯性。",
+                    "dimension_id": "coherence",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  },
+                  {
+                    "criterion": "词汇、语法和语域能准确表达意图；仅评价文字，不推断发音或口语流利度。",
+                    "dimension_id": "language",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  }
+                ],
+                "independence_eligible": null,
+                "material": {
+                  "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                  "source_version_hash": "f2a4ee6e4a2083d0985932965f2721a8e1cc7c0fd2a24745e20175ce3795427d",
+                  "status": "bound",
+                  "stimulus_asset": null,
+                  "stimulus_text": null
+                },
+                "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+                "profile": "english_open",
+                "question": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+                "responded_at": "2026-09-09T15:38:38.429815+00:00",
+                "response": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+                "rubric_version": "open_answer_rubric_v1",
+                "scorer_provenance": null,
+                "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                "source_evidence_version_hash": "4da854b8ccbf432ecf0a0b4adb32c4ba482332def65855000463be310f6a6ed3",
+                "source_kind": "local_open_review",
+                "subject": "英语",
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "step_id": "96d9b5b7-8c88-4719-a9da-159fd3f2b25b",
+                "child_id": "child-primary-4",
+                "local_only": true,
+                "cloud_transmission_allowed": false,
+                "fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+                "created_at": "2026-09-09T15:38:38.434544+00:00",
+                "score_status": "reviewed_human",
+                "source_status": "current",
+                "review_revision": 1,
+                "review": {
+                  "assessment_fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+                  "assessment_modality": "original_audio_human_review",
+                  "audio_evidence": {
+                    "media_id": "589db45f65984801bc4de8e83e4cd585",
+                    "review": {
+                      "audio_sha256": "73830611ba5492377968e04fe507fafeb7e732ed0f938a0c036a08fc12fb7143",
+                      "binding_version": "pet_speaking_review_v2:0ece816810699baf46611e85b9621f02a49319c22b9f8a198a30452ef3c41af4",
+                      "observations": [
+                        {
+                          "dimension_id": "audio_text_alignment",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "intelligibility",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "pronunciation",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "prosody",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "fluency",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        }
+                      ],
+                      "schema": "pet_speaking_audio_references_v1"
+                    }
+                  },
+                  "automatic_certification": false,
+                  "calibration_status": "human_judgment_not_calibrated_exam",
+                  "cloud_transmission_allowed": false,
+                  "criterion_evidence": [
+                    {
+                      "criterion": "Address the complete original task",
+                      "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    },
+                    {
+                      "criterion": "Include supporting details",
+                      "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    }
+                  ],
+                  "dimensions": [
+                    {
+                      "dimension_id": "task",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [
+                        "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                      ],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "coherence",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [
+                        "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                      ],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "language",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [
+                        "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                      ],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "audio_text_alignment",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "intelligibility",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "pronunciation",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "prosody",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "fluency",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    }
+                  ],
+                  "hint_level": 0,
+                  "independent": true,
+                  "local_only": true,
+                  "passed": false,
+                  "reason": "Synthetic fixture review of exact original audio; no physical speech-quality claim.",
+                  "review_profile": "pet_speaking_audio_v1",
+                  "score_status": "reviewed_human",
+                  "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                  "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                  "review_revision": 1,
+                  "operation": "approve",
+                  "reviewer_id": "household-parent",
+                  "reviewer_role": "parent",
+                  "created_at": "2026-09-09T15:38:38.601416+00:00"
+                }
+              },
+              "objective_phase": "remediate",
+              "objective_update_applied": false,
+              "recorded_outcome_level": "understood_now",
+              "oral_feedback": {
+                "version": "oral_teaching_v2",
+                "status": "reviewed_audio_feedback",
+                "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "feedback_version": "58d79cea334cd8ec1ad7848cf8d72c503fc4142230a1f1791389c77281ee07ae",
+                "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+                "review_ref": {
+                  "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                  "review_revision": 1,
+                  "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                  "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+                },
+                "reason": null,
+                "mastery_claim_allowed": false,
+                "local_only": true,
+                "cloud_transmission_allowed": false
+              },
+              "feedback_delivery_allowed": true,
+              "feedback_status": "ready"
+            },
+            "evidence": [
+              "child_response",
+              "model_rubric"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/agent-turns/63fe96e9-f70c-470e-8ce1-9ed711584cf7/execute",
+      "status_code": 200,
+      "response": {
+        "turn": {
+          "agent_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+          "child_id": "child-primary-4",
+          "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "transcript": "",
+          "intent": "local_evaluation",
+          "response_text": "",
+          "orchestrator_version": "agent_runtime_planner_v1",
+          "tool_status": "completed",
+          "tool_error_code": null,
+          "completed_at": "2026-09-09T15:38:38.436262+00:00",
+          "created_at": "2026-09-09T15:38:38.429815+00:00",
+          "action": {
+            "type": "none",
+            "source": "local_evaluation",
+            "original_objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+            "source_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+          },
+          "requires_control_admission": false,
+          "runtime_execution_location": "local_model",
+          "runtime_capability": "learning.evaluate_response",
+          "after_execution": "stop"
+        },
+        "execution": {
+          "capability": "learning.evaluate_response",
+          "response_text": "Try connecting your chosen place to one concrete reason.",
+          "result": {
+            "understanding": "partial",
+            "confidence": 0,
+            "evidence_summary": "本地作答已保存，标准覆盖尚待复核。",
+            "spoken_feedback": "Try connecting your chosen place to one concrete reason.",
+            "next_check": "",
+            "criterion_evidence": [],
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742",
+            "outcome_level": "exposed",
+            "mastery_gate": {
+              "version": "learning_outcome_gate_v1",
+              "status": "blocked",
+              "outcome_level": "exposed",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+              "next_phase": "remediate",
+              "missing": [
+                "response_evidence_not_current_independent_correct"
+              ],
+              "covered_criteria": [],
+              "basis_outcome_ids": [],
+              "question_identities": [],
+              "eligible": false,
+              "evidence_id": "rubric:37b41d7a-4a88-43ae-bf2c-756dbd41969a:1",
+              "question_identity": "exact_question_v1:105a490a5fd5a3498c82ea6bc5d9e1876e581eca9579aad441aa01e00de976b8",
+              "occurred_at": "2026-09-09T15:38:38.309205+00:00",
+              "knowledge_node_id": null,
+              "score_status": "reviewed_human",
+              "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+              "review_revision": 1,
+              "criterion_mapping_status": "reviewed_human",
+              "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742"
+            },
+            "certification_status": "candidate",
+            "rubric_assessment": {
+              "assessment_modality": "text_only",
+              "automatic_certification": false,
+              "automatic_quality_status": "not_calibrated",
+              "condition_authority": "unknown_until_human_observation_review",
+              "criteria": [
+                "Address the complete original task",
+                "Include supporting details"
+              ],
+              "dimensions": [
+                {
+                  "criterion": "完成交际目的和题目要求的要点，事实与信息完整；堆词不算完成任务。",
+                  "dimension_id": "task",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                },
+                {
+                  "criterion": "句子和要点间关系清楚，组织适合文本类型，不以连接词数量代替连贯性。",
+                  "dimension_id": "coherence",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                },
+                {
+                  "criterion": "词汇、语法和语域能准确表达意图；仅评价文字，不推断发音或口语流利度。",
+                  "dimension_id": "language",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                }
+              ],
+              "independence_eligible": null,
+              "material": {
+                "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                "source_version_hash": "f2a4ee6e4a2083d0985932965f2721a8e1cc7c0fd2a24745e20175ce3795427d",
+                "status": "bound",
+                "stimulus_asset": null,
+                "stimulus_text": null
+              },
+              "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+              "profile": "english_open",
+              "question": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+              "responded_at": "2026-09-09T15:38:38.429815+00:00",
+              "response": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+              "rubric_version": "open_answer_rubric_v1",
+              "scorer_provenance": null,
+              "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+              "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+              "source_evidence_version_hash": "4da854b8ccbf432ecf0a0b4adb32c4ba482332def65855000463be310f6a6ed3",
+              "source_kind": "local_open_review",
+              "subject": "英语",
+              "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+              "step_id": "96d9b5b7-8c88-4719-a9da-159fd3f2b25b",
+              "child_id": "child-primary-4",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+              "created_at": "2026-09-09T15:38:38.434544+00:00",
+              "score_status": "reviewed_human",
+              "source_status": "current",
+              "review_revision": 1,
+              "review": {
+                "assessment_fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+                "assessment_modality": "original_audio_human_review",
+                "audio_evidence": {
+                  "media_id": "589db45f65984801bc4de8e83e4cd585",
+                  "review": {
+                    "audio_sha256": "73830611ba5492377968e04fe507fafeb7e732ed0f938a0c036a08fc12fb7143",
+                    "binding_version": "pet_speaking_review_v2:0ece816810699baf46611e85b9621f02a49319c22b9f8a198a30452ef3c41af4",
+                    "observations": [
+                      {
+                        "dimension_id": "audio_text_alignment",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "intelligibility",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "pronunciation",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "prosody",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "fluency",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      }
+                    ],
+                    "schema": "pet_speaking_audio_references_v1"
+                  }
+                },
+                "automatic_certification": false,
+                "calibration_status": "human_judgment_not_calibrated_exam",
+                "cloud_transmission_allowed": false,
+                "criterion_evidence": [
+                  {
+                    "criterion": "Address the complete original task",
+                    "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                  },
+                  {
+                    "criterion": "Include supporting details",
+                    "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                  }
+                ],
+                "dimensions": [
+                  {
+                    "dimension_id": "task",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [
+                      "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    ],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "coherence",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [
+                      "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    ],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "language",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [
+                      "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    ],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "audio_text_alignment",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "intelligibility",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "pronunciation",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "prosody",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "fluency",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  }
+                ],
+                "hint_level": 0,
+                "independent": true,
+                "local_only": true,
+                "passed": false,
+                "reason": "Synthetic fixture review of exact original audio; no physical speech-quality claim.",
+                "review_profile": "pet_speaking_audio_v1",
+                "score_status": "reviewed_human",
+                "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "review_revision": 1,
+                "operation": "approve",
+                "reviewer_id": "household-parent",
+                "reviewer_role": "parent",
+                "created_at": "2026-09-09T15:38:38.601416+00:00"
+              }
+            },
+            "objective_phase": "remediate",
+            "objective_update_applied": false,
+            "recorded_outcome_level": "understood_now",
+            "oral_feedback": {
+              "version": "oral_teaching_v2",
+              "status": "reviewed_audio_feedback",
+              "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "feedback_version": "58d79cea334cd8ec1ad7848cf8d72c503fc4142230a1f1791389c77281ee07ae",
+              "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+              "review_ref": {
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "review_revision": 1,
+                "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+              },
+              "reason": null,
+              "mastery_claim_allowed": false,
+              "local_only": true,
+              "cloud_transmission_allowed": false
+            },
+            "feedback_delivery_allowed": true,
+            "feedback_status": "ready"
+          },
+          "evidence": [
+            "independent_response",
+            "model_rubric"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/sessions/4403c187-c4f5-4953-8ec0-47d8de3ba797/diagnostic-prompt/answer",
+      "status_code": 200,
+      "response": {
+        "status": "answered",
+        "prompt": {
+          "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+          "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+          "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+          "review_task_id": null,
+          "child_id": "child-primary-4",
+          "origin_session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "created_at": "2026-09-09T15:38:37.715974+00:00",
+          "item": {
+            "answer_type": "speaking",
+            "assessment_mode": "pet_reference_rubric",
+            "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+            "difficulty": 1,
+            "knowledge_node_id": "node-pet-speaking-picture",
+            "prompt": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+            "stimulus_asset": null,
+            "stimulus_text": null,
+            "subject": "英语",
+            "title": "看图描述",
+            "track": "pet",
+            "pet_audio_modality": "speaking"
+          },
+          "pet_audio_modality": "speaking"
+        },
+        "attempt": {
+          "attempt_id": "34d122f6-4b07-47c4-be16-739b7c6cb657",
+          "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+          "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+          "child_id": "child-primary-4",
+          "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "submitted_answer": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+          "correctness": 0.6,
+          "feedback": "作答已保存，当前评分方式不能可靠确认对错，需要进一步核实。",
+          "review_task_id": null,
+          "created_at": "2026-09-09T15:38:38.309205+00:00",
+          "question_identity": "exact_question_v1:105a490a5fd5a3498c82ea6bc5d9e1876e581eca9579aad441aa01e00de976b8",
+          "identity_version": "exact_question_v1",
+          "score_status": "needs_review",
+          "mastery_update_allowed": false,
+          "score_reason": "unreliable_score",
+          "learning_adaptation": {
+            "status": "refreshed",
+            "snapshot_id": "e316c818-9e5b-4f13-b69d-4bfcadf9a7d4",
+            "evidence_fingerprint": "05f27078c980410277c29df10e36028049d3c4b07f4b88a3400f47eb636a53dc"
+          },
+          "mistake": null,
+          "knowledge_graph": {
+            "status": "manual_confirmation_required",
+            "reason": "this assessment mode is reference-only and is not calibrated mastery evidence",
+            "result_source": "host_attempt_not_approved_for_kg_mastery"
+          },
+          "specialized_assessment": null,
+          "next_specialized_item": null,
+          "pet_baseline": {
+            "definition_version": "pet_baseline_v1",
+            "status": "not_started",
+            "completed_tasks": 0,
+            "required_tasks": 5,
+            "evidence_count": 0,
+            "reference_only": true,
+            "boundary": "完成仅表示听说读写规定任务已有证据，不代表达到PET通过水平；写作、口语和朗读均为未校准参考评估。",
+            "dimensions": [
+              {
+                "key": "reading",
+                "label": "阅读",
+                "score_kind": "objective",
+                "completed_tasks": 0,
+                "required_tasks": 1,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "reading_objective",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              },
+              {
+                "key": "listening",
+                "label": "听力",
+                "score_kind": "objective",
+                "completed_tasks": 0,
+                "required_tasks": 1,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "listening_objective",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              },
+              {
+                "key": "writing",
+                "label": "写作",
+                "score_kind": "reference",
+                "completed_tasks": 0,
+                "required_tasks": 1,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "short_writing",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              },
+              {
+                "key": "speaking",
+                "label": "口语",
+                "score_kind": "reference",
+                "completed_tasks": 0,
+                "required_tasks": 2,
+                "status": "not_started",
+                "reference_score": null,
+                "tasks": [
+                  {
+                    "task": "spoken_response",
+                    "completed": false,
+                    "last_attempt_at": null
+                  },
+                  {
+                    "task": "read_aloud",
+                    "completed": false,
+                    "last_attempt_at": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "reason": null,
+        "local_learning_evaluation": {
+          "status": "feedback_ready",
+          "feedback_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+          "local_only": true,
+          "cloud_transmission_allowed": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v1/agent-turns/63fe96e9-f70c-470e-8ce1-9ed711584cf7/execution-status",
+      "status_code": 200,
+      "response": {
+        "status": "completed",
+        "execution": {
+          "turn": {
+            "agent_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+            "child_id": "child-primary-4",
+            "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+            "transcript": "",
+            "intent": "local_evaluation",
+            "response_text": "",
+            "orchestrator_version": "agent_runtime_planner_v1",
+            "tool_status": "completed",
+            "tool_error_code": null,
+            "completed_at": "2026-09-09T15:38:38.436262+00:00",
+            "created_at": "2026-09-09T15:38:38.429815+00:00",
+            "action": {
+              "type": "none",
+              "source": "local_evaluation",
+              "original_objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+              "source_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+            },
+            "requires_control_admission": false,
+            "runtime_execution_location": "local_model",
+            "runtime_capability": "learning.evaluate_response",
+            "after_execution": "stop"
+          },
+          "execution": {
+            "capability": "learning.evaluate_response",
+            "response_text": "Try connecting your chosen place to one concrete reason.",
+            "result": {
+              "understanding": "partial",
+              "confidence": 0,
+              "evidence_summary": "本地作答已保存，标准覆盖尚待复核。",
+              "spoken_feedback": "Try connecting your chosen place to one concrete reason.",
+              "next_check": "",
+              "criterion_evidence": [],
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742",
+              "outcome_level": "exposed",
+              "mastery_gate": {
+                "version": "learning_outcome_gate_v1",
+                "status": "blocked",
+                "outcome_level": "exposed",
+                "local_only": true,
+                "cloud_transmission_allowed": false,
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                "next_phase": "remediate",
+                "missing": [
+                  "response_evidence_not_current_independent_correct"
+                ],
+                "covered_criteria": [],
+                "basis_outcome_ids": [],
+                "question_identities": [],
+                "eligible": false,
+                "evidence_id": "rubric:37b41d7a-4a88-43ae-bf2c-756dbd41969a:1",
+                "question_identity": "exact_question_v1:105a490a5fd5a3498c82ea6bc5d9e1876e581eca9579aad441aa01e00de976b8",
+                "occurred_at": "2026-09-09T15:38:38.309205+00:00",
+                "knowledge_node_id": null,
+                "score_status": "reviewed_human",
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "review_revision": 1,
+                "criterion_mapping_status": "reviewed_human",
+                "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742"
+              },
+              "certification_status": "candidate",
+              "rubric_assessment": {
+                "assessment_modality": "text_only",
+                "automatic_certification": false,
+                "automatic_quality_status": "not_calibrated",
+                "condition_authority": "unknown_until_human_observation_review",
+                "criteria": [
+                  "Address the complete original task",
+                  "Include supporting details"
+                ],
+                "dimensions": [
+                  {
+                    "criterion": "完成交际目的和题目要求的要点，事实与信息完整；堆词不算完成任务。",
+                    "dimension_id": "task",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  },
+                  {
+                    "criterion": "句子和要点间关系清楚，组织适合文本类型，不以连接词数量代替连贯性。",
+                    "dimension_id": "coherence",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  },
+                  {
+                    "criterion": "词汇、语法和语域能准确表达意图；仅评价文字，不推断发音或口语流利度。",
+                    "dimension_id": "language",
+                    "max_score": 3,
+                    "pass_score": 2,
+                    "rationale": "not_assessed",
+                    "response_quotes": [],
+                    "score": null,
+                    "score_anchors": {
+                      "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                      "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                      "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                      "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                    },
+                    "source_quotes": []
+                  }
+                ],
+                "independence_eligible": null,
+                "material": {
+                  "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                  "source_version_hash": "f2a4ee6e4a2083d0985932965f2721a8e1cc7c0fd2a24745e20175ce3795427d",
+                  "status": "bound",
+                  "stimulus_asset": null,
+                  "stimulus_text": null
+                },
+                "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+                "profile": "english_open",
+                "question": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+                "responded_at": "2026-09-09T15:38:38.429815+00:00",
+                "response": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+                "rubric_version": "open_answer_rubric_v1",
+                "scorer_provenance": null,
+                "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                "source_evidence_version_hash": "4da854b8ccbf432ecf0a0b4adb32c4ba482332def65855000463be310f6a6ed3",
+                "source_kind": "local_open_review",
+                "subject": "英语",
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "step_id": "96d9b5b7-8c88-4719-a9da-159fd3f2b25b",
+                "child_id": "child-primary-4",
+                "local_only": true,
+                "cloud_transmission_allowed": false,
+                "fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+                "created_at": "2026-09-09T15:38:38.434544+00:00",
+                "score_status": "reviewed_human",
+                "source_status": "current",
+                "review_revision": 1,
+                "review": {
+                  "assessment_fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+                  "assessment_modality": "original_audio_human_review",
+                  "audio_evidence": {
+                    "media_id": "589db45f65984801bc4de8e83e4cd585",
+                    "review": {
+                      "audio_sha256": "73830611ba5492377968e04fe507fafeb7e732ed0f938a0c036a08fc12fb7143",
+                      "binding_version": "pet_speaking_review_v2:0ece816810699baf46611e85b9621f02a49319c22b9f8a198a30452ef3c41af4",
+                      "observations": [
+                        {
+                          "dimension_id": "audio_text_alignment",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "intelligibility",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "pronunciation",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "prosody",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        },
+                        {
+                          "dimension_id": "fluency",
+                          "end_frame": 16000,
+                          "heard_text": "Synthetic PCM annotation.",
+                          "rationale": "Exact original-frame transport fixture.",
+                          "start_frame": 0
+                        }
+                      ],
+                      "schema": "pet_speaking_audio_references_v1"
+                    }
+                  },
+                  "automatic_certification": false,
+                  "calibration_status": "human_judgment_not_calibrated_exam",
+                  "cloud_transmission_allowed": false,
+                  "criterion_evidence": [
+                    {
+                      "criterion": "Address the complete original task",
+                      "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    },
+                    {
+                      "criterion": "Include supporting details",
+                      "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    }
+                  ],
+                  "dimensions": [
+                    {
+                      "dimension_id": "task",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [
+                        "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                      ],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "coherence",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [
+                        "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                      ],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "language",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [
+                        "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                      ],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "audio_text_alignment",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "intelligibility",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "pronunciation",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "prosody",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    },
+                    {
+                      "dimension_id": "fluency",
+                      "rationale": "Try connecting your chosen place to one concrete reason.",
+                      "response_quotes": [],
+                      "score": 0
+                    }
+                  ],
+                  "hint_level": 0,
+                  "independent": true,
+                  "local_only": true,
+                  "passed": false,
+                  "reason": "Synthetic fixture review of exact original audio; no physical speech-quality claim.",
+                  "review_profile": "pet_speaking_audio_v1",
+                  "score_status": "reviewed_human",
+                  "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                  "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                  "review_revision": 1,
+                  "operation": "approve",
+                  "reviewer_id": "household-parent",
+                  "reviewer_role": "parent",
+                  "created_at": "2026-09-09T15:38:38.601416+00:00"
+                }
+              },
+              "objective_phase": "remediate",
+              "objective_update_applied": false,
+              "recorded_outcome_level": "understood_now",
+              "oral_feedback": {
+                "version": "oral_teaching_v2",
+                "status": "reviewed_audio_feedback",
+                "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "feedback_version": "58d79cea334cd8ec1ad7848cf8d72c503fc4142230a1f1791389c77281ee07ae",
+                "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+                "review_ref": {
+                  "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                  "review_revision": 1,
+                  "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                  "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+                },
+                "reason": null,
+                "mastery_claim_allowed": false,
+                "local_only": true,
+                "cloud_transmission_allowed": false
+              },
+              "feedback_delivery_allowed": true,
+              "feedback_status": "ready"
+            },
+            "evidence": [
+              "child_response",
+              "model_rubric"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/agent-turns/63fe96e9-f70c-470e-8ce1-9ed711584cf7/execute",
+      "status_code": 200,
+      "response": {
+        "turn": {
+          "agent_turn_id": "63fe96e9-f70c-470e-8ce1-9ed711584cf7",
+          "child_id": "child-primary-4",
+          "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "transcript": "",
+          "intent": "local_evaluation",
+          "response_text": "",
+          "orchestrator_version": "agent_runtime_planner_v1",
+          "tool_status": "completed",
+          "tool_error_code": null,
+          "completed_at": "2026-09-09T15:38:38.436262+00:00",
+          "created_at": "2026-09-09T15:38:38.429815+00:00",
+          "action": {
+            "type": "none",
+            "source": "local_evaluation",
+            "original_objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+            "source_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+          },
+          "requires_control_admission": false,
+          "runtime_execution_location": "local_model",
+          "runtime_capability": "learning.evaluate_response",
+          "after_execution": "stop"
+        },
+        "execution": {
+          "capability": "learning.evaluate_response",
+          "response_text": "Try connecting your chosen place to one concrete reason.",
+          "result": {
+            "understanding": "partial",
+            "confidence": 0,
+            "evidence_summary": "本地作答已保存，标准覆盖尚待复核。",
+            "spoken_feedback": "Try connecting your chosen place to one concrete reason.",
+            "next_check": "",
+            "criterion_evidence": [],
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742",
+            "outcome_level": "exposed",
+            "mastery_gate": {
+              "version": "learning_outcome_gate_v1",
+              "status": "blocked",
+              "outcome_level": "exposed",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+              "next_phase": "remediate",
+              "missing": [
+                "response_evidence_not_current_independent_correct"
+              ],
+              "covered_criteria": [],
+              "basis_outcome_ids": [],
+              "question_identities": [],
+              "eligible": false,
+              "evidence_id": "rubric:37b41d7a-4a88-43ae-bf2c-756dbd41969a:1",
+              "question_identity": "exact_question_v1:105a490a5fd5a3498c82ea6bc5d9e1876e581eca9579aad441aa01e00de976b8",
+              "occurred_at": "2026-09-09T15:38:38.309205+00:00",
+              "knowledge_node_id": null,
+              "score_status": "reviewed_human",
+              "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+              "review_revision": 1,
+              "criterion_mapping_status": "reviewed_human",
+              "outcome_id": "3c4ad471-4a25-4a98-8262-f39923c21742"
+            },
+            "certification_status": "candidate",
+            "rubric_assessment": {
+              "assessment_modality": "text_only",
+              "automatic_certification": false,
+              "automatic_quality_status": "not_calibrated",
+              "condition_authority": "unknown_until_human_observation_review",
+              "criteria": [
+                "Address the complete original task",
+                "Include supporting details"
+              ],
+              "dimensions": [
+                {
+                  "criterion": "完成交际目的和题目要求的要点，事实与信息完整；堆词不算完成任务。",
+                  "dimension_id": "task",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                },
+                {
+                  "criterion": "句子和要点间关系清楚，组织适合文本类型，不以连接词数量代替连贯性。",
+                  "dimension_id": "coherence",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                },
+                {
+                  "criterion": "词汇、语法和语域能准确表达意图；仅评价文字，不推断发音或口语流利度。",
+                  "dimension_id": "language",
+                  "max_score": 3,
+                  "pass_score": 2,
+                  "rationale": "not_assessed",
+                  "response_quotes": [],
+                  "score": null,
+                  "score_anchors": {
+                    "0": "缺少该维度的有效证据，或存在使结论不能成立的核心错误。",
+                    "1": "部分满足要求，但仍有影响任务、方法或论证成立的缺漏，需要实质修正。",
+                    "2": "满足该维度要求，有可追溯证据；允许不影响正确性或表达目的的轻微瑕疵。",
+                    "3": "准确、完整且清晰地满足该维度要求，关键判断有充分依据。"
+                  },
+                  "source_quotes": []
+                }
+              ],
+              "independence_eligible": null,
+              "material": {
+                "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                "source_version_hash": "f2a4ee6e4a2083d0985932965f2721a8e1cc7c0fd2a24745e20175ce3795427d",
+                "status": "bound",
+                "stimulus_asset": null,
+                "stimulus_text": null
+              },
+              "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+              "profile": "english_open",
+              "question": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+              "responded_at": "2026-09-09T15:38:38.429815+00:00",
+              "response": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers.",
+              "rubric_version": "open_answer_rubric_v1",
+              "scorer_provenance": null,
+              "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+              "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+              "source_evidence_version_hash": "4da854b8ccbf432ecf0a0b4adb32c4ba482332def65855000463be310f6a6ed3",
+              "source_kind": "local_open_review",
+              "subject": "英语",
+              "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+              "step_id": "96d9b5b7-8c88-4719-a9da-159fd3f2b25b",
+              "child_id": "child-primary-4",
+              "local_only": true,
+              "cloud_transmission_allowed": false,
+              "fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+              "created_at": "2026-09-09T15:38:38.434544+00:00",
+              "score_status": "reviewed_human",
+              "source_status": "current",
+              "review_revision": 1,
+              "review": {
+                "assessment_fingerprint": "60a0d9246f39f32db171babe3116fef8487f6061aaf423dcbaa3326b7a72f055",
+                "assessment_modality": "original_audio_human_review",
+                "audio_evidence": {
+                  "media_id": "589db45f65984801bc4de8e83e4cd585",
+                  "review": {
+                    "audio_sha256": "73830611ba5492377968e04fe507fafeb7e732ed0f938a0c036a08fc12fb7143",
+                    "binding_version": "pet_speaking_review_v2:0ece816810699baf46611e85b9621f02a49319c22b9f8a198a30452ef3c41af4",
+                    "observations": [
+                      {
+                        "dimension_id": "audio_text_alignment",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "intelligibility",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "pronunciation",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "prosody",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      },
+                      {
+                        "dimension_id": "fluency",
+                        "end_frame": 16000,
+                        "heard_text": "Synthetic PCM annotation.",
+                        "rationale": "Exact original-frame transport fixture.",
+                        "start_frame": 0
+                      }
+                    ],
+                    "schema": "pet_speaking_audio_references_v1"
+                  }
+                },
+                "automatic_certification": false,
+                "calibration_status": "human_judgment_not_calibrated_exam",
+                "cloud_transmission_allowed": false,
+                "criterion_evidence": [
+                  {
+                    "criterion": "Address the complete original task",
+                    "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                  },
+                  {
+                    "criterion": "Include supporting details",
+                    "response_quote": "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                  }
+                ],
+                "dimensions": [
+                  {
+                    "dimension_id": "task",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [
+                      "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    ],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "coherence",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [
+                      "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    ],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "language",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [
+                      "I want to visit the garden because it is quiet. I would walk there with my family and look at the flowers."
+                    ],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "audio_text_alignment",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "intelligibility",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "pronunciation",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "prosody",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  },
+                  {
+                    "dimension_id": "fluency",
+                    "rationale": "Try connecting your chosen place to one concrete reason.",
+                    "response_quotes": [],
+                    "score": 0
+                  }
+                ],
+                "hint_level": 0,
+                "independent": true,
+                "local_only": true,
+                "passed": false,
+                "reason": "Synthetic fixture review of exact original audio; no physical speech-quality claim.",
+                "review_profile": "pet_speaking_audio_v1",
+                "score_status": "reviewed_human",
+                "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "review_revision": 1,
+                "operation": "approve",
+                "reviewer_id": "household-parent",
+                "reviewer_role": "parent",
+                "created_at": "2026-09-09T15:38:38.601416+00:00"
+              }
+            },
+            "objective_phase": "remediate",
+            "objective_update_applied": false,
+            "recorded_outcome_level": "understood_now",
+            "oral_feedback": {
+              "version": "oral_teaching_v2",
+              "status": "reviewed_audio_feedback",
+              "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "feedback_version": "58d79cea334cd8ec1ad7848cf8d72c503fc4142230a1f1791389c77281ee07ae",
+              "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+              "review_ref": {
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "review_revision": 1,
+                "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+              },
+              "reason": null,
+              "mastery_claim_allowed": false,
+              "local_only": true,
+              "cloud_transmission_allowed": false
+            },
+            "feedback_delivery_allowed": true,
+            "feedback_status": "ready"
+          },
+          "evidence": [
+            "independent_response",
+            "model_rubric"
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/sessions/4403c187-c4f5-4953-8ec0-47d8de3ba797/agent-turn",
+      "status_code": 200,
+      "response": {
+        "agent_turn_id": "60ca49e1-a0b6-4f0a-8c00-9c4666a5ac7b",
+        "child_id": "child-primary-4",
+        "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+        "transcript": "我想按刚才的建议补充一下，再说一次",
+        "intent": "oral.retry",
+        "response_text": "我保留刚才的回答，准备好原题后你可以再说一次。",
+        "orchestrator_version": "content_free_voice_control_v1",
+        "tool_status": "pending",
+        "tool_error_code": null,
+        "completed_at": null,
+        "created_at": "2026-09-09T15:38:47.151617+00:00",
+        "action": {
+          "type": "retry_oral_answer",
+          "source": "content_free_voice_control",
+          "local_only": true,
+          "cloud_transmission_allowed": false,
+          "request_quote": "我想按刚才的建议补充一下，再说一次",
+          "oral_followup_binding": {
+            "action": {
+              "version": "oral_followup_v1",
+              "kind": "retry",
+              "child_id": "child-primary-4",
+              "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+              "parent_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "parent_item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "parent_source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+              "original": {
+                "attempt_id": "34d122f6-4b07-47c4-be16-739b7c6cb657",
+                "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                "response_hash": "1839c842d54a8e52997fb6e6e61bb522494a34275e9deee3b8dcb710b1719ec4"
+              },
+              "feedback_version": "58d79cea334cd8ec1ad7848cf8d72c503fc4142230a1f1791389c77281ee07ae",
+              "review_ref": {
+                "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                "review_revision": 1,
+                "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+              },
+              "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+              "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+              "knowledge_node_id": "node-pet-speaking-picture",
+              "task_points": [
+                "Address the complete original task",
+                "Include supporting details"
+              ],
+              "required_hint_level": 1,
+              "independent_check": false,
+              "mastery_claim_allowed": false
+            },
+            "binding_version": "ee69a3fecd43373304524993badd493667586ac07e1b30f65fcf8f3ab7e27301"
+          },
+          "voice_input_id": "af336b06-d134-4e99-980b-5f43fae5fdd8",
+          "voice_input_binding": {
+            "voice_input_id": "af336b06-d134-4e99-980b-5f43fae5fdd8",
+            "child_id": "child-primary-4",
+            "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+            "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+            "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+            "status": "completed",
+            "question_reference": {
+              "kind": "diagnostic",
+              "binding": {
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0"
+              }
+            },
+            "question_validation": "stale"
+          },
+          "agent_runtime": {
+            "plan_id": "237b7e25-4eb1-42c5-b71c-a7fc3934a06a",
+            "step_id": "4a7d5471-c231-4f1f-a610-136759edaafe",
+            "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+            "objective": {
+              "mode": "none",
+              "type": null,
+              "summary": null,
+              "success_criteria": [],
+              "phase": "execution"
+            },
+            "capability": {
+              "capability": "oral.retry",
+              "capability_version": "1",
+              "arguments": {
+                "request_quote": "我想按刚才的建议补充一下，再说一次"
+              },
+              "reason": "已由本地规则确定的孩子指令，通过统一幂等执行边界完成；执行位置由能力注册表决定。",
+              "expected_evidence": [
+                "oral_retry_prompt_bound"
+              ],
+              "execution_location": "server",
+              "risk_level": "medium"
+            },
+            "requires_child_reply": false,
+            "after_execution": "stop"
+          }
+        },
+        "requires_control_admission": false,
+        "runtime_execution_location": "server",
+        "runtime_capability": "oral.retry",
+        "after_execution": "stop"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/agent-turns/60ca49e1-a0b6-4f0a-8c00-9c4666a5ac7b/execute",
+      "status_code": 200,
+      "response": {
+        "turn": {
+          "agent_turn_id": "60ca49e1-a0b6-4f0a-8c00-9c4666a5ac7b",
+          "child_id": "child-primary-4",
+          "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+          "transcript": "我想按刚才的建议补充一下，再说一次",
+          "intent": "oral.retry",
+          "response_text": "请看这道题。你准备好后再说一次。",
+          "orchestrator_version": "content_free_voice_control_v1",
+          "tool_status": "completed",
+          "tool_error_code": null,
+          "completed_at": "2026-09-09T15:38:47.307390+00:00",
+          "created_at": "2026-09-09T15:38:47.151617+00:00",
+          "action": {
+            "type": "retry_oral_answer",
+            "source": "content_free_voice_control",
+            "local_only": true,
+            "cloud_transmission_allowed": false,
+            "request_quote": "我想按刚才的建议补充一下，再说一次",
+            "oral_followup_binding": {
+              "action": {
+                "version": "oral_followup_v1",
+                "kind": "retry",
+                "child_id": "child-primary-4",
+                "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+                "parent_prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+                "parent_item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "parent_source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+                "original": {
+                  "attempt_id": "34d122f6-4b07-47c4-be16-739b7c6cb657",
+                  "evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1",
+                  "response_hash": "1839c842d54a8e52997fb6e6e61bb522494a34275e9deee3b8dcb710b1719ec4"
+                },
+                "feedback_version": "58d79cea334cd8ec1ad7848cf8d72c503fc4142230a1f1791389c77281ee07ae",
+                "review_ref": {
+                  "assessment_id": "37b41d7a-4a88-43ae-bf2c-756dbd41969a",
+                  "review_revision": 1,
+                  "event_id": "17968a1c-ef35-49c0-87f3-34c4edac6896",
+                  "source_evidence_id": "8d6ad50e-7a6d-4550-a888-cb8f6a09ecd1"
+                },
+                "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                "source_version": "b495b5ea4ccc701085afbf0c19019fb91afe2d55fac494776a9440356193d01e",
+                "knowledge_node_id": "node-pet-speaking-picture",
+                "task_points": [
+                  "Address the complete original task",
+                  "Include supporting details"
+                ],
+                "required_hint_level": 1,
+                "independent_check": false,
+                "mastery_claim_allowed": false
+              },
+              "binding_version": "ee69a3fecd43373304524993badd493667586ac07e1b30f65fcf8f3ab7e27301"
+            },
+            "voice_input_id": "af336b06-d134-4e99-980b-5f43fae5fdd8",
+            "voice_input_binding": {
+              "voice_input_id": "af336b06-d134-4e99-980b-5f43fae5fdd8",
+              "child_id": "child-primary-4",
+              "session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+              "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0",
+              "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "status": "completed",
+              "question_reference": {
+                "kind": "diagnostic",
+                "binding": {
+                  "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+                  "prompt_id": "727a82ea-1dea-4cb7-a6b2-4221aaa9b4b0"
+                }
+              },
+              "question_validation": "stale"
+            },
+            "agent_runtime": {
+              "plan_id": "237b7e25-4eb1-42c5-b71c-a7fc3934a06a",
+              "step_id": "4a7d5471-c231-4f1f-a610-136759edaafe",
+              "objective_id": "a5f41e01-bd12-4519-9cb6-86a9c7d22036",
+              "objective": {
+                "mode": "none",
+                "type": null,
+                "summary": null,
+                "success_criteria": [],
+                "phase": "execution"
+              },
+              "capability": {
+                "capability": "oral.retry",
+                "capability_version": "1",
+                "arguments": {
+                  "request_quote": "我想按刚才的建议补充一下，再说一次"
+                },
+                "reason": "已由本地规则确定的孩子指令，通过统一幂等执行边界完成；执行位置由能力注册表决定。",
+                "expected_evidence": [
+                  "oral_retry_prompt_bound"
+                ],
+                "execution_location": "server",
+                "risk_level": "medium"
+              },
+              "requires_child_reply": false,
+              "after_execution": "stop"
+            }
+          },
+          "requires_control_admission": false,
+          "runtime_execution_location": "server",
+          "runtime_capability": "oral.retry",
+          "after_execution": "stop"
+        },
+        "execution": {
+          "capability": "oral.retry",
+          "response_text": "请看这道题。你准备好后再说一次。",
+          "result": {
+            "status": "waiting_answer",
+            "prompt": {
+              "prompt_id": "9c23187d-f114-46f2-ab97-43ce45fa6f10",
+              "item_version": "diagnostic_prompt_v1:8153e0be877a2e84954e40c226b84ab17fde4a8a8db962d56bf6db1df69320e8",
+              "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+              "review_task_id": null,
+              "child_id": "child-primary-4",
+              "origin_session_id": "4403c187-c4f5-4953-8ec0-47d8de3ba797",
+              "created_at": "2026-09-09T15:38:47.262913+00:00",
+              "item": {
+                "answer_type": "speaking",
+                "assessment_mode": "pet_reference_rubric",
+                "diagnostic_item_id": "specialized-947735e4-ef91-4a53-b33e-56a784e695b5",
+                "difficulty": 1,
+                "knowledge_node_id": "node-pet-speaking-picture",
+                "prompt": "Talk about an outdoor place you want to visit. Say where it is, what you would do, and why.",
+                "stimulus_asset": null,
+                "stimulus_text": null,
+                "subject": "英语",
+                "title": "看图描述",
+                "track": "pet",
+                "pet_audio_modality": "speaking"
+              },
+              "pet_audio_modality": "speaking"
+            },
+            "attempt": null,
+            "reason": null,
+            "required_hint_level": 1,
+            "local_only": true,
+            "cloud_transmission_allowed": false
+          },
+          "evidence": [
+            "oral_retry_prompt_bound"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+(version 1)
+(deny default)
+(import "dyld-support.sb")
+
+;; The stock Qwen restrictive profile permits host-wide reads. Do not use it
+;; for this project's code workers, which must not see household files.
+(allow file-read-metadata)
+(allow file-read* file-map-executable
+    (subpath "/System")
+    (subpath "/private/preboot")
+    (subpath "/private/var/db/dyld")
+    (subpath "/usr/lib")
+    (subpath "/usr/share")
+    (subpath "/usr/bin")
+    (subpath "/bin")
+    (subpath (param "NODE_ROOT"))
+    (subpath (param "QWEN_ROOT"))
+    (subpath (param "WORK_ROOT"))
+    (literal "/dev/null")
+    (literal "/dev/urandom")
+    (literal "/dev/random"))
+(allow file-write* (subpath (param "WORK_ROOT"))
+    (literal "/dev/null") (literal "/dev/stdout") (literal "/dev/stderr"))
+(allow process-exec)
+(allow process-fork)
+(allow signal (target self))
+(allow sysctl-read)
+;; No network or Keychain access. Model requests belong to a separately
+;; audited coordinator; generated code and tests inherit this closed policy.

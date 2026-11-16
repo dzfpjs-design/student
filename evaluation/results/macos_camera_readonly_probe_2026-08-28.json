@@ -1,0 +1,65 @@
+{
+  "schema": "macos_camera_readonly_probe_v1",
+  "captured_at": "2026-08-28",
+  "privacy": {
+    "raw_frame_persisted": false,
+    "raw_frame_uploaded": false,
+    "temporary_frame_deleted_after_local_check": true
+  },
+  "enumerated_video_devices": [
+    {
+      "label": "L523",
+      "system_camera_model": "UVC Camera VendorID_7531 ProductID_258",
+      "availability": "enumerated_only"
+    }
+  ],
+  "not_enumerated": [
+    "Fic760xUsbCamera"
+  ],
+  "advertised_modes": [
+    "640x480@10/15/30fps",
+    "1280x720@10/15/30fps",
+    "1920x1088@10/15/30fps",
+    "2560x1440@10/15/30fps",
+    "3840x2160@10/15/30fps",
+    "8000x6000@10/15/30fps"
+  ],
+  "short_capture": {
+    "method": "AVFoundation, one temporary local frame request",
+    "requested_mode": "640x480@10fps",
+    "result": "captured_but_not_observation_qualified",
+    "brightness": 31.6,
+    "sharpness": 6.7,
+    "face_count": 1,
+    "person_baseline": "A local detector found one face in this one temporary frame. No session baseline was established and no behavioral inference was made.",
+    "qualification_boundary": "Brightness was above the scene-dark threshold, but sharpness was below the local qualification threshold of 8.0. This is a device/scene diagnostic only, not an accuracy evaluation."
+  },
+  "isolated_electron_acceptance": {
+    "target": "L523 selected by its temporary Electron device label",
+    "qualification_status_before_pause": "unqualified",
+    "scene_quality": "ready",
+    "person_baseline": "awaiting_person",
+    "reason": "The local engine did not establish a frontal-person baseline, so it could not distinguish a child being away from a camera that was not aimed correctly.",
+    "child_state_events": 0,
+    "longitudinal_events": 0,
+    "raw_frame_stored": false,
+    "agent_restart_kept_paused": true,
+    "final_camera_leases": 0,
+    "boundary": "This validates a real device's qualification and privacy controls, not any behavior-state accuracy."
+  },
+  "isolated_electron_document_ocr_acceptance": {
+    "target": "Fic760xUsbCamera exact historical binding",
+    "result": "device_not_enumerated",
+    "ui": "The child flow showed the exact missing-device diagnostic and an explicit retry action; it did not fall back to L523.",
+    "printed_text": "not_attempted_device_absent",
+    "handwriting": "not_attempted_device_absent",
+    "math_formula": "not_attempted_device_absent",
+    "marking_symbols": "not_attempted_device_absent",
+    "ocr_candidate_created": false,
+    "raw_page_stored": false,
+    "final_document_camera_leases": 0,
+    "boundary": "No page was captured, so this is only a real hardware availability/retry result, not an OCR capability result."
+  },
+  "release_boundary": "No durable camera lease or media artifact was created by this probe. The temporary frame was deleted after local measurement.",
+  "acceptance_status": "device_limited: L523 is enumerated and returned a real frame. The direct frame had low sharpness, while the actual Electron qualification was unqualified because no frontal-person baseline was established; neither result supports a behavior-accuracy claim. Fic760xUsbCamera is not enumerated."
+}

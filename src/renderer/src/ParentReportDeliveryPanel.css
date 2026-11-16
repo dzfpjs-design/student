@@ -1,0 +1,32 @@
+.report-delivery-panel { min-width: 0; overflow-wrap: anywhere; line-height: 1.6; }
+.report-delivery-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.report-delivery-panel > header h2 { margin: 16px 0 8px; font-size: 22px; }
+.report-delivery-panel > header > button { flex: 0 0 36px; height: 36px; display: grid; place-items: center; margin-top: 16px; padding: 0; }
+.report-delivery-panel button { max-width: 100%; padding: 7px 10px; border: 1px solid #bdc6ce; border-radius: 4px; color: #26323b; background: #fff; cursor: pointer; white-space: normal; overflow-wrap: anywhere; }
+.report-delivery-panel button:disabled { opacity: .6; cursor: default; }
+.report-delivery-panel button:focus-visible { outline: 2px solid #267363; outline-offset: 2px; }
+.report-delivery-panel button.is-active { border-color: #267363; background: #eaf4ef; }
+.report-delivery-panel .report-delivery-schedule { padding: 12px 0; border-bottom: 1px solid #d7dee3; }
+.report-delivery-panel .report-delivery-workspace { display: grid; grid-template-columns: minmax(180px, 250px) minmax(0, 1fr); gap: 24px; padding-top: 20px; align-items: start; }
+.report-delivery-panel nav[aria-label="选择报告"] { display: grid; align-content: start; gap: 6px; max-height: 540px; overflow-y: auto; padding: 3px; }
+.report-delivery-panel nav[aria-label="选择报告"] button { width: 100%; text-align: left; }
+.report-delivery-panel nav[aria-label="选择报告"] small { display: block; color: #586672; margin-top: 4px; }
+.report-delivery-panel .report-delivery-preview { min-width: 0; }
+.report-delivery-panel .report-delivery-preview > h3 { font-size: 19px; margin-top: 0; }
+.report-delivery-panel .report-delivery-preview > section { padding: 14px 0; border-bottom: 1px solid #d7dee3; }
+.report-delivery-panel .report-delivery-preview h4 { font-size: 16px; margin: 0 0 8px; }
+.report-delivery-panel .report-delivery-preview p { margin: 8px 0; }
+.report-delivery-panel .report-uncertainty { color: #65551e; }
+.report-delivery-panel .report-delivery-preview label { display: block; margin: 10px 0; }
+.report-delivery-panel .report-delivery-preview label.recipient-consent { display: flex; align-items: flex-start; gap: 8px; min-width: 0; min-height: 44px; padding: 8px 0; cursor: pointer; }
+.report-delivery-panel .recipient-consent > input[type="checkbox"] { flex: 0 0 17px; width: 17px; height: 17px; padding: 0; margin: 2px 0 0; }
+.report-delivery-panel .recipient-consent > span { min-width: 0; }
+.report-delivery-panel input, .report-delivery-panel textarea, .report-delivery-panel select { max-width: 100%; min-width: 0; }
+.report-delivery-panel fieldset { min-width: 0; margin: 12px 0; }
+.report-delivery-panel .feedback-ratings { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.report-delivery-panel .feedback-ratings > label { min-width: 0; }
+.report-delivery-panel .report-delivery-preview ul, .report-delivery-panel .report-delivery-preview ol { padding-left: 22px; }
+@media (max-width: 700px) {
+  .report-delivery-panel .report-delivery-workspace { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .report-delivery-panel nav[aria-label="选择报告"] { max-height: 184px; }
+}

@@ -1,0 +1,10 @@
+{
+  "scope": "production SQLite online-backup snapshot; production child data not written",
+  "results": [
+    {"track":"P4_math","atom":"把大数改写成用万或亿作单位的数","materials":3,"prerequisites":1,"retest":1,"mastery_evidence":1,"review_tasks":2,"restart_recovered":true},
+    {"track":"PET","atom":"阅读主旨","materials":3,"prerequisites":0,"retest":3,"mastery_evidence":1,"review_tasks":1,"restart_recovered":true},
+    {"track":"J3_math","atom":"一元一次方程","materials":3,"prerequisites":0,"retest":0,"mastery_evidence":1,"review_tasks":1,"restart_recovered":true},
+    {"track":"J3_physics","atom":"电功率","materials":3,"prerequisites":0,"retest":0,"mastery_evidence":1,"review_tasks":1,"restart_recovered":true}
+  ],
+  "known_gaps": ["初三数学/物理这两个真实候选暂无显式复测题关系。", "PET、初三数学/物理候选暂无显式前置依赖；不能据此虚构依赖边。", "四年级英语学校轨道无候选素材；请通过 LocalDocumentEvidenceIngestor 导入用户本地课本 OCR，并保留 document_kind/source_ref。"]
+}

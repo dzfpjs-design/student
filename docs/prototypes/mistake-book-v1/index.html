@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>智能错题本 · 家庭学习伙伴</title>
+  <link rel="stylesheet" href="prototype.css">
+  <script defer src="icons.js"></script>
+  <script defer src="examples.js"></script>
+  <script defer src="catalog.js"></script>
+  <script defer src="review.js"></script>
+  <script defer src="prototype.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到错题工作区</a>
+  <div class="app-shell" id="app">
+    <aside class="sidebar" aria-label="学习空间">
+      <a class="brand" href="#study" data-nav="study">
+        <span class="brand-icon" data-icon="book"></span>
+        <span><strong>家庭学习伙伴</strong><small>伴学工作台</small></span>
+      </a>
+      <span class="nav-caption">学习空间</span>
+      <button type="button" class="session-link" data-nav="study"><span data-icon="book"></span>当前学习</button>
+      <span class="nav-caption book-caption">错题本</span>
+      <nav class="navigation" aria-label="错题本导航">
+        <button type="button" data-nav="library"><span data-icon="library"></span>错题库</button>
+        <button type="button" data-nav="review"><span data-icon="calendar"></span>今日复习 <span class="nav-count" id="nav-due"></span></button>
+        <button type="button" data-nav="topics"><span data-icon="chart"></span>高频题型</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sample-profile"><span class="profile-mark" data-icon="book"></span><div><strong>交互原型</strong><small>合成学习档案与设备事件</small></div></div>
+      </div>
+    </aside>
+    <main class="main" id="workspace" tabindex="-1">
+      <header class="topbar">
+        <div class="crumb"><button type="button" data-nav="study" class="crumb-link">学习工作区</button><span data-icon="chevron"></span><b id="crumb-current">错题库</b></div>
+        <div class="session-controls"><select id="sample-grade" aria-label="示例学档"><option value="六年级">六年级学档</option><option value="八年级">八年级学档</option></select><button type="button" class="secondary voice-trigger" data-action="voice"><span data-icon="mic"></span>小知 · 语音示例</button></div>
+      </header>
+      <div id="view" class="view"></div>
+    </main>
+    <dialog id="modal" aria-labelledby="modal-title"><div id="modal-body"></div></dialog>
+    <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+  </div>
+  <noscript>打开 JavaScript 后即可体验错题本原型。</noscript>
+</body>
+</html>

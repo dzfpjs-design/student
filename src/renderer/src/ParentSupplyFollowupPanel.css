@@ -1,0 +1,16 @@
+.parent-supply-followup { min-width: 0; border-top: 1px solid #ccd3d7; padding: 20px 0; }
+.parent-supply-followup header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.parent-supply-followup h3 { font-size: 18px; margin: 0; }
+.parent-supply-followup h4 { font-size: 16px; margin: 16px 0 8px; }
+.parent-supply-followup p, .parent-supply-followup dd, .parent-supply-followup h4 { overflow-wrap: anywhere; line-height: 1.6; }
+.parent-supply-followup dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 8px 14px; }
+.parent-supply-followup dt { color: #4d565d; }
+.parent-supply-followup dd { margin: 0; min-width: 0; }
+.parent-supply-followup .supply-current-status { color: #78541b; font-weight: 600; }
+.parent-supply-followup .supply-current-status[data-status=ready], .parent-supply-followup .supply-current-status[data-status=active] { color: #245940; }
+.parent-supply-followup [role=alert] { padding: 12px; color: #7b2f24; background: #fff0eb; }
+.parent-supply-followup button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 7px 10px; border: 1px solid #a5b4ad; border-radius: 4px; background: white; color: #234d3b; font: inherit; cursor: pointer; }
+.parent-supply-followup button svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.parent-supply-followup button:disabled { opacity: .55; cursor: default; }
+.parent-supply-followup button:focus-visible { outline: 2px solid #267d83; outline-offset: 2px; }
+@media (max-width: 600px) { .parent-supply-followup dl { grid-template-columns: minmax(0, 1fr); gap: 4px; } .parent-supply-followup dd { margin-bottom: 8px; } }

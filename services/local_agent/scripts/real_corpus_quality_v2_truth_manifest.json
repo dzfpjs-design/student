@@ -1,0 +1,22 @@
+[
+  {"file_id":"11662","grade":"四年级","subject":"数学","label":"must_map","expected_knowledge_point_key":"quality:p4-math-place","atom_title":"万位"},
+  {"file_id":"11667","grade":"四年级","subject":"数学","label":"ambiguous","expected_knowledge_point_key":"quality:p4-math-short-wan","atom_title":"万"},
+  {"file_id":"11698","grade":"四年级","subject":"数学","label":"must_not_map","expected_knowledge_point_key":"quality:p4-math-circle-angle","atom_title":"圆周角"},
+  {"file_id":"15370","grade":"四年级","subject":"英语","label":"must_map","expected_knowledge_point_key":"quality:p4-english-banana","atom_title":"banana"},
+  {"file_id":"11889","grade":"四年级","subject":"英语","label":"ambiguous","expected_knowledge_point_key":"quality:p4-english-apple","atom_title":"apple"},
+  {"file_id":"15371","grade":"四年级","subject":"英语","label":"must_not_map","expected_knowledge_point_key":"quality:p4-english-astronaut","atom_title":"astronaut"},
+  {"file_id":"17799","grade":"四年级","subject":"语文","label":"must_map","expected_knowledge_point_key":"quality:p4-chinese-polyphone","atom_title":"多音字"},
+  {"file_id":"BV1a7waeBEBb","grade":"四年级","subject":"语文","label":"ambiguous","expected_knowledge_point_key":"quality:p4-chinese-xing","atom_title":"行"},
+  {"file_id":"16861","grade":"四年级","subject":"语文","label":"must_not_map","expected_knowledge_point_key":"quality:p4-chinese-modern-reading","atom_title":"现代文阅读"},
+  {"file_id":"12918","grade":"初三","subject":"数学","label":"must_map","expected_knowledge_point_key":"quality:j3-math-quadratic","atom_title":"一元二次方程"},
+  {"file_id":"BV1BV4y1477r","grade":"初三","subject":"数学","label":"ambiguous","expected_knowledge_point_key":"quality:j3-math-function","atom_title":"函数"},
+  {"file_id":"BV1u7FNzjEgr","grade":"初三","subject":"数学","label":"must_not_map","expected_knowledge_point_key":"quality:j3-math-circle-angle","atom_title":"圆周角"},
+  {"file_id":"14401","grade":"初三","subject":"英语","label":"must_map","expected_knowledge_point_key":"quality:j3-english-reading","atom_title":"阅读理解"},
+  {"file_id":"BV18b411x7EN","grade":"初三","subject":"英语","label":"ambiguous","expected_knowledge_point_key":"quality:j3-english-apple","atom_title":"apple"},
+  {"file_id":"18497","grade":"初三","subject":"英语","label":"must_not_map","expected_knowledge_point_key":"quality:j3-english-astronaut","atom_title":"astronaut"},
+  {"file_id":"12812","grade":"初三","subject":"语文","label":"must_map","expected_knowledge_point_key":"quality:j3-chinese-classical","atom_title":"文言文"},
+  {"file_id":"BV17a411X7bS","grade":"初三","subject":"语文","label":"ambiguous","expected_knowledge_point_key":"quality:j3-chinese-xing","atom_title":"行"},
+  {"file_id":"17766","grade":"初三","subject":"语文","label":"must_not_map","expected_knowledge_point_key":"quality:j3-chinese-polyphone","atom_title":"多音字"},
+  {"file_id":"18734","grade":"四年级","subject":"语文","label":"ambiguous","expected_knowledge_point_key":"quality:p4-chinese-short-question","atom_title":"题"},
+  {"file_id":"18728","grade":"四年级","subject":"语文","label":"ambiguous","expected_knowledge_point_key":"quality:p4-chinese-short-question","atom_title":"题"}
+]

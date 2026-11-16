@@ -1,0 +1,36 @@
+Write a short Python pytest regression candidate, with no shell commands and no claims of execution.
+Only synthetic information follows. This is a pure helper in a larger application.
+
+Problem: a child has requested a new photograph of an existing mistaken exercise.
+The photograph has multiple exercises, so pending.question is empty. Instead of
+choosing a number, the child says the exact corrected question out loud. The
+recapture helper currently swallows this utterance, returning the number-selection
+prompt. The caller has an existing explicit spoken-correction handler immediately
+after this helper, but never reaches it.
+
+Current helper's relevant behavior:
+def select_reply(dialogue, focus, text, action_id):
+    pending = focus['state'].get('question_confirmation') or {}
+    if not pending.get('recapture') or focus['phase'] in {'paused', 'closed'}:
+        return None
+    compact = re.sub(r'[，。！？、\s]', '', text)
+    selected = re.fullmatch(r'(?:我要看|看|选|是)?第?([0-9]+|[一二两三四五六七八九十]{1,3})题', compact)
+    # Existing selection logic omitted; do not infer or reimplement it.
+    if not pending['question'] and not re.search(r'暂停|先停|先不做|等一下|关闭|以后再做|跳过', text):
+        return dialogue._save(focus, prompt(focus), action_id, text)
+    return None
+
+The caller currently recognizes:
+re.match(r'(?:错题题干改成|题干改成|题目是|题目应该是)[，,:：\s]*(.+)', text, re.DOTALL)
+provided a mistake_id exists, phase is not paused/closed, and no pending_operation.
+
+Propose the smallest helper fix and standalone parameterized tests for the helper
+contract, using a stub dialogue whose _save records whether the clarification
+was returned. Keep the caller authoritative for saving/validating corrections.
+Use synthetic arithmetic text only. Cover four exact prefixes, multi-line
+question text, unrelated speech, quoted/reported correction text that does not
+start with a correction, empty-prefix-only input, and pending saved-answer work.
+Do not broaden semantic NLP, auto-confirm, mutate state, create a new mistake,
+clear any pending answer or give the helper database access.
+Return separate proposed code and tests. The integrator will adapt and independently
+verify the actual HTTP path, persistence and stale-event cases.

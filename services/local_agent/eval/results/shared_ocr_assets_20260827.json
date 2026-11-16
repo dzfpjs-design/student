@@ -1,0 +1,6421 @@
+{
+  "privacy": "Read-only public evaluation assets. Report contains aggregate metrics and sample IDs only; no page pixels, OCR text, or LaTeX labels are emitted.",
+  "cohorts": {
+    "correction_marks": {
+      "cohort": "mendeley_exam_marks",
+      "license": "CC BY 4.0 (source stated; review before redistribution)",
+      "scope": "English university exams; correction-mark/layout evaluation only, not Chinese K-9 OCR.",
+      "paired_page_count": 50,
+      "missing_raw_or_corrected_pairs": [],
+      "raw_pdf_sha256": {
+        "Student_1.pdf": "5844fcf7eddefa1ec44e490002be5f5abf457230d6a44abdfc721b5d5506873d",
+        "Student_10.pdf": "3e984138fa96f81b216d6350c4c8a7157dece81920fde2ca41c1a3a4037eb44e",
+        "Student_11.pdf": "5a5da62890c839011164ad4b5e58ca7aa9eb36df9310990dcc0b3a0ee37f4f01",
+        "Student_12.pdf": "2e76dc673d06bf50bb94354ccec3cc2fe19c3fe23989b2e4e637da7fe4de32ad",
+        "Student_13.pdf": "ba7a9027cb2258a5d1034947c041f24d04e8e408d7a8488b4ef19928865a6543",
+        "Student_14.pdf": "4a41fc30a0ac6aee35cdb28eb42d3c9d60d01807a372f6fe0ed2680727fce4e7",
+        "Student_15.pdf": "e901ade9ecd8eb6ab6e13528eb474a5e7bf2bc80edf30c508e676e37c9de996b",
+        "Student_16.pdf": "5cbb9199304a77edd62d688701ca2f4aca7d280ab8d2f2625b7f2ca26fc5cb39",
+        "Student_17.pdf": "261667c6c62ba05890ab9b24c22cfff646993eccb3808572487eb5ec7703f6ae",
+        "Student_18.pdf": "68622bdd43848e17b487ab47a531eaaff578b1b29e9f9239fa90c59d0075c034",
+        "Student_19.pdf": "b49444fb96457a21b3a02c45ca2f8d885e34ff0e15a22debfda93dc2d2b3b854",
+        "Student_2.pdf": "c6c01b8983acd4f6ddc7965399c42d81bc782e2ed30c51dcbea364a6680eab03"
+      },
+      "metrics": {
+        "alignment_success_rate": 1.0,
+        "pages_with_new_red_ink_candidates": 0.86,
+        "mark_component_count": 501,
+        "circle_candidate_count": 136,
+        "cross_candidate_count": 30,
+        "tick_candidate_count": 335
+      },
+      "failure_examples": [
+        "Student_1/page-4.jpg",
+        "Student_15/page-5.jpg",
+        "Student_15/page-6.jpg",
+        "Student_18/page-2.jpg",
+        "Student_19/page-3.jpg",
+        "Student_19/page-4.jpg",
+        "Student_2/page-4.jpg"
+      ],
+      "candidate_boundary": "Components are change-derived red-ink candidates, not ground-truth tick/cross/circle labels.",
+      "annotation_schema": {
+        "sample_id": "raw_pages-relative matching key",
+        "bbox_xywh": "coordinates in raw page pixels",
+        "area_pixels": "component area",
+        "shape_candidate": "heuristic candidate only"
+      },
+      "pages": [
+        {
+          "sample_id": "Student_1/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 27,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00934,
+          "shape_candidates": {
+            "circle": 10,
+            "cross": 1,
+            "tick": 16
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_1/page-1.jpg#1",
+              "bbox_xywh": [
+                493,
+                482,
+                478,
+                252
+              ],
+              "area_pixels": 9899,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#2",
+              "bbox_xywh": [
+                538,
+                829,
+                286,
+                119
+              ],
+              "area_pixels": 4675,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#3",
+              "bbox_xywh": [
+                512,
+                1021,
+                153,
+                134
+              ],
+              "area_pixels": 3521,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#4",
+              "bbox_xywh": [
+                1378,
+                1124,
+                579,
+                426
+              ],
+              "area_pixels": 15316,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#5",
+              "bbox_xywh": [
+                1094,
+                1162,
+                9,
+                8
+              ],
+              "area_pixels": 59,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#6",
+              "bbox_xywh": [
+                1241,
+                1226,
+                75,
+                444
+              ],
+              "area_pixels": 5308,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#7",
+              "bbox_xywh": [
+                512,
+                1235,
+                114,
+                156
+              ],
+              "area_pixels": 3565,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#8",
+              "bbox_xywh": [
+                539,
+                1396,
+                324,
+                152
+              ],
+              "area_pixels": 5401,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#9",
+              "bbox_xywh": [
+                2026,
+                1543,
+                1074,
+                909
+              ],
+              "area_pixels": 36720,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#10",
+              "bbox_xywh": [
+                545,
+                1604,
+                99,
+                177
+              ],
+              "area_pixels": 3851,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#11",
+              "bbox_xywh": [
+                559,
+                1751,
+                118,
+                163
+              ],
+              "area_pixels": 3215,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#12",
+              "bbox_xywh": [
+                2566,
+                1810,
+                309,
+                263
+              ],
+              "area_pixels": 9542,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#13",
+              "bbox_xywh": [
+                2272,
+                1948,
+                322,
+                309
+              ],
+              "area_pixels": 11302,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#14",
+              "bbox_xywh": [
+                515,
+                1964,
+                87,
+                139
+              ],
+              "area_pixels": 2790,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#15",
+              "bbox_xywh": [
+                548,
+                2125,
+                90,
+                105
+              ],
+              "area_pixels": 2424,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#16",
+              "bbox_xywh": [
+                515,
+                2303,
+                99,
+                105
+              ],
+              "area_pixels": 2598,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#17",
+              "bbox_xywh": [
+                572,
+                2438,
+                204,
+                69
+              ],
+              "area_pixels": 3064,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#18",
+              "bbox_xywh": [
+                563,
+                2645,
+                282,
+                117
+              ],
+              "area_pixels": 4036,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#19",
+              "bbox_xywh": [
+                539,
+                2806,
+                297,
+                149
+              ],
+              "area_pixels": 4704,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#20",
+              "bbox_xywh": [
+                572,
+                3032,
+                273,
+                130
+              ],
+              "area_pixels": 4387,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#21",
+              "bbox_xywh": [
+                578,
+                3226,
+                300,
+                118
+              ],
+              "area_pixels": 5418,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#22",
+              "bbox_xywh": [
+                566,
+                3416,
+                234,
+                117
+              ],
+              "area_pixels": 3966,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#23",
+              "bbox_xywh": [
+                587,
+                3604,
+                249,
+                138
+              ],
+              "area_pixels": 4321,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#24",
+              "bbox_xywh": [
+                596,
+                3886,
+                321,
+                210
+              ],
+              "area_pixels": 9686,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#25",
+              "bbox_xywh": [
+                617,
+                4165,
+                129,
+                138
+              ],
+              "area_pixels": 3863,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#26",
+              "bbox_xywh": [
+                1199,
+                4624,
+                429,
+                387
+              ],
+              "area_pixels": 8960,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-1.jpg#27",
+              "bbox_xywh": [
+                221,
+                4690,
+                505,
+                282
+              ],
+              "area_pixels": 10161,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_1/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 13,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00581,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 1,
+            "tick": 10
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_1/page-2.jpg#1",
+              "bbox_xywh": [
+                1151,
+                542,
+                535,
+                357
+              ],
+              "area_pixels": 10458,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#2",
+              "bbox_xywh": [
+                216,
+                738,
+                546,
+                279
+              ],
+              "area_pixels": 10109,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#3",
+              "bbox_xywh": [
+                1406,
+                1174,
+                567,
+                367
+              ],
+              "area_pixels": 10730,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#4",
+              "bbox_xywh": [
+                810,
+                1391,
+                11,
+                9
+              ],
+              "area_pixels": 65,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#5",
+              "bbox_xywh": [
+                305,
+                1427,
+                462,
+                214
+              ],
+              "area_pixels": 9161,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#6",
+              "bbox_xywh": [
+                1029,
+                1924,
+                389,
+                250
+              ],
+              "area_pixels": 6774,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#7",
+              "bbox_xywh": [
+                363,
+                2079,
+                354,
+                242
+              ],
+              "area_pixels": 7119,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#8",
+              "bbox_xywh": [
+                375,
+                3049,
+                461,
+                334
+              ],
+              "area_pixels": 12088,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#9",
+              "bbox_xywh": [
+                1223,
+                3094,
+                738,
+                390
+              ],
+              "area_pixels": 14189,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#10",
+              "bbox_xywh": [
+                1457,
+                3739,
+                408,
+                306
+              ],
+              "area_pixels": 9101,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#11",
+              "bbox_xywh": [
+                297,
+                4003,
+                171,
+                198
+              ],
+              "area_pixels": 3517,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#12",
+              "bbox_xywh": [
+                1280,
+                4339,
+                597,
+                348
+              ],
+              "area_pixels": 11493,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-2.jpg#13",
+              "bbox_xywh": [
+                605,
+                4669,
+                415,
+                274
+              ],
+              "area_pixels": 8963,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_1/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 12,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00405,
+          "shape_candidates": {
+            "circle": 4,
+            "cross": 0,
+            "tick": 8
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_1/page-3.jpg#1",
+              "bbox_xywh": [
+                299,
+                452,
+                265,
+                280
+              ],
+              "area_pixels": 4617,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#2",
+              "bbox_xywh": [
+                318,
+                1318,
+                401,
+                253
+              ],
+              "area_pixels": 8971,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#3",
+              "bbox_xywh": [
+                278,
+                1727,
+                85,
+                207
+              ],
+              "area_pixels": 2670,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#4",
+              "bbox_xywh": [
+                1562,
+                1736,
+                405,
+                252
+              ],
+              "area_pixels": 7913,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#5",
+              "bbox_xywh": [
+                344,
+                2189,
+                190,
+                273
+              ],
+              "area_pixels": 3948,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#6",
+              "bbox_xywh": [
+                1691,
+                2266,
+                594,
+                301
+              ],
+              "area_pixels": 10681,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#7",
+              "bbox_xywh": [
+                1346,
+                2816,
+                369,
+                245
+              ],
+              "area_pixels": 7955,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#8",
+              "bbox_xywh": [
+                296,
+                3031,
+                192,
+                232
+              ],
+              "area_pixels": 3524,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#9",
+              "bbox_xywh": [
+                1880,
+                3205,
+                258,
+                324
+              ],
+              "area_pixels": 6932,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#10",
+              "bbox_xywh": [
+                1652,
+                3772,
+                219,
+                165
+              ],
+              "area_pixels": 4523,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#11",
+              "bbox_xywh": [
+                1832,
+                4165,
+                459,
+                321
+              ],
+              "area_pixels": 8958,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_1/page-3.jpg#12",
+              "bbox_xywh": [
+                353,
+                4456,
+                427,
+                270
+              ],
+              "area_pixels": 8564,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_1/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 0,
+          "has_mark_candidates": false,
+          "new_red_ink_pixel_ratio": 0.0,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 0
+          },
+          "annotations": []
+        },
+        {
+          "sample_id": "Student_10/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 24,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01142,
+          "shape_candidates": {
+            "circle": 12,
+            "cross": 2,
+            "tick": 10
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_10/page-1.jpg#1",
+              "bbox_xywh": [
+                2113,
+                274,
+                1343,
+                1397
+              ],
+              "area_pixels": 54732,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#2",
+              "bbox_xywh": [
+                2682,
+                758,
+                460,
+                424
+              ],
+              "area_pixels": 13067,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#3",
+              "bbox_xywh": [
+                2523,
+                925,
+                328,
+                491
+              ],
+              "area_pixels": 7270,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#4",
+              "bbox_xywh": [
+                723,
+                978,
+                224,
+                247
+              ],
+              "area_pixels": 5774,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#5",
+              "bbox_xywh": [
+                1258,
+                1126,
+                9,
+                10
+              ],
+              "area_pixels": 62,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#6",
+              "bbox_xywh": [
+                741,
+                1189,
+                147,
+                202
+              ],
+              "area_pixels": 4383,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#7",
+              "bbox_xywh": [
+                1904,
+                1232,
+                9,
+                8
+              ],
+              "area_pixels": 60,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#8",
+              "bbox_xywh": [
+                741,
+                1462,
+                155,
+                171
+              ],
+              "area_pixels": 4616,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#9",
+              "bbox_xywh": [
+                731,
+                1750,
+                171,
+                212
+              ],
+              "area_pixels": 5451,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#10",
+              "bbox_xywh": [
+                753,
+                1967,
+                173,
+                171
+              ],
+              "area_pixels": 4807,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#11",
+              "bbox_xywh": [
+                1906,
+                2086,
+                1097,
+                583
+              ],
+              "area_pixels": 26770,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#12",
+              "bbox_xywh": [
+                854,
+                2090,
+                158,
+                244
+              ],
+              "area_pixels": 7336,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#13",
+              "bbox_xywh": [
+                824,
+                2384,
+                167,
+                187
+              ],
+              "area_pixels": 5571,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#14",
+              "bbox_xywh": [
+                821,
+                2595,
+                227,
+                325
+              ],
+              "area_pixels": 11580,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#15",
+              "bbox_xywh": [
+                915,
+                2925,
+                477,
+                217
+              ],
+              "area_pixels": 9821,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#16",
+              "bbox_xywh": [
+                862,
+                3240,
+                224,
+                174
+              ],
+              "area_pixels": 4901,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#17",
+              "bbox_xywh": [
+                840,
+                3334,
+                665,
+                288
+              ],
+              "area_pixels": 21187,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#18",
+              "bbox_xywh": [
+                835,
+                3631,
+                170,
+                156
+              ],
+              "area_pixels": 4473,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#19",
+              "bbox_xywh": [
+                870,
+                3802,
+                135,
+                229
+              ],
+              "area_pixels": 4683,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#20",
+              "bbox_xywh": [
+                843,
+                4072,
+                137,
+                175
+              ],
+              "area_pixels": 4099,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#21",
+              "bbox_xywh": [
+                876,
+                4240,
+                141,
+                241
+              ],
+              "area_pixels": 4896,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#22",
+              "bbox_xywh": [
+                849,
+                4509,
+                146,
+                144
+              ],
+              "area_pixels": 3945,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#23",
+              "bbox_xywh": [
+                804,
+                4655,
+                218,
+                357
+              ],
+              "area_pixels": 8881,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-1.jpg#24",
+              "bbox_xywh": [
+                908,
+                5087,
+                272,
+                147
+              ],
+              "area_pixels": 5172,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_10/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 8,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00406,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 1,
+            "tick": 7
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_10/page-2.jpg#1",
+              "bbox_xywh": [
+                1106,
+                108,
+                681,
+                371
+              ],
+              "area_pixels": 14259,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-2.jpg#2",
+              "bbox_xywh": [
+                95,
+                291,
+                583,
+                270
+              ],
+              "area_pixels": 11013,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-2.jpg#3",
+              "bbox_xywh": [
+                1466,
+                539,
+                12,
+                10
+              ],
+              "area_pixels": 81,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_10/page-2.jpg#4",
+              "bbox_xywh": [
+                971,
+                1109,
+                567,
+                250
+              ],
+              "area_pixels": 10670,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-2.jpg#5",
+              "bbox_xywh": [
+                215,
+                1112,
+                589,
+                280
+              ],
+              "area_pixels": 11117,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-2.jpg#6",
+              "bbox_xywh": [
+                977,
+                1669,
+                558,
+                226
+              ],
+              "area_pixels": 10224,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-2.jpg#7",
+              "bbox_xywh": [
+                398,
+                1853,
+                313,
+                225
+              ],
+              "area_pixels": 6612,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-2.jpg#8",
+              "bbox_xywh": [
+                131,
+                3478,
+                783,
+                289
+              ],
+              "area_pixels": 15568,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_10/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 3,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00115,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 3
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_10/page-3.jpg#1",
+              "bbox_xywh": [
+                1181,
+                356,
+                466,
+                295
+              ],
+              "area_pixels": 8544,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-3.jpg#2",
+              "bbox_xywh": [
+                243,
+                507,
+                368,
+                232
+              ],
+              "area_pixels": 8561,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-3.jpg#3",
+              "bbox_xywh": [
+                532,
+                2501,
+                133,
+                412
+              ],
+              "area_pixels": 5323,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_10/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 7,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00207,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 2,
+            "tick": 5
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_10/page-4.jpg#1",
+              "bbox_xywh": [
+                1293,
+                896,
+                767,
+                460
+              ],
+              "area_pixels": 16299,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-4.jpg#2",
+              "bbox_xywh": [
+                167,
+                1025,
+                222,
+                441
+              ],
+              "area_pixels": 6160,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-4.jpg#3",
+              "bbox_xywh": [
+                1229,
+                1897,
+                446,
+                269
+              ],
+              "area_pixels": 8602,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-4.jpg#4",
+              "bbox_xywh": [
+                275,
+                2056,
+                151,
+                306
+              ],
+              "area_pixels": 4182,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-4.jpg#5",
+              "bbox_xywh": [
+                267,
+                3211,
+                8,
+                9
+              ],
+              "area_pixels": 52,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_10/page-4.jpg#6",
+              "bbox_xywh": [
+                1088,
+                3329,
+                156,
+                354
+              ],
+              "area_pixels": 5188,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_10/page-4.jpg#7",
+              "bbox_xywh": [
+                1187,
+                3791,
+                9,
+                11
+              ],
+              "area_pixels": 66,
+              "shape_candidate": "cross"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_11/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 16,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01168,
+          "shape_candidates": {
+            "circle": 9,
+            "cross": 0,
+            "tick": 7
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_11/page-1.jpg#1",
+              "bbox_xywh": [
+                468,
+                575,
+                240,
+                235
+              ],
+              "area_pixels": 6728,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#2",
+              "bbox_xywh": [
+                499,
+                734,
+                1480,
+                1156
+              ],
+              "area_pixels": 68726,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#3",
+              "bbox_xywh": [
+                1152,
+                1042,
+                602,
+                549
+              ],
+              "area_pixels": 25100,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#4",
+              "bbox_xywh": [
+                2600,
+                1478,
+                800,
+                772
+              ],
+              "area_pixels": 31003,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#5",
+              "bbox_xywh": [
+                2270,
+                1556,
+                222,
+                1098
+              ],
+              "area_pixels": 13305,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#6",
+              "bbox_xywh": [
+                449,
+                1648,
+                198,
+                190
+              ],
+              "area_pixels": 5626,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#7",
+              "bbox_xywh": [
+                517,
+                1937,
+                253,
+                261
+              ],
+              "area_pixels": 5847,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#8",
+              "bbox_xywh": [
+                467,
+                2170,
+                225,
+                232
+              ],
+              "area_pixels": 6408,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#9",
+              "bbox_xywh": [
+                485,
+                2479,
+                219,
+                501
+              ],
+              "area_pixels": 12583,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#10",
+              "bbox_xywh": [
+                588,
+                3014,
+                440,
+                226
+              ],
+              "area_pixels": 7726,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#11",
+              "bbox_xywh": [
+                561,
+                3283,
+                353,
+                192
+              ],
+              "area_pixels": 6598,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#12",
+              "bbox_xywh": [
+                546,
+                3442,
+                296,
+                273
+              ],
+              "area_pixels": 6570,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#13",
+              "bbox_xywh": [
+                555,
+                3738,
+                437,
+                367
+              ],
+              "area_pixels": 13461,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#14",
+              "bbox_xywh": [
+                534,
+                4231,
+                405,
+                165
+              ],
+              "area_pixels": 6612,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#15",
+              "bbox_xywh": [
+                546,
+                4479,
+                184,
+                295
+              ],
+              "area_pixels": 6569,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-1.jpg#16",
+              "bbox_xywh": [
+                487,
+                4788,
+                357,
+                228
+              ],
+              "area_pixels": 5740,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_11/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 10,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00507,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 2,
+            "tick": 8
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_11/page-2.jpg#1",
+              "bbox_xywh": [
+                731,
+                561,
+                10,
+                9
+              ],
+              "area_pixels": 63,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#2",
+              "bbox_xywh": [
+                413,
+                567,
+                633,
+                248
+              ],
+              "area_pixels": 10667,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#3",
+              "bbox_xywh": [
+                476,
+                783,
+                778,
+                413
+              ],
+              "area_pixels": 21514,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#4",
+              "bbox_xywh": [
+                1181,
+                1460,
+                729,
+                393
+              ],
+              "area_pixels": 14230,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#5",
+              "bbox_xywh": [
+                1253,
+                1593,
+                9,
+                9
+              ],
+              "area_pixels": 67,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#6",
+              "bbox_xywh": [
+                180,
+                1673,
+                512,
+                306
+              ],
+              "area_pixels": 12038,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#7",
+              "bbox_xywh": [
+                1337,
+                2441,
+                744,
+                474
+              ],
+              "area_pixels": 15848,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#8",
+              "bbox_xywh": [
+                161,
+                2714,
+                217,
+                378
+              ],
+              "area_pixels": 5252,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#9",
+              "bbox_xywh": [
+                899,
+                3793,
+                532,
+                333
+              ],
+              "area_pixels": 10317,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-2.jpg#10",
+              "bbox_xywh": [
+                392,
+                4114,
+                426,
+                258
+              ],
+              "area_pixels": 9272,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_11/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 7,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.0034,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 1,
+            "tick": 5
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_11/page-3.jpg#1",
+              "bbox_xywh": [
+                512,
+                1166,
+                795,
+                300
+              ],
+              "area_pixels": 14815,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-3.jpg#2",
+              "bbox_xywh": [
+                213,
+                1176,
+                215,
+                425
+              ],
+              "area_pixels": 5704,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-3.jpg#3",
+              "bbox_xywh": [
+                1079,
+                2109,
+                9,
+                9
+              ],
+              "area_pixels": 59,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_11/page-3.jpg#4",
+              "bbox_xywh": [
+                1688,
+                2269,
+                774,
+                498
+              ],
+              "area_pixels": 15878,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-3.jpg#5",
+              "bbox_xywh": [
+                368,
+                2590,
+                433,
+                327
+              ],
+              "area_pixels": 10380,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-3.jpg#6",
+              "bbox_xywh": [
+                908,
+                4141,
+                484,
+                306
+              ],
+              "area_pixels": 10120,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-3.jpg#7",
+              "bbox_xywh": [
+                33,
+                4333,
+                533,
+                255
+              ],
+              "area_pixels": 9595,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_11/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 6,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00358,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 6
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_11/page-4.jpg#1",
+              "bbox_xywh": [
+                797,
+                881,
+                573,
+                373
+              ],
+              "area_pixels": 11626,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-4.jpg#2",
+              "bbox_xywh": [
+                179,
+                1013,
+                690,
+                309
+              ],
+              "area_pixels": 11389,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-4.jpg#3",
+              "bbox_xywh": [
+                1280,
+                2479,
+                600,
+                313
+              ],
+              "area_pixels": 11367,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-4.jpg#4",
+              "bbox_xywh": [
+                230,
+                2779,
+                432,
+                264
+              ],
+              "area_pixels": 9236,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-4.jpg#5",
+              "bbox_xywh": [
+                2216,
+                3684,
+                435,
+                295
+              ],
+              "area_pixels": 6691,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-4.jpg#6",
+              "bbox_xywh": [
+                833,
+                4249,
+                900,
+                588
+              ],
+              "area_pixels": 19774,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_11/page-5.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 7,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00476,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 0,
+            "tick": 6
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_11/page-5.jpg#1",
+              "bbox_xywh": [
+                1688,
+                174,
+                849,
+                534
+              ],
+              "area_pixels": 14232,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-5.jpg#2",
+              "bbox_xywh": [
+                242,
+                1925,
+                630,
+                354
+              ],
+              "area_pixels": 12863,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-5.jpg#3",
+              "bbox_xywh": [
+                1987,
+                1961,
+                772,
+                517
+              ],
+              "area_pixels": 16852,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-5.jpg#4",
+              "bbox_xywh": [
+                1496,
+                3334,
+                702,
+                379
+              ],
+              "area_pixels": 11914,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-5.jpg#5",
+              "bbox_xywh": [
+                321,
+                3574,
+                233,
+                228
+              ],
+              "area_pixels": 4034,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-5.jpg#6",
+              "bbox_xywh": [
+                1337,
+                4300,
+                972,
+                441
+              ],
+              "area_pixels": 14487,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-5.jpg#7",
+              "bbox_xywh": [
+                503,
+                4507,
+                807,
+                558
+              ],
+              "area_pixels": 18785,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_11/page-6.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 11,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00663,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 0,
+            "tick": 9
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_11/page-6.jpg#1",
+              "bbox_xywh": [
+                1787,
+                152,
+                741,
+                597
+              ],
+              "area_pixels": 12725,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#2",
+              "bbox_xywh": [
+                1091,
+                1470,
+                909,
+                653
+              ],
+              "area_pixels": 15969,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#3",
+              "bbox_xywh": [
+                416,
+                1599,
+                747,
+                494
+              ],
+              "area_pixels": 18349,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#4",
+              "bbox_xywh": [
+                1820,
+                2839,
+                627,
+                376
+              ],
+              "area_pixels": 11305,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#5",
+              "bbox_xywh": [
+                174,
+                2944,
+                456,
+                319
+              ],
+              "area_pixels": 11726,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#6",
+              "bbox_xywh": [
+                371,
+                3535,
+                720,
+                366
+              ],
+              "area_pixels": 14388,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#7",
+              "bbox_xywh": [
+                2156,
+                3571,
+                555,
+                273
+              ],
+              "area_pixels": 10002,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#8",
+              "bbox_xywh": [
+                168,
+                3622,
+                251,
+                435
+              ],
+              "area_pixels": 6153,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#9",
+              "bbox_xywh": [
+                2102,
+                4210,
+                587,
+                354
+              ],
+              "area_pixels": 9994,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#10",
+              "bbox_xywh": [
+                299,
+                4384,
+                582,
+                392
+              ],
+              "area_pixels": 12109,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_11/page-6.jpg#11",
+              "bbox_xywh": [
+                45,
+                4411,
+                362,
+                426
+              ],
+              "area_pixels": 7129,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_12/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 20,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01341,
+          "shape_candidates": {
+            "circle": 6,
+            "cross": 2,
+            "tick": 12
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_12/page-1.jpg#1",
+              "bbox_xywh": [
+                1135,
+                467,
+                1958,
+                2169
+              ],
+              "area_pixels": 101148,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#2",
+              "bbox_xywh": [
+                2093,
+                746,
+                325,
+                483
+              ],
+              "area_pixels": 9314,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#3",
+              "bbox_xywh": [
+                1640,
+                822,
+                9,
+                8
+              ],
+              "area_pixels": 53,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#4",
+              "bbox_xywh": [
+                339,
+                915,
+                219,
+                229
+              ],
+              "area_pixels": 6368,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#5",
+              "bbox_xywh": [
+                1718,
+                942,
+                484,
+                408
+              ],
+              "area_pixels": 14689,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#6",
+              "bbox_xywh": [
+                327,
+                1100,
+                670,
+                496
+              ],
+              "area_pixels": 22569,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#7",
+              "bbox_xywh": [
+                1510,
+                1167,
+                10,
+                9
+              ],
+              "area_pixels": 62,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#8",
+              "bbox_xywh": [
+                339,
+                1680,
+                229,
+                429
+              ],
+              "area_pixels": 12921,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#9",
+              "bbox_xywh": [
+                394,
+                2048,
+                403,
+                166
+              ],
+              "area_pixels": 7562,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#10",
+              "bbox_xywh": [
+                382,
+                2256,
+                370,
+                160
+              ],
+              "area_pixels": 6112,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#11",
+              "bbox_xywh": [
+                409,
+                2537,
+                163,
+                228
+              ],
+              "area_pixels": 6561,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#12",
+              "bbox_xywh": [
+                338,
+                2683,
+                466,
+                288
+              ],
+              "area_pixels": 15015,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#13",
+              "bbox_xywh": [
+                413,
+                3103,
+                451,
+                160
+              ],
+              "area_pixels": 8062,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#14",
+              "bbox_xywh": [
+                375,
+                3307,
+                405,
+                312
+              ],
+              "area_pixels": 12700,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#15",
+              "bbox_xywh": [
+                413,
+                3676,
+                350,
+                171
+              ],
+              "area_pixels": 6227,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#16",
+              "bbox_xywh": [
+                327,
+                3853,
+                387,
+                175
+              ],
+              "area_pixels": 6385,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#17",
+              "bbox_xywh": [
+                330,
+                4081,
+                253,
+                214
+              ],
+              "area_pixels": 5295,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#18",
+              "bbox_xywh": [
+                336,
+                4273,
+                445,
+                147
+              ],
+              "area_pixels": 7530,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#19",
+              "bbox_xywh": [
+                342,
+                4461,
+                247,
+                243
+              ],
+              "area_pixels": 5758,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-1.jpg#20",
+              "bbox_xywh": [
+                366,
+                4548,
+                500,
+                196
+              ],
+              "area_pixels": 8118,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_12/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 12,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00673,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 0,
+            "tick": 10
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_12/page-2.jpg#1",
+              "bbox_xywh": [
+                692,
+                863,
+                789,
+                478
+              ],
+              "area_pixels": 16546,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#2",
+              "bbox_xywh": [
+                146,
+                1051,
+                546,
+                304
+              ],
+              "area_pixels": 10798,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#3",
+              "bbox_xywh": [
+                1547,
+                1565,
+                453,
+                288
+              ],
+              "area_pixels": 9382,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#4",
+              "bbox_xywh": [
+                45,
+                1685,
+                452,
+                182
+              ],
+              "area_pixels": 9326,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#5",
+              "bbox_xywh": [
+                1316,
+                2278,
+                729,
+                373
+              ],
+              "area_pixels": 12794,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#6",
+              "bbox_xywh": [
+                222,
+                2326,
+                734,
+                310
+              ],
+              "area_pixels": 16218,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#7",
+              "bbox_xywh": [
+                65,
+                2390,
+                246,
+                283
+              ],
+              "area_pixels": 5104,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#8",
+              "bbox_xywh": [
+                1967,
+                3056,
+                549,
+                261
+              ],
+              "area_pixels": 9834,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#9",
+              "bbox_xywh": [
+                401,
+                3088,
+                609,
+                313
+              ],
+              "area_pixels": 13394,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#10",
+              "bbox_xywh": [
+                108,
+                3152,
+                255,
+                309
+              ],
+              "area_pixels": 5187,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#11",
+              "bbox_xywh": [
+                824,
+                4306,
+                630,
+                335
+              ],
+              "area_pixels": 13088,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-2.jpg#12",
+              "bbox_xywh": [
+                192,
+                4378,
+                518,
+                261
+              ],
+              "area_pixels": 9946,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_12/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 14,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00649,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 1,
+            "tick": 12
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_12/page-3.jpg#1",
+              "bbox_xywh": [
+                695,
+                875,
+                456,
+                303
+              ],
+              "area_pixels": 11281,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#2",
+              "bbox_xywh": [
+                66,
+                959,
+                537,
+                241
+              ],
+              "area_pixels": 10698,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#3",
+              "bbox_xywh": [
+                875,
+                1789,
+                408,
+                226
+              ],
+              "area_pixels": 7692,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#4",
+              "bbox_xywh": [
+                71,
+                1853,
+                219,
+                306
+              ],
+              "area_pixels": 4930,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#5",
+              "bbox_xywh": [
+                947,
+                2310,
+                627,
+                341
+              ],
+              "area_pixels": 13122,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#6",
+              "bbox_xywh": [
+                120,
+                2546,
+                159,
+                255
+              ],
+              "area_pixels": 3563,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#7",
+              "bbox_xywh": [
+                929,
+                2794,
+                636,
+                439
+              ],
+              "area_pixels": 12511,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#8",
+              "bbox_xywh": [
+                131,
+                3014,
+                373,
+                216
+              ],
+              "area_pixels": 8230,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#9",
+              "bbox_xywh": [
+                1079,
+                3434,
+                18,
+                20
+              ],
+              "area_pixels": 223,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#10",
+              "bbox_xywh": [
+                1094,
+                3469,
+                594,
+                399
+              ],
+              "area_pixels": 12166,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#11",
+              "bbox_xywh": [
+                239,
+                3730,
+                387,
+                253
+              ],
+              "area_pixels": 9075,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#12",
+              "bbox_xywh": [
+                1193,
+                4246,
+                627,
+                471
+              ],
+              "area_pixels": 15367,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#13",
+              "bbox_xywh": [
+                285,
+                4456,
+                549,
+                348
+              ],
+              "area_pixels": 13213,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-3.jpg#14",
+              "bbox_xywh": [
+                135,
+                4516,
+                147,
+                348
+              ],
+              "area_pixels": 4960,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_12/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 4,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00207,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 0,
+            "tick": 3
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_12/page-4.jpg#1",
+              "bbox_xywh": [
+                1304,
+                1019,
+                864,
+                414
+              ],
+              "area_pixels": 15805,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-4.jpg#2",
+              "bbox_xywh": [
+                120,
+                1075,
+                206,
+                317
+              ],
+              "area_pixels": 4611,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_12/page-4.jpg#3",
+              "bbox_xywh": [
+                110,
+                1885,
+                283,
+                388
+              ],
+              "area_pixels": 7082,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_12/page-4.jpg#4",
+              "bbox_xywh": [
+                122,
+                2662,
+                576,
+                412
+              ],
+              "area_pixels": 12930,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_13/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 20,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01397,
+          "shape_candidates": {
+            "circle": 3,
+            "cross": 1,
+            "tick": 16
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_13/page-1.jpg#1",
+              "bbox_xywh": [
+                668,
+                566,
+                675,
+                132
+              ],
+              "area_pixels": 9749,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#2",
+              "bbox_xywh": [
+                368,
+                824,
+                766,
+                120
+              ],
+              "area_pixels": 10176,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#3",
+              "bbox_xywh": [
+                1037,
+                964,
+                672,
+                190
+              ],
+              "area_pixels": 10687,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#4",
+              "bbox_xywh": [
+                998,
+                1112,
+                483,
+                150
+              ],
+              "area_pixels": 7617,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#5",
+              "bbox_xywh": [
+                1304,
+                1148,
+                879,
+                1194
+              ],
+              "area_pixels": 50417,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#6",
+              "bbox_xywh": [
+                911,
+                1308,
+                475,
+                138
+              ],
+              "area_pixels": 7426,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#7",
+              "bbox_xywh": [
+                2519,
+                1402,
+                438,
+                924
+              ],
+              "area_pixels": 22368,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#8",
+              "bbox_xywh": [
+                2222,
+                1536,
+                159,
+                662
+              ],
+              "area_pixels": 8431,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#9",
+              "bbox_xywh": [
+                575,
+                1562,
+                529,
+                354
+              ],
+              "area_pixels": 16100,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#10",
+              "bbox_xywh": [
+                1652,
+                1562,
+                384,
+                513
+              ],
+              "area_pixels": 15884,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#11",
+              "bbox_xywh": [
+                566,
+                1949,
+                462,
+                228
+              ],
+              "area_pixels": 8154,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#12",
+              "bbox_xywh": [
+                1796,
+                2008,
+                9,
+                10
+              ],
+              "area_pixels": 62,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#13",
+              "bbox_xywh": [
+                635,
+                2198,
+                198,
+                237
+              ],
+              "area_pixels": 6631,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#14",
+              "bbox_xywh": [
+                572,
+                2410,
+                727,
+                223
+              ],
+              "area_pixels": 11553,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#15",
+              "bbox_xywh": [
+                689,
+                2707,
+                661,
+                370
+              ],
+              "area_pixels": 19440,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#16",
+              "bbox_xywh": [
+                750,
+                3155,
+                506,
+                195
+              ],
+              "area_pixels": 8471,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#17",
+              "bbox_xywh": [
+                794,
+                3370,
+                567,
+                115
+              ],
+              "area_pixels": 7681,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#18",
+              "bbox_xywh": [
+                947,
+                3595,
+                615,
+                348
+              ],
+              "area_pixels": 18634,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#19",
+              "bbox_xywh": [
+                632,
+                4021,
+                519,
+                183
+              ],
+              "area_pixels": 8712,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-1.jpg#20",
+              "bbox_xywh": [
+                728,
+                4204,
+                777,
+                537
+              ],
+              "area_pixels": 25148,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_13/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 4,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00269,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 4
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_13/page-2.jpg#1",
+              "bbox_xywh": [
+                962,
+                1118,
+                612,
+                450
+              ],
+              "area_pixels": 11959,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-2.jpg#2",
+              "bbox_xywh": [
+                126,
+                1423,
+                588,
+                352
+              ],
+              "area_pixels": 12923,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-2.jpg#3",
+              "bbox_xywh": [
+                1211,
+                3481,
+                741,
+                420
+              ],
+              "area_pixels": 13904,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-2.jpg#4",
+              "bbox_xywh": [
+                327,
+                3625,
+                707,
+                342
+              ],
+              "area_pixels": 13924,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_13/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 2,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00105,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 0,
+            "tick": 1
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_13/page-3.jpg#1",
+              "bbox_xywh": [
+                0,
+                1055,
+                330,
+                301
+              ],
+              "area_pixels": 5277,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_13/page-3.jpg#2",
+              "bbox_xywh": [
+                197,
+                3097,
+                774,
+                349
+              ],
+              "area_pixels": 15204,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_13/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 5,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00344,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 5
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_13/page-4.jpg#1",
+              "bbox_xywh": [
+                150,
+                476,
+                785,
+                412
+              ],
+              "area_pixels": 15329,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-4.jpg#2",
+              "bbox_xywh": [
+                797,
+                1849,
+                673,
+                431
+              ],
+              "area_pixels": 12319,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-4.jpg#3",
+              "bbox_xywh": [
+                225,
+                1916,
+                515,
+                233
+              ],
+              "area_pixels": 10589,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-4.jpg#4",
+              "bbox_xywh": [
+                833,
+                3844,
+                780,
+                504
+              ],
+              "area_pixels": 15894,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-4.jpg#5",
+              "bbox_xywh": [
+                156,
+                3988,
+                749,
+                342
+              ],
+              "area_pixels": 13135,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_13/page-5.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 6,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00261,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 0,
+            "tick": 5
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_13/page-5.jpg#1",
+              "bbox_xywh": [
+                797,
+                923,
+                531,
+                334
+              ],
+              "area_pixels": 10988,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-5.jpg#2",
+              "bbox_xywh": [
+                107,
+                1127,
+                409,
+                277
+              ],
+              "area_pixels": 10763,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-5.jpg#3",
+              "bbox_xywh": [
+                131,
+                1835,
+                181,
+                353
+              ],
+              "area_pixels": 4823,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-5.jpg#4",
+              "bbox_xywh": [
+                135,
+                2680,
+                189,
+                196
+              ],
+              "area_pixels": 3852,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_13/page-5.jpg#5",
+              "bbox_xywh": [
+                191,
+                3154,
+                472,
+                301
+              ],
+              "area_pixels": 11826,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-5.jpg#6",
+              "bbox_xywh": [
+                263,
+                4396,
+                457,
+                234
+              ],
+              "area_pixels": 8750,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_13/page-6.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 3,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00126,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 0,
+            "tick": 1
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_13/page-6.jpg#1",
+              "bbox_xywh": [
+                1936,
+                872,
+                334,
+                325
+              ],
+              "area_pixels": 9311,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_13/page-6.jpg#2",
+              "bbox_xywh": [
+                159,
+                2521,
+                515,
+                253
+              ],
+              "area_pixels": 9782,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_13/page-6.jpg#3",
+              "bbox_xywh": [
+                816,
+                4306,
+                326,
+                335
+              ],
+              "area_pixels": 5642,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_14/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 29,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01399,
+          "shape_candidates": {
+            "circle": 8,
+            "cross": 2,
+            "tick": 19
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_14/page-1.jpg#1",
+              "bbox_xywh": [
+                1030,
+                405,
+                1356,
+                1298
+              ],
+              "area_pixels": 51306,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#2",
+              "bbox_xywh": [
+                1315,
+                791,
+                678,
+                547
+              ],
+              "area_pixels": 24009,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#3",
+              "bbox_xywh": [
+                520,
+                1019,
+                211,
+                220
+              ],
+              "area_pixels": 6412,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#4",
+              "bbox_xywh": [
+                2383,
+                1099,
+                385,
+                119
+              ],
+              "area_pixels": 6216,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#5",
+              "bbox_xywh": [
+                682,
+                1221,
+                165,
+                243
+              ],
+              "area_pixels": 5638,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#6",
+              "bbox_xywh": [
+                2419,
+                1271,
+                391,
+                121
+              ],
+              "area_pixels": 5668,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#7",
+              "bbox_xywh": [
+                649,
+                1496,
+                175,
+                249
+              ],
+              "area_pixels": 5519,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#8",
+              "bbox_xywh": [
+                2434,
+                1523,
+                382,
+                150
+              ],
+              "area_pixels": 5597,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#9",
+              "bbox_xywh": [
+                637,
+                1640,
+                543,
+                195
+              ],
+              "area_pixels": 9259,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#10",
+              "bbox_xywh": [
+                2447,
+                1723,
+                369,
+                161
+              ],
+              "area_pixels": 5412,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#11",
+              "bbox_xywh": [
+                1684,
+                1781,
+                196,
+                561
+              ],
+              "area_pixels": 6972,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#12",
+              "bbox_xywh": [
+                1481,
+                1847,
+                132,
+                507
+              ],
+              "area_pixels": 6242,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#13",
+              "bbox_xywh": [
+                602,
+                2006,
+                153,
+                204
+              ],
+              "area_pixels": 4699,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#14",
+              "bbox_xywh": [
+                2390,
+                2074,
+                231,
+                211
+              ],
+              "area_pixels": 6030,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#15",
+              "bbox_xywh": [
+                731,
+                2132,
+                9,
+                9
+              ],
+              "area_pixels": 63,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#16",
+              "bbox_xywh": [
+                644,
+                2186,
+                187,
+                200
+              ],
+              "area_pixels": 5155,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#17",
+              "bbox_xywh": [
+                2465,
+                2266,
+                444,
+                195
+              ],
+              "area_pixels": 7157,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#18",
+              "bbox_xywh": [
+                596,
+                2375,
+                171,
+                216
+              ],
+              "area_pixels": 5394,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#19",
+              "bbox_xywh": [
+                683,
+                2455,
+                471,
+                220
+              ],
+              "area_pixels": 8753,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#20",
+              "bbox_xywh": [
+                2447,
+                2506,
+                565,
+                313
+              ],
+              "area_pixels": 14550,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#21",
+              "bbox_xywh": [
+                608,
+                2848,
+                459,
+                217
+              ],
+              "area_pixels": 9057,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#22",
+              "bbox_xywh": [
+                2531,
+                2872,
+                403,
+                157
+              ],
+              "area_pixels": 6810,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#23",
+              "bbox_xywh": [
+                752,
+                2977,
+                634,
+                306
+              ],
+              "area_pixels": 10421,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#24",
+              "bbox_xywh": [
+                2547,
+                3148,
+                381,
+                359
+              ],
+              "area_pixels": 8528,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#25",
+              "bbox_xywh": [
+                1368,
+                3805,
+                636,
+                318
+              ],
+              "area_pixels": 13052,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#26",
+              "bbox_xywh": [
+                306,
+                3882,
+                529,
+                261
+              ],
+              "area_pixels": 10814,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#27",
+              "bbox_xywh": [
+                1440,
+                3909,
+                9,
+                8
+              ],
+              "area_pixels": 58,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#28",
+              "bbox_xywh": [
+                592,
+                4515,
+                714,
+                438
+              ],
+              "area_pixels": 14056,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-1.jpg#29",
+              "bbox_xywh": [
+                105,
+                4567,
+                646,
+                308
+              ],
+              "area_pixels": 11023,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_14/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 6,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00391,
+          "shape_candidates": {
+            "circle": 3,
+            "cross": 0,
+            "tick": 3
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_14/page-2.jpg#1",
+              "bbox_xywh": [
+                1088,
+                791,
+                429,
+                417
+              ],
+              "area_pixels": 13098,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-2.jpg#2",
+              "bbox_xywh": [
+                174,
+                941,
+                344,
+                271
+              ],
+              "area_pixels": 8527,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-2.jpg#3",
+              "bbox_xywh": [
+                1592,
+                2470,
+                489,
+                352
+              ],
+              "area_pixels": 10773,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-2.jpg#4",
+              "bbox_xywh": [
+                500,
+                2685,
+                766,
+                458
+              ],
+              "area_pixels": 16483,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-2.jpg#5",
+              "bbox_xywh": [
+                1466,
+                4045,
+                504,
+                375
+              ],
+              "area_pixels": 12409,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-2.jpg#6",
+              "bbox_xywh": [
+                467,
+                4129,
+                675,
+                378
+              ],
+              "area_pixels": 15191,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_14/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 9,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00503,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 0,
+            "tick": 8
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_14/page-3.jpg#1",
+              "bbox_xywh": [
+                1259,
+                929,
+                636,
+                415
+              ],
+              "area_pixels": 13160,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#2",
+              "bbox_xywh": [
+                128,
+                1026,
+                253,
+                380
+              ],
+              "area_pixels": 6008,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#3",
+              "bbox_xywh": [
+                1313,
+                1802,
+                693,
+                355
+              ],
+              "area_pixels": 12926,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#4",
+              "bbox_xywh": [
+                122,
+                1892,
+                517,
+                228
+              ],
+              "area_pixels": 10600,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#5",
+              "bbox_xywh": [
+                905,
+                2627,
+                654,
+                419
+              ],
+              "area_pixels": 14096,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#6",
+              "bbox_xywh": [
+                56,
+                2677,
+                879,
+                331
+              ],
+              "area_pixels": 14503,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#7",
+              "bbox_xywh": [
+                83,
+                3520,
+                678,
+                274
+              ],
+              "area_pixels": 10823,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#8",
+              "bbox_xywh": [
+                929,
+                3532,
+                600,
+                339
+              ],
+              "area_pixels": 11971,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-3.jpg#9",
+              "bbox_xywh": [
+                107,
+                4549,
+                216,
+                261
+              ],
+              "area_pixels": 4305,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_14/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 7,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00319,
+          "shape_candidates": {
+            "circle": 3,
+            "cross": 1,
+            "tick": 3
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_14/page-4.jpg#1",
+              "bbox_xywh": [
+                2504,
+                698,
+                36,
+                21
+              ],
+              "area_pixels": 497,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_14/page-4.jpg#2",
+              "bbox_xywh": [
+                2465,
+                773,
+                48,
+                25
+              ],
+              "area_pixels": 577,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-4.jpg#3",
+              "bbox_xywh": [
+                1109,
+                1379,
+                783,
+                669
+              ],
+              "area_pixels": 18449,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-4.jpg#4",
+              "bbox_xywh": [
+                59,
+                1606,
+                589,
+                277
+              ],
+              "area_pixels": 12483,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_14/page-4.jpg#5",
+              "bbox_xywh": [
+                1100,
+                2303,
+                369,
+                414
+              ],
+              "area_pixels": 13189,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-4.jpg#6",
+              "bbox_xywh": [
+                102,
+                3050,
+                258,
+                260
+              ],
+              "area_pixels": 4544,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_14/page-4.jpg#7",
+              "bbox_xywh": [
+                1535,
+                3547,
+                492,
+                352
+              ],
+              "area_pixels": 12645,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_15/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 17,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01188,
+          "shape_candidates": {
+            "circle": 6,
+            "cross": 1,
+            "tick": 10
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_15/page-1.jpg#1",
+              "bbox_xywh": [
+                718,
+                372,
+                1500,
+                1239
+              ],
+              "area_pixels": 54965,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#2",
+              "bbox_xywh": [
+                697,
+                586,
+                482,
+                146
+              ],
+              "area_pixels": 7256,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#3",
+              "bbox_xywh": [
+                1584,
+                702,
+                455,
+                442
+              ],
+              "area_pixels": 14073,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#4",
+              "bbox_xywh": [
+                566,
+                725,
+                330,
+                316
+              ],
+              "area_pixels": 11484,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#5",
+              "bbox_xywh": [
+                1450,
+                847,
+                288,
+                459
+              ],
+              "area_pixels": 6623,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#6",
+              "bbox_xywh": [
+                751,
+                1236,
+                155,
+                349
+              ],
+              "area_pixels": 9951,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#7",
+              "bbox_xywh": [
+                2033,
+                1491,
+                577,
+                707
+              ],
+              "area_pixels": 26256,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#8",
+              "bbox_xywh": [
+                644,
+                1620,
+                277,
+                199
+              ],
+              "area_pixels": 5530,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#9",
+              "bbox_xywh": [
+                792,
+                1691,
+                622,
+                260
+              ],
+              "area_pixels": 20012,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#10",
+              "bbox_xywh": [
+                709,
+                1995,
+                581,
+                403
+              ],
+              "area_pixels": 25785,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#11",
+              "bbox_xywh": [
+                2816,
+                2291,
+                9,
+                11
+              ],
+              "area_pixels": 64,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#12",
+              "bbox_xywh": [
+                656,
+                2428,
+                265,
+                465
+              ],
+              "area_pixels": 15744,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#13",
+              "bbox_xywh": [
+                715,
+                2878,
+                441,
+                145
+              ],
+              "area_pixels": 6924,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#14",
+              "bbox_xywh": [
+                793,
+                3144,
+                119,
+                253
+              ],
+              "area_pixels": 4715,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#15",
+              "bbox_xywh": [
+                629,
+                3306,
+                179,
+                628
+              ],
+              "area_pixels": 13715,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#16",
+              "bbox_xywh": [
+                728,
+                3906,
+                157,
+                186
+              ],
+              "area_pixels": 5229,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-1.jpg#17",
+              "bbox_xywh": [
+                764,
+                4113,
+                178,
+                151
+              ],
+              "area_pixels": 4163,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_15/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 7,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00264,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 1,
+            "tick": 5
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_15/page-2.jpg#1",
+              "bbox_xywh": [
+                1625,
+                495,
+                624,
+                290
+              ],
+              "area_pixels": 13268,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-2.jpg#2",
+              "bbox_xywh": [
+                102,
+                578,
+                527,
+                271
+              ],
+              "area_pixels": 10782,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-2.jpg#3",
+              "bbox_xywh": [
+                1457,
+                773,
+                12,
+                9
+              ],
+              "area_pixels": 84,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_15/page-2.jpg#4",
+              "bbox_xywh": [
+                1244,
+                1007,
+                531,
+                411
+              ],
+              "area_pixels": 14592,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-2.jpg#5",
+              "bbox_xywh": [
+                234,
+                1883,
+                183,
+                338
+              ],
+              "area_pixels": 4826,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-2.jpg#6",
+              "bbox_xywh": [
+                393,
+                2632,
+                146,
+                268
+              ],
+              "area_pixels": 3639,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-2.jpg#7",
+              "bbox_xywh": [
+                554,
+                4153,
+                201,
+                312
+              ],
+              "area_pixels": 4402,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_15/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 8,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00339,
+          "shape_candidates": {
+            "circle": 6,
+            "cross": 0,
+            "tick": 2
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_15/page-3.jpg#1",
+              "bbox_xywh": [
+                1802,
+                683,
+                420,
+                463
+              ],
+              "area_pixels": 14041,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-3.jpg#2",
+              "bbox_xywh": [
+                1901,
+                1492,
+                414,
+                391
+              ],
+              "area_pixels": 12832,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-3.jpg#3",
+              "bbox_xywh": [
+                1895,
+                1893,
+                51,
+                28
+              ],
+              "area_pixels": 612,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-3.jpg#4",
+              "bbox_xywh": [
+                327,
+                2761,
+                342,
+                390
+              ],
+              "area_pixels": 6874,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-3.jpg#5",
+              "bbox_xywh": [
+                1679,
+                3082,
+                578,
+                357
+              ],
+              "area_pixels": 12443,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-3.jpg#6",
+              "bbox_xywh": [
+                374,
+                3400,
+                201,
+                223
+              ],
+              "area_pixels": 3972,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-3.jpg#7",
+              "bbox_xywh": [
+                1742,
+                3646,
+                374,
+                325
+              ],
+              "area_pixels": 11724,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-3.jpg#8",
+              "bbox_xywh": [
+                371,
+                4645,
+                222,
+                210
+              ],
+              "area_pixels": 3875,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_15/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 4,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00195,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 0,
+            "tick": 2
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_15/page-4.jpg#1",
+              "bbox_xywh": [
+                1409,
+                45,
+                345,
+                243
+              ],
+              "area_pixels": 9184,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_15/page-4.jpg#2",
+              "bbox_xywh": [
+                2366,
+                611,
+                291,
+                219
+              ],
+              "area_pixels": 8694,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-4.jpg#3",
+              "bbox_xywh": [
+                2309,
+                1052,
+                360,
+                274
+              ],
+              "area_pixels": 10234,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_15/page-4.jpg#4",
+              "bbox_xywh": [
+                2168,
+                1667,
+                387,
+                253
+              ],
+              "area_pixels": 10082,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_15/page-5.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 0,
+          "has_mark_candidates": false,
+          "new_red_ink_pixel_ratio": 0.0,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 0
+          },
+          "annotations": []
+        },
+        {
+          "sample_id": "Student_15/page-6.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 0,
+          "has_mark_candidates": false,
+          "new_red_ink_pixel_ratio": 0.0,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 0
+          },
+          "annotations": []
+        },
+        {
+          "sample_id": "Student_16/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 19,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01324,
+          "shape_candidates": {
+            "circle": 7,
+            "cross": 1,
+            "tick": 11
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_16/page-1.jpg#1",
+              "bbox_xywh": [
+                407,
+                383,
+                264,
+                242
+              ],
+              "area_pixels": 6642,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#2",
+              "bbox_xywh": [
+                1412,
+                384,
+                999,
+                933
+              ],
+              "area_pixels": 55235,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#3",
+              "bbox_xywh": [
+                359,
+                634,
+                246,
+                229
+              ],
+              "area_pixels": 6683,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#4",
+              "bbox_xywh": [
+                1694,
+                753,
+                249,
+                381
+              ],
+              "area_pixels": 5613,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#5",
+              "bbox_xywh": [
+                338,
+                905,
+                219,
+                217
+              ],
+              "area_pixels": 5299,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#6",
+              "bbox_xywh": [
+                1529,
+                932,
+                9,
+                10
+              ],
+              "area_pixels": 62,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#7",
+              "bbox_xywh": [
+                443,
+                1091,
+                169,
+                186
+              ],
+              "area_pixels": 5518,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#8",
+              "bbox_xywh": [
+                402,
+                1154,
+                774,
+                627
+              ],
+              "area_pixels": 38176,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#9",
+              "bbox_xywh": [
+                2042,
+                1660,
+                606,
+                927
+              ],
+              "area_pixels": 35171,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#10",
+              "bbox_xywh": [
+                473,
+                1754,
+                609,
+                219
+              ],
+              "area_pixels": 9480,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#11",
+              "bbox_xywh": [
+                458,
+                2077,
+                201,
+                226
+              ],
+              "area_pixels": 5809,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#12",
+              "bbox_xywh": [
+                401,
+                2324,
+                673,
+                288
+              ],
+              "area_pixels": 16763,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#13",
+              "bbox_xywh": [
+                477,
+                2725,
+                447,
+                138
+              ],
+              "area_pixels": 6980,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#14",
+              "bbox_xywh": [
+                488,
+                2893,
+                460,
+                160
+              ],
+              "area_pixels": 7741,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#15",
+              "bbox_xywh": [
+                365,
+                3142,
+                486,
+                121
+              ],
+              "area_pixels": 7376,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#16",
+              "bbox_xywh": [
+                410,
+                3288,
+                424,
+                173
+              ],
+              "area_pixels": 7454,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#17",
+              "bbox_xywh": [
+                338,
+                3538,
+                585,
+                394
+              ],
+              "area_pixels": 14563,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#18",
+              "bbox_xywh": [
+                458,
+                3994,
+                180,
+                255
+              ],
+              "area_pixels": 5824,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-1.jpg#19",
+              "bbox_xywh": [
+                393,
+                4213,
+                380,
+                690
+              ],
+              "area_pixels": 18729,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_16/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 15,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00757,
+          "shape_candidates": {
+            "circle": 4,
+            "cross": 1,
+            "tick": 10
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_16/page-2.jpg#1",
+              "bbox_xywh": [
+                2009,
+                95,
+                537,
+                468
+              ],
+              "area_pixels": 13445,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#2",
+              "bbox_xywh": [
+                323,
+                264,
+                189,
+                320
+              ],
+              "area_pixels": 4602,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#3",
+              "bbox_xywh": [
+                1238,
+                444,
+                9,
+                11
+              ],
+              "area_pixels": 71,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#4",
+              "bbox_xywh": [
+                47,
+                807,
+                586,
+                251
+              ],
+              "area_pixels": 11263,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#5",
+              "bbox_xywh": [
+                2207,
+                837,
+                498,
+                341
+              ],
+              "area_pixels": 10834,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#6",
+              "bbox_xywh": [
+                1916,
+                1382,
+                509,
+                285
+              ],
+              "area_pixels": 9893,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#7",
+              "bbox_xywh": [
+                195,
+                1384,
+                213,
+                382
+              ],
+              "area_pixels": 5225,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#8",
+              "bbox_xywh": [
+                125,
+                2069,
+                133,
+                276
+              ],
+              "area_pixels": 4090,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#9",
+              "bbox_xywh": [
+                2111,
+                2438,
+                384,
+                330
+              ],
+              "area_pixels": 9336,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#10",
+              "bbox_xywh": [
+                1487,
+                2995,
+                672,
+                430
+              ],
+              "area_pixels": 14878,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#11",
+              "bbox_xywh": [
+                416,
+                3040,
+                708,
+                364
+              ],
+              "area_pixels": 14676,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#12",
+              "bbox_xywh": [
+                245,
+                3067,
+                123,
+                408
+              ],
+              "area_pixels": 5131,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#13",
+              "bbox_xywh": [
+                446,
+                3811,
+                594,
+                309
+              ],
+              "area_pixels": 11707,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#14",
+              "bbox_xywh": [
+                2057,
+                4318,
+                639,
+                537
+              ],
+              "area_pixels": 15325,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_16/page-2.jpg#15",
+              "bbox_xywh": [
+                383,
+                4513,
+                594,
+                501
+              ],
+              "area_pixels": 17652,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_17/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 18,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01228,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 2,
+            "tick": 14
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_17/page-1.jpg#1",
+              "bbox_xywh": [
+                1871,
+                212,
+                1730,
+                931
+              ],
+              "area_pixels": 57444,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#2",
+              "bbox_xywh": [
+                2513,
+                377,
+                333,
+                403
+              ],
+              "area_pixels": 14851,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#3",
+              "bbox_xywh": [
+                2887,
+                453,
+                300,
+                341
+              ],
+              "area_pixels": 14496,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#4",
+              "bbox_xywh": [
+                219,
+                808,
+                599,
+                290
+              ],
+              "area_pixels": 12125,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#5",
+              "bbox_xywh": [
+                1325,
+                844,
+                12,
+                8
+              ],
+              "area_pixels": 66,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#6",
+              "bbox_xywh": [
+                1484,
+                1349,
+                597,
+                304
+              ],
+              "area_pixels": 12247,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#7",
+              "bbox_xywh": [
+                323,
+                1429,
+                546,
+                274
+              ],
+              "area_pixels": 11015,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#8",
+              "bbox_xywh": [
+                1735,
+                1781,
+                603,
+                357
+              ],
+              "area_pixels": 13690,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#9",
+              "bbox_xywh": [
+                525,
+                1997,
+                110,
+                245
+              ],
+              "area_pixels": 3130,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#10",
+              "bbox_xywh": [
+                3110,
+                2174,
+                9,
+                9
+              ],
+              "area_pixels": 58,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#11",
+              "bbox_xywh": [
+                1226,
+                2477,
+                546,
+                357
+              ],
+              "area_pixels": 12878,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#12",
+              "bbox_xywh": [
+                248,
+                2578,
+                529,
+                264
+              ],
+              "area_pixels": 10936,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#13",
+              "bbox_xywh": [
+                224,
+                3064,
+                489,
+                305
+              ],
+              "area_pixels": 13889,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#14",
+              "bbox_xywh": [
+                890,
+                3097,
+                618,
+                334
+              ],
+              "area_pixels": 12697,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#15",
+              "bbox_xywh": [
+                1073,
+                3514,
+                651,
+                442
+              ],
+              "area_pixels": 14412,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#16",
+              "bbox_xywh": [
+                18,
+                3673,
+                629,
+                234
+              ],
+              "area_pixels": 11234,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#17",
+              "bbox_xywh": [
+                1406,
+                4508,
+                645,
+                407
+              ],
+              "area_pixels": 14560,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-1.jpg#18",
+              "bbox_xywh": [
+                258,
+                4510,
+                534,
+                246
+              ],
+              "area_pixels": 10511,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_17/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 11,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00466,
+          "shape_candidates": {
+            "circle": 1,
+            "cross": 0,
+            "tick": 10
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_17/page-2.jpg#1",
+              "bbox_xywh": [
+                1640,
+                851,
+                528,
+                308
+              ],
+              "area_pixels": 11033,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#2",
+              "bbox_xywh": [
+                608,
+                941,
+                606,
+                243
+              ],
+              "area_pixels": 10785,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#3",
+              "bbox_xywh": [
+                177,
+                1493,
+                188,
+                339
+              ],
+              "area_pixels": 5328,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#4",
+              "bbox_xywh": [
+                1765,
+                2047,
+                580,
+                277
+              ],
+              "area_pixels": 10467,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#5",
+              "bbox_xywh": [
+                647,
+                2110,
+                84,
+                370
+              ],
+              "area_pixels": 4416,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#6",
+              "bbox_xywh": [
+                1877,
+                2707,
+                453,
+                231
+              ],
+              "area_pixels": 9332,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#7",
+              "bbox_xywh": [
+                260,
+                2812,
+                423,
+                184
+              ],
+              "area_pixels": 8658,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#8",
+              "bbox_xywh": [
+                215,
+                3214,
+                435,
+                277
+              ],
+              "area_pixels": 10310,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#9",
+              "bbox_xywh": [
+                1304,
+                3214,
+                594,
+                307
+              ],
+              "area_pixels": 11376,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#10",
+              "bbox_xywh": [
+                518,
+                4060,
+                97,
+                228
+              ],
+              "area_pixels": 3946,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-2.jpg#11",
+              "bbox_xywh": [
+                620,
+                4597,
+                270,
+                351
+              ],
+              "area_pixels": 5566,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_17/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 11,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01101,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 0,
+            "tick": 9
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_17/page-3.jpg#1",
+              "bbox_xywh": [
+                481,
+                751,
+                153,
+                352
+              ],
+              "area_pixels": 4875,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#2",
+              "bbox_xywh": [
+                255,
+                1274,
+                1053,
+                489
+              ],
+              "area_pixels": 18994,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#3",
+              "bbox_xywh": [
+                2979,
+                1438,
+                118,
+                1378
+              ],
+              "area_pixels": 17410,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#4",
+              "bbox_xywh": [
+                3217,
+                1511,
+                503,
+                1683
+              ],
+              "area_pixels": 32490,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#5",
+              "bbox_xywh": [
+                253,
+                1831,
+                915,
+                633
+              ],
+              "area_pixels": 29270,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#6",
+              "bbox_xywh": [
+                331,
+                2593,
+                381,
+                337
+              ],
+              "area_pixels": 10369,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#7",
+              "bbox_xywh": [
+                342,
+                2734,
+                909,
+                334
+              ],
+              "area_pixels": 15088,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#8",
+              "bbox_xywh": [
+                360,
+                3163,
+                503,
+                376
+              ],
+              "area_pixels": 12133,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#9",
+              "bbox_xywh": [
+                473,
+                3568,
+                1058,
+                477
+              ],
+              "area_pixels": 17016,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#10",
+              "bbox_xywh": [
+                204,
+                3598,
+                440,
+                237
+              ],
+              "area_pixels": 9685,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-3.jpg#11",
+              "bbox_xywh": [
+                313,
+                4324,
+                1133,
+                571
+              ],
+              "area_pixels": 48190,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_17/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 5,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00811,
+          "shape_candidates": {
+            "circle": 3,
+            "cross": 0,
+            "tick": 2
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_17/page-4.jpg#1",
+              "bbox_xywh": [
+                498,
+                309,
+                1125,
+                640
+              ],
+              "area_pixels": 32203,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-4.jpg#2",
+              "bbox_xywh": [
+                720,
+                1161,
+                866,
+                728
+              ],
+              "area_pixels": 30586,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_17/page-4.jpg#3",
+              "bbox_xywh": [
+                547,
+                1961,
+                848,
+                287
+              ],
+              "area_pixels": 13110,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_17/page-4.jpg#4",
+              "bbox_xywh": [
+                498,
+                2325,
+                940,
+                1239
+              ],
+              "area_pixels": 41551,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_17/page-4.jpg#5",
+              "bbox_xywh": [
+                583,
+                3570,
+                911,
+                941
+              ],
+              "area_pixels": 41361,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_18/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 23,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01147,
+          "shape_candidates": {
+            "circle": 7,
+            "cross": 2,
+            "tick": 14
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_18/page-1.jpg#1",
+              "bbox_xywh": [
+                2410,
+                575,
+                277,
+                102
+              ],
+              "area_pixels": 3664,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#2",
+              "bbox_xywh": [
+                561,
+                587,
+                437,
+                136
+              ],
+              "area_pixels": 6930,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#3",
+              "bbox_xywh": [
+                618,
+                742,
+                194,
+                208
+              ],
+              "area_pixels": 4759,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#4",
+              "bbox_xywh": [
+                2384,
+                744,
+                287,
+                101
+              ],
+              "area_pixels": 3722,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#5",
+              "bbox_xywh": [
+                1793,
+                782,
+                333,
+                418
+              ],
+              "area_pixels": 13993,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#6",
+              "bbox_xywh": [
+                2405,
+                865,
+                255,
+                130
+              ],
+              "area_pixels": 3486,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#7",
+              "bbox_xywh": [
+                629,
+                877,
+                1146,
+                1159
+              ],
+              "area_pixels": 86213,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#8",
+              "bbox_xywh": [
+                612,
+                915,
+                266,
+                147
+              ],
+              "area_pixels": 5651,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#9",
+              "bbox_xywh": [
+                2420,
+                1000,
+                267,
+                104
+              ],
+              "area_pixels": 3291,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#10",
+              "bbox_xywh": [
+                588,
+                1046,
+                144,
+                127
+              ],
+              "area_pixels": 3503,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#11",
+              "bbox_xywh": [
+                2392,
+                1121,
+                195,
+                156
+              ],
+              "area_pixels": 4038,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#12",
+              "bbox_xywh": [
+                2509,
+                1262,
+                298,
+                144
+              ],
+              "area_pixels": 5157,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#13",
+              "bbox_xywh": [
+                1130,
+                1373,
+                57,
+                367
+              ],
+              "area_pixels": 4978,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#14",
+              "bbox_xywh": [
+                2414,
+                1409,
+                198,
+                452
+              ],
+              "area_pixels": 11619,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#15",
+              "bbox_xywh": [
+                1367,
+                1439,
+                12,
+                9
+              ],
+              "area_pixels": 72,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#16",
+              "bbox_xywh": [
+                1607,
+                1743,
+                6,
+                9
+              ],
+              "area_pixels": 51,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#17",
+              "bbox_xywh": [
+                2471,
+                1817,
+                204,
+                183
+              ],
+              "area_pixels": 5285,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#18",
+              "bbox_xywh": [
+                1358,
+                2749,
+                576,
+                334
+              ],
+              "area_pixels": 11335,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#19",
+              "bbox_xywh": [
+                233,
+                2940,
+                594,
+                271
+              ],
+              "area_pixels": 12374,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#20",
+              "bbox_xywh": [
+                1607,
+                3376,
+                552,
+                283
+              ],
+              "area_pixels": 10642,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#21",
+              "bbox_xywh": [
+                215,
+                3469,
+                408,
+                253
+              ],
+              "area_pixels": 9225,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#22",
+              "bbox_xywh": [
+                1652,
+                3745,
+                356,
+                354
+              ],
+              "area_pixels": 9504,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_18/page-1.jpg#23",
+              "bbox_xywh": [
+                222,
+                4456,
+                234,
+                354
+              ],
+              "area_pixels": 5034,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_18/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 0,
+          "has_mark_candidates": false,
+          "new_red_ink_pixel_ratio": 0.0,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 0
+          },
+          "annotations": []
+        },
+        {
+          "sample_id": "Student_19/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 25,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00953,
+          "shape_candidates": {
+            "circle": 10,
+            "cross": 2,
+            "tick": 13
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_19/page-1.jpg#1",
+              "bbox_xywh": [
+                527,
+                743,
+                377,
+                171
+              ],
+              "area_pixels": 6706,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#2",
+              "bbox_xywh": [
+                1571,
+                777,
+                9,
+                9
+              ],
+              "area_pixels": 59,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#3",
+              "bbox_xywh": [
+                1675,
+                908,
+                999,
+                1164
+              ],
+              "area_pixels": 52589,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#4",
+              "bbox_xywh": [
+                521,
+                938,
+                372,
+                293
+              ],
+              "area_pixels": 11805,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#5",
+              "bbox_xywh": [
+                611,
+                1251,
+                135,
+                176
+              ],
+              "area_pixels": 3838,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#6",
+              "bbox_xywh": [
+                2096,
+                1297,
+                296,
+                421
+              ],
+              "area_pixels": 10246,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#7",
+              "bbox_xywh": [
+                557,
+                1439,
+                183,
+                231
+              ],
+              "area_pixels": 7453,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#8",
+              "bbox_xywh": [
+                1544,
+                1544,
+                150,
+                584
+              ],
+              "area_pixels": 6940,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#9",
+              "bbox_xywh": [
+                659,
+                1592,
+                378,
+                198
+              ],
+              "area_pixels": 7165,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#10",
+              "bbox_xywh": [
+                611,
+                1837,
+                159,
+                145
+              ],
+              "area_pixels": 3892,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#11",
+              "bbox_xywh": [
+                614,
+                1936,
+                282,
+                163
+              ],
+              "area_pixels": 6864,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#12",
+              "bbox_xywh": [
+                605,
+                2116,
+                372,
+                103
+              ],
+              "area_pixels": 5268,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#13",
+              "bbox_xywh": [
+                2416,
+                2245,
+                9,
+                10
+              ],
+              "area_pixels": 62,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#14",
+              "bbox_xywh": [
+                593,
+                2248,
+                336,
+                112
+              ],
+              "area_pixels": 5778,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#15",
+              "bbox_xywh": [
+                596,
+                2338,
+                264,
+                142
+              ],
+              "area_pixels": 4943,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#16",
+              "bbox_xywh": [
+                578,
+                2504,
+                270,
+                206
+              ],
+              "area_pixels": 8333,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#17",
+              "bbox_xywh": [
+                609,
+                2728,
+                242,
+                121
+              ],
+              "area_pixels": 4241,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#18",
+              "bbox_xywh": [
+                590,
+                2860,
+                225,
+                97
+              ],
+              "area_pixels": 3713,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#19",
+              "bbox_xywh": [
+                599,
+                2992,
+                189,
+                160
+              ],
+              "area_pixels": 3993,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#20",
+              "bbox_xywh": [
+                572,
+                3110,
+                117,
+                138
+              ],
+              "area_pixels": 3171,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#21",
+              "bbox_xywh": [
+                554,
+                3256,
+                93,
+                138
+              ],
+              "area_pixels": 2792,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#22",
+              "bbox_xywh": [
+                572,
+                3364,
+                142,
+                120
+              ],
+              "area_pixels": 4801,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#23",
+              "bbox_xywh": [
+                1289,
+                3613,
+                447,
+                262
+              ],
+              "area_pixels": 8938,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#24",
+              "bbox_xywh": [
+                146,
+                3722,
+                132,
+                257
+              ],
+              "area_pixels": 3372,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-1.jpg#25",
+              "bbox_xywh": [
+                1730,
+                4501,
+                381,
+                385
+              ],
+              "area_pixels": 9514,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_19/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 2,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00098,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 2
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_19/page-2.jpg#1",
+              "bbox_xywh": [
+                929,
+                845,
+                540,
+                297
+              ],
+              "area_pixels": 9821,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_19/page-2.jpg#2",
+              "bbox_xywh": [
+                87,
+                1097,
+                522,
+                219
+              ],
+              "area_pixels": 9370,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_19/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 0,
+          "has_mark_candidates": false,
+          "new_red_ink_pixel_ratio": 0.0,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 0
+          },
+          "annotations": []
+        },
+        {
+          "sample_id": "Student_19/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 0,
+          "has_mark_candidates": false,
+          "new_red_ink_pixel_ratio": 0.0,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 0
+          },
+          "annotations": []
+        },
+        {
+          "sample_id": "Student_2/page-1.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 25,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.01019,
+          "shape_candidates": {
+            "circle": 8,
+            "cross": 1,
+            "tick": 16
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_2/page-1.jpg#1",
+              "bbox_xywh": [
+                2159,
+                780,
+                1012,
+                709
+              ],
+              "area_pixels": 32796,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#2",
+              "bbox_xywh": [
+                691,
+                897,
+                177,
+                183
+              ],
+              "area_pixels": 4704,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#3",
+              "bbox_xywh": [
+                2416,
+                979,
+                588,
+                347
+              ],
+              "area_pixels": 20281,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#4",
+              "bbox_xywh": [
+                1661,
+                1054,
+                9,
+                10
+              ],
+              "area_pixels": 65,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#5",
+              "bbox_xywh": [
+                757,
+                1155,
+                171,
+                240
+              ],
+              "area_pixels": 5456,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#6",
+              "bbox_xywh": [
+                832,
+                1351,
+                510,
+                162
+              ],
+              "area_pixels": 8017,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#7",
+              "bbox_xywh": [
+                787,
+                1611,
+                144,
+                231
+              ],
+              "area_pixels": 4787,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#8",
+              "bbox_xywh": [
+                892,
+                1749,
+                444,
+                170
+              ],
+              "area_pixels": 7688,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#9",
+              "bbox_xywh": [
+                2054,
+                1835,
+                425,
+                457
+              ],
+              "area_pixels": 18255,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#10",
+              "bbox_xywh": [
+                1783,
+                1906,
+                164,
+                412
+              ],
+              "area_pixels": 5569,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#11",
+              "bbox_xywh": [
+                915,
+                2043,
+                152,
+                195
+              ],
+              "area_pixels": 4005,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#12",
+              "bbox_xywh": [
+                876,
+                2274,
+                138,
+                154
+              ],
+              "area_pixels": 4135,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#13",
+              "bbox_xywh": [
+                951,
+                2532,
+                319,
+                118
+              ],
+              "area_pixels": 4915,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#14",
+              "bbox_xywh": [
+                861,
+                2749,
+                161,
+                220
+              ],
+              "area_pixels": 5176,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#15",
+              "bbox_xywh": [
+                828,
+                3004,
+                376,
+                91
+              ],
+              "area_pixels": 5276,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#16",
+              "bbox_xywh": [
+                825,
+                3099,
+                639,
+                216
+              ],
+              "area_pixels": 22303,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#17",
+              "bbox_xywh": [
+                1019,
+                3298,
+                409,
+                102
+              ],
+              "area_pixels": 6017,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#18",
+              "bbox_xywh": [
+                944,
+                3574,
+                370,
+                138
+              ],
+              "area_pixels": 5494,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#19",
+              "bbox_xywh": [
+                1215,
+                3769,
+                337,
+                189
+              ],
+              "area_pixels": 6802,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#20",
+              "bbox_xywh": [
+                926,
+                4044,
+                125,
+                189
+              ],
+              "area_pixels": 4557,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#21",
+              "bbox_xywh": [
+                905,
+                4234,
+                346,
+                174
+              ],
+              "area_pixels": 5951,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#22",
+              "bbox_xywh": [
+                884,
+                4404,
+                149,
+                135
+              ],
+              "area_pixels": 4013,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#23",
+              "bbox_xywh": [
+                971,
+                4560,
+                307,
+                127
+              ],
+              "area_pixels": 4624,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#24",
+              "bbox_xywh": [
+                994,
+                4741,
+                170,
+                173
+              ],
+              "area_pixels": 3918,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-1.jpg#25",
+              "bbox_xywh": [
+                1060,
+                4944,
+                191,
+                144
+              ],
+              "area_pixels": 4572,
+              "shape_candidate": "circle"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_2/page-2.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 11,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00495,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 2,
+            "tick": 7
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_2/page-2.jpg#1",
+              "bbox_xywh": [
+                1760,
+                380,
+                603,
+                469
+              ],
+              "area_pixels": 13643,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#2",
+              "bbox_xywh": [
+                266,
+                594,
+                429,
+                267
+              ],
+              "area_pixels": 8719,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#3",
+              "bbox_xywh": [
+                1253,
+                717,
+                9,
+                9
+              ],
+              "area_pixels": 60,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#4",
+              "bbox_xywh": [
+                1157,
+                1207,
+                513,
+                373
+              ],
+              "area_pixels": 10340,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#5",
+              "bbox_xywh": [
+                401,
+                1490,
+                333,
+                220
+              ],
+              "area_pixels": 7630,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#6",
+              "bbox_xywh": [
+                257,
+                2252,
+                306,
+                378
+              ],
+              "area_pixels": 6827,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#7",
+              "bbox_xywh": [
+                1271,
+                2327,
+                9,
+                12
+              ],
+              "area_pixels": 76,
+              "shape_candidate": "cross"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#8",
+              "bbox_xywh": [
+                1268,
+                3391,
+                657,
+                411
+              ],
+              "area_pixels": 11922,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#9",
+              "bbox_xywh": [
+                209,
+                3490,
+                469,
+                342
+              ],
+              "area_pixels": 12132,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#10",
+              "bbox_xywh": [
+                1247,
+                4561,
+                684,
+                399
+              ],
+              "area_pixels": 11985,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-2.jpg#11",
+              "bbox_xywh": [
+                344,
+                4672,
+                652,
+                337
+              ],
+              "area_pixels": 13543,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_2/page-3.jpg",
+          "alignment_ok": true,
+          "alignment_status": "ecc_affine",
+          "mark_component_count": 8,
+          "has_mark_candidates": true,
+          "new_red_ink_pixel_ratio": 0.00329,
+          "shape_candidates": {
+            "circle": 2,
+            "cross": 0,
+            "tick": 6
+          },
+          "annotations": [
+            {
+              "annotation_id": "Student_2/page-3.jpg#1",
+              "bbox_xywh": [
+                1118,
+                354,
+                543,
+                474
+              ],
+              "area_pixels": 11938,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-3.jpg#2",
+              "bbox_xywh": [
+                251,
+                669,
+                139,
+                263
+              ],
+              "area_pixels": 3474,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-3.jpg#3",
+              "bbox_xywh": [
+                489,
+                1571,
+                521,
+                376
+              ],
+              "area_pixels": 11286,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-3.jpg#4",
+              "bbox_xywh": [
+                215,
+                1601,
+                196,
+                289
+              ],
+              "area_pixels": 4131,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-3.jpg#5",
+              "bbox_xywh": [
+                1862,
+                2576,
+                303,
+                417
+              ],
+              "area_pixels": 8708,
+              "shape_candidate": "circle"
+            },
+            {
+              "annotation_id": "Student_2/page-3.jpg#6",
+              "bbox_xywh": [
+                1997,
+                4123,
+                675,
+                291
+              ],
+              "area_pixels": 11429,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-3.jpg#7",
+              "bbox_xywh": [
+                285,
+                4228,
+                467,
+                276
+              ],
+              "area_pixels": 9342,
+              "shape_candidate": "tick"
+            },
+            {
+              "annotation_id": "Student_2/page-3.jpg#8",
+              "bbox_xywh": [
+                176,
+                4279,
+                118,
+                297
+              ],
+              "area_pixels": 4144,
+              "shape_candidate": "tick"
+            }
+          ]
+        },
+        {
+          "sample_id": "Student_2/page-4.jpg",
+          "alignment_ok": true,
+          "alignment_status": "phase_correlation",
+          "mark_component_count": 0,
+          "has_mark_candidates": false,
+          "new_red_ink_pixel_ratio": 0.0,
+          "shape_candidates": {
+            "circle": 0,
+            "cross": 0,
+            "tick": 0
+          },
+          "annotations": []
+        }
+      ]
+    },
+    "mathwriting": {
+      "cohort": "mathwriting_excerpt",
+      "license": "CC BY-NC-SA 4.0 (source stated; evaluation-only boundary)",
+      "scope": "500 rendered InkML formulas; not proof of photographed-homework accuracy.",
+      "formula_count": 500,
+      "splits": {
+        "symbols": 100,
+        "synthetic": 100,
+        "test": 100,
+        "train": 100,
+        "valid": 100
+      },
+      "metrics": {
+        "latex_normalized_exact_match": "not_evaluated_without_local_formula_engine_predictions",
+        "math_structure_exact_match": "not_evaluated_without_local_formula_engine_predictions"
+      },
+      "metric_boundary": "Structure is strict normalized LaTeX token equality, not symbolic mathematical equivalence."
+    },
+    "chinese_handwriting_smoke": {
+      "cohort": "scut_public_samples",
+      "license": "non-commercial research/sample-only; full datasets require application.",
+      "scope": "Five public Chinese handwriting images for smoke testing only; no Chinese handwriting accuracy claim.",
+      "sample_count": 5,
+      "metrics": {
+        "completed_rate": 1.0,
+        "ocr_latency_p95_seconds": 0.552
+      },
+      "samples": [
+        {
+          "sample_id": "hccdoc/multiA_1197_14.jpg",
+          "status": "completed",
+          "latency_seconds": 0.552,
+          "source_dimensions": {
+            "width": 300,
+            "height": 23
+          },
+          "preprocessing": "evaluation_only_upscale_to_minimum_80px",
+          "manual_review_required": true,
+          "quality_issues": [
+            "possible_double_page_manual_split_required"
+          ]
+        },
+        {
+          "sample_id": "hccdoc/multiB_5439_12.jpg",
+          "status": "completed",
+          "latency_seconds": 0.202,
+          "source_dimensions": {
+            "width": 300,
+            "height": 28
+          },
+          "preprocessing": "evaluation_only_upscale_to_minimum_80px",
+          "manual_review_required": true,
+          "quality_issues": [
+            "glare",
+            "possible_double_page_manual_split_required"
+          ]
+        },
+        {
+          "sample_id": "hccdoc/weixin_7053_3.jpg",
+          "status": "completed",
+          "latency_seconds": 0.208,
+          "source_dimensions": {
+            "width": 300,
+            "height": 29
+          },
+          "preprocessing": "evaluation_only_upscale_to_minimum_80px",
+          "manual_review_required": true,
+          "quality_issues": [
+            "possible_double_page_manual_split_required"
+          ]
+        },
+        {
+          "sample_id": "hccdoc/weixin_7120_9.jpg",
+          "status": "completed",
+          "latency_seconds": 0.342,
+          "source_dimensions": {
+            "width": 300,
+            "height": 38
+          },
+          "preprocessing": "evaluation_only_upscale_to_minimum_80px",
+          "manual_review_required": true,
+          "quality_issues": [
+            "possible_double_page_manual_split_required"
+          ]
+        },
+        {
+          "sample_id": "ept/FigureChallengeSamples.png",
+          "status": "completed",
+          "latency_seconds": 0.859,
+          "source_dimensions": {
+            "width": 1519,
+            "height": 935
+          },
+          "preprocessing": "none",
+          "manual_review_required": true,
+          "quality_issues": [
+            "glare",
+            "possible_double_page_manual_split_required"
+          ]
+        }
+      ]
+    },
+    "family_document_camera": {
+      "cohort": "family_document_camera",
+      "status": "no_completed_local_page_capture",
+      "scope": "Required separate Nanjing K-9/high-camera benchmark; no family images are included in this shared pack.",
+      "metrics": {
+        "page_detection": null,
+        "printed_cer": null,
+        "handwriting_field_accuracy": null,
+        "math_structure_accuracy": null,
+        "marking_accuracy": null,
+        "end_to_end_mistake_entry_success_rate": null
+      }
+    }
+  }
+}

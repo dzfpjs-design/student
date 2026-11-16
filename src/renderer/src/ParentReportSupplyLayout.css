@@ -1,0 +1,8 @@
+/* The full parent report remains readable beside the new local follow-up. */
+.parent-shell .report-title > span { overflow-wrap: anywhere; }
+.parent-shell .script-list li { grid-template-columns: 30px minmax(0, 1fr); }
+@media (max-width: 900px) {
+  .parent-shell .report-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .parent-shell .report-detail { padding: 20px 16px 28px; }
+  .parent-shell .report-list { border-right: 0; border-bottom: 1px solid #dfe2e7; }
+}

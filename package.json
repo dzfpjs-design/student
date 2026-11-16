@@ -1,0 +1,117 @@
+{
+  "name": "home-study-companion",
+  "version": "0.1.13",
+  "private": true,
+  "description": "Local-first Windows study companion for two children",
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/check-private-resources.mjs build",
+    "dev": "electron-vite dev",
+    "prebuild": "node scripts/check-private-resources.mjs build",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/check-private-resources.mjs test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:electron:parent-delivery": "node scripts/electron-parent-report-delivery-e2e.mjs",
+    "pretest:backend": "node scripts/check-private-resources.mjs backend",
+    "test:backend": "node scripts/run-python.mjs -m pytest services/local_agent/tests",
+    "test:electron:voice": "node scripts/electron-voice-onboarding-e2e.mjs",
+    "test:electron:voice-agent": "node scripts/electron-voice-agent-e2e.mjs",
+    "test:electron:child-voice-surface": "node scripts/electron-child-voice-surface-e2e.mjs",
+    "test:electron:tutor-blackboard": "node scripts/electron-tutor-blackboard-e2e.mjs",
+    "test:e2e:kg-resource-review": "node scripts/e2e-resource-review-electron.mjs",
+    "test:e2e:kg-approved-diagnostic": "node scripts/e2e-resource-review-electron.mjs",
+    "models:download": "node scripts/run-python.mjs services/local_agent/scripts/download_local_models.py",
+    "eval:models": "node scripts/run-python.mjs services/local_agent/scripts/evaluate_model_quality.py",
+    "eval:voice-intent": "node scripts/run-python.mjs services/local_agent/scripts/evaluate_voice_intent.py",
+    "eval:companion": "node scripts/run-python.mjs services/local_agent/scripts/evaluate_companion_dialogue.py",
+    "eval:safety": "node scripts/run-python.mjs services/local_agent/scripts/evaluate_child_safety.py",
+    "eval:safety:strict": "node scripts/run-python.mjs services/local_agent/scripts/evaluate_child_safety.py --strict",
+    "eval:safety:asr": "node scripts/run-python.mjs services/local_agent/scripts/evaluate_asr_safety.py",
+    "eval:safety:asr:matrix": "node scripts/run-python.mjs services/local_agent/scripts/evaluate_asr_safety.py --strict --voice Tingting --voice Meijia --rate 140 --rate 175 --rate 220",
+    "build:agent:win": ".venv\\Scripts\\pyinstaller.exe --noconfirm --clean --onefile --name home-study-local-agent --paths services/local_agent/src --additional-hooks-dir build/pyinstaller-hooks --hidden-import home_study_agent.local_ocr.formula_worker --hidden-import home_study_agent.local_ocr.formula_recognition --collect-all uvicorn --collect-all cv2 --collect-all onnxruntime --collect-all rapidocr --collect-all pypdfium2 --collect-all pypdfium2_raw --hidden-import home_study_agent.pdf_render_worker --collect-all sherpa_onnx --collect-all cryptography --collect-all webrtcvad --collect-all tzdata --collect-all tokenizers --add-data \"services/local_agent/src/home_study_agent/_multipa_cpu_vendor/LICENSE.txt:home_study_agent/_multipa_cpu_vendor\" --add-data \"services/local_agent/src/home_study_agent/ATTENTION_PINYIN_LICENSE.txt:home_study_agent\" services/local_agent/src/home_study_agent/__main__.py",
+    "build:smtp-worker:win": ".venv\\Scripts\\pyinstaller.exe --noconfirm --clean --onedir --name hsc-smtp-worker --distpath dist services/local_agent/src/home_study_agent/smtp_owned_worker.py && node scripts/smtp-worker-manifest.mjs dist/hsc-smtp-worker",
+    "verify:package:win": "node scripts/verify-windows-package-inputs.mjs",
+    "verify:package:win:static": "node scripts/verify-windows-package-inputs.mjs --static-only",
+    "stage:knowledge:win": "node scripts/stage-knowledge-package.mjs",
+    "check": "npm run typecheck && npm run test && npm run test:backend",
+    "prepack:win": "node scripts/check-private-resources.mjs all",
+    "pack:win": "npm run build:smtp-worker:win && npm run build && npm run verify:package:win && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "5.2.0",
+    "electron-vite": "5.0.0",
+    "katex": "^0.16.22",
+    "lucide-react": "1.34.0",
+    "pinyin-pro": "^3.27.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@types/katex": "^0.16.7",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/ws": "8.18.1",
+    "electron": "44.0.0",
+    "electron-builder": "26.15.3",
+    "jsdom": "27.2.0",
+    "typescript": "7.0.2",
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
+  },
+  "build": {
+    "appId": "cn.family.homestudycompanion",
+    "productName": "家庭学习伙伴",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/home-study-local-agent.exe",
+        "to": "local-agent/home-study-local-agent.exe"
+      },
+      {
+        "from": "dist/hsc-smtp-worker",
+        "to": "local-agent/smtp-worker"
+      },
+      {
+        "from": "services/local_agent/models",
+        "to": "local-models"
+      },
+      {
+        "from": "services/local_agent/model-manifest.json",
+        "to": "local-models/model-manifest.json"
+      },
+      {
+        "from": "dist/knowledge/atomic-knowledge.db",
+        "to": "knowledge/atomic-knowledge.db"
+      },
+      {
+        "from": "dist/knowledge/atomic-knowledge-manifest.json",
+        "to": "knowledge/atomic-knowledge-manifest.json"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "build/installer.nsh"
+    },
+    "afterPack": "build/write-release-info.cjs"
+  }
+}

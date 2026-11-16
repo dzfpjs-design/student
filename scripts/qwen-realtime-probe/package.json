@@ -1,0 +1,6 @@
+{
+  "name": "hsc-qwen-realtime-probe",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.cjs"
+}

@@ -1,0 +1,12 @@
+.source-revision-panel { grid-column: 1 / -1; width: 100%; box-sizing: border-box; border-top: 1px solid #cbd5d0; margin-top: 20px; padding-top: 16px; min-width: 0; }
+.source-revision-panel label { display: grid; gap: 6px; margin: 12px 0; min-width: 0; }
+.source-revision-panel :is(select,textarea,input,button) { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.source-revision-panel textarea { width: 100%; min-height: 110px; }
+.source-revision-panel button { margin: 4px 8px 4px 0; padding: 8px 12px; white-space: normal; border: 1px solid #b8c7c1; border-radius: 4px; background: #f8faf9; color: #23483b; font: inherit; cursor: pointer; }
+.source-revision-panel button:disabled { opacity: .55; cursor: default; }
+.source-revision-panel .source-revision-consent { display: flex; align-items: flex-start; gap: 10px; }
+.source-revision-panel .source-revision-consent input { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 2px; }
+.source-revision-panel .source-revision-consent span { flex: 1; min-width: 0; }
+.source-revision-document { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow-y: auto; min-width: 0; font: inherit; }
+.source-revision-document pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.source-revision-comparison { margin: 12px 0; padding: 12px 0; border-block: 1px solid #cbd5d0; }

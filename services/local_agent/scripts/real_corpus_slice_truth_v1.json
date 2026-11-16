@@ -1,0 +1,10 @@
+[
+  {"file_id": "12918", "category": "j3_math", "expected_knowledge_point_key": "truth:j3-math-quadratic"},
+  {"file_id": "14401", "category": "j3_english", "expected_knowledge_point_key": "truth:j3-english-reading"},
+  {"file_id": "11662", "category": "p4_math", "expected_knowledge_point_key": "truth:p4-math-place"},
+  {"file_id": "11889", "category": "p4_english", "expected_knowledge_point_key": "truth:p4-english-apple"},
+  {"file_id": "BV1BV4y1477r", "category": "j3_math", "expected_knowledge_point_key": "truth:j3-math-quadratic"},
+  {"file_id": "BV11b421i7fT", "category": "j3_english", "expected_knowledge_point_key": "truth:j3-english-reading"},
+  {"file_id": "BV1B7411o7Fd", "category": "p4_math", "expected_knowledge_point_key": "truth:p4-math-place"},
+  {"file_id": "BV18b411x7EN", "category": "p4_english", "expected_knowledge_point_key": "truth:p4-english-apple"}
+]

@@ -1,0 +1,11 @@
+{
+  "privacy": "Keep this manifest local with de-identified, parent-approved files. Do not commit pages, answers, names, school IDs, or paths.",
+  "cases": [
+    {"case_id": "p4-printed-chinese-001", "grade_band": "grade4", "source_kind": "high_camera", "category": "printed", "printed_script": "chinese", "path": "C:/HSC-eval/p4-printed-chinese-001.jpg", "expected_text": "...", "expected_question_count": 3, "end_to_end": {"child_id": "child-primary-4", "subject": "数学", "knowledge_query": "判别式", "corrected_question_text": "脱敏后的人工校正题干，仅留在本地清单中", "submitted_answer": "待人工确认"}},
+    {"case_id": "p4-printed-english-001", "grade_band": "grade4", "source_kind": "high_camera", "category": "printed", "printed_script": "english", "path": "C:/HSC-eval/p4-printed-english-001.jpg", "expected_text": "...", "expected_question_count": 3},
+    {"case_id": "p4-printed-numeric-001", "grade_band": "grade4", "source_kind": "high_camera", "category": "printed", "printed_script": "numeric", "path": "C:/HSC-eval/p4-printed-numeric-001.jpg", "expected_text": "...", "expected_question_count": 3},
+    {"case_id": "p4-handwriting-001", "grade_band": "grade4", "source_kind": "high_camera", "category": "handwriting", "path": "C:/HSC-eval/p4-handwriting-001.jpg", "expected_question_count": 2, "manual_field_review": {"expected_fields": 2, "correct_fields": 0}},
+    {"case_id": "j3-formula-001", "grade_band": "grade9", "source_kind": "high_camera", "category": "math", "path": "C:/HSC-eval/j3-formula-001.jpg", "expected_question_count": 2, "manual_field_review": {"expected_fields": 2, "correct_fields": 0}},
+    {"case_id": "j3-marking-001", "grade_band": "grade9", "source_kind": "high_camera", "category": "marking", "path": "C:/HSC-eval/j3-marking-001.jpg", "expected_question_count": 1, "manual_mark_review": {"ground_truth_mark_count": 0, "true_positive_count": 0, "false_positive_count": 0}}
+  ]
+}

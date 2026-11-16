@@ -1,0 +1,1436 @@
+{
+  "verified": {
+    "snapshot_id": "14eed70b-a5b9-4920-9d1f-3902440e9db2",
+    "child_id": "child-junior-3",
+    "model_version": "evidence_child_model_v5",
+    "evidence_fingerprint": "d659d12f01c16d28b49e984220fcf23676126e4e5599c506c14ff60e4b52fee6",
+    "is_current": true,
+    "created_at": "2026-09-09T21:27:29.120268+00:00",
+    "source_watermark": {
+      "child_model_correction": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_activity": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:20.199632+00:00"
+      },
+      "companion_activity_outcome": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:20.186208+00:00"
+      },
+      "companion_activity_outcome_event": {
+        "count": 3,
+        "latest": "2026-09-09T21:27:20.234038+00:00"
+      },
+      "companion_activity_voice_binding": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_outcome_projection": "acd87a1f07ad6455e1ebe6f7960890b41c708b0d6be3fb47969fe7b5f5317622",
+      "controlled_content_session": {
+        "count": 0,
+        "latest": null
+      },
+      "controlled_game_session": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_feature": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_session": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:19.855593+00:00"
+      },
+      "goal_cycle": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.110568+00:00"
+      },
+      "goal_program": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:19.833303+00:00"
+      },
+      "habit_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "intervention": {
+        "count": 0,
+        "latest": null
+      },
+      "learning_evidence": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.037989+00:00"
+      },
+      "mastery_state": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.037989+00:00"
+      },
+      "mistake_case": {
+        "count": 0,
+        "latest": null
+      },
+      "parent_report_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "plan_item_event": {
+        "count": 3,
+        "latest": "2026-09-09T21:27:20.218304+00:00"
+      },
+      "projection": "0d795baedef03f13d2f0d4e6c238b84e38e484fcd8c5ed366b9b2434fcf18d6f",
+      "specialized_assessment_event": {
+        "count": 0,
+        "latest": null
+      },
+      "strategy_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "tutor_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "weekly_goal": {
+        "count": 0,
+        "latest": null
+      }
+    },
+    "payload": {
+      "as_of": "2026-09-09T21:27:29.120268+00:00",
+      "behavior": {
+        "habit_experiments": {
+          "bounded_goal_success_count": 0,
+          "completed_count": 0,
+          "habit_success_count": 0,
+          "improving_count": 0,
+          "open": null,
+          "repeated_observed_behavior_count": 0
+        },
+        "intervention_feedback": {
+          "accepted": 0,
+          "declined": 0,
+          "unknown": 0
+        },
+        "observed_days": 0,
+        "signals": {
+          "away_candidates": 0,
+          "missing_observation": 0,
+          "reading": 0,
+          "stall_candidates": 0,
+          "writing": 0
+        },
+        "uncertainty": "仅为低频候选计数；未结合孩子确认前不作为行为事实。",
+        "window_days": 28
+      },
+      "child": {
+        "child_id": "child-junior-3",
+        "curriculum_region": "江苏南京",
+        "grade": "初三",
+        "nickname": "初三同学"
+      },
+      "companion_balance": {
+        "activity_minutes": 0.0,
+        "activity_sessions": 1,
+        "average_daily_minutes": 0.0,
+        "boundary_status": "return_observed",
+        "bounded_end_sessions": 1,
+        "child_ended_sessions": 0,
+        "cloud_transmission_allowed": false,
+        "game_minutes": 0.0,
+        "game_sessions": 0,
+        "guidance": "部分活动已有孩子返回的核验；单次返回不认证习惯改善或学习完成。",
+        "habit_success_sessions": 0,
+        "journal_sessions": 1,
+        "legacy_unverified_sessions": 0,
+        "outcome_evidence": [
+          {
+            "current_resume_status": "confirmed",
+            "current_source_fingerprint": "7264ab948cb753cc5519b344068bac75197d23f6962dd2b49614612e6445d7cd",
+            "evidence_input_hash": "38d4392b72cd1eae4b1f31a10791ebabe3df4b217b5efccc9b608eaff658c5ca",
+            "execution_classification": "unknown",
+            "feedback_basis": null,
+            "feedback_revision": null,
+            "historical_resume_confirmed": true,
+            "outcome_id": "f93b23fe-8903-44f3-b9c8-b7ff6a5dbd2d",
+            "request_provenance": {
+              "actor_basis": "child_session_voice_capture",
+              "autonomy": "unknown",
+              "binding": null,
+              "classification": "unknown",
+              "cloud_transmission_allowed": false,
+              "initiative": "unknown",
+              "local_only": true,
+              "offer_binding": null,
+              "reason": "original_request_unbound",
+              "speaker_identity": "unverified",
+              "status": "unknown",
+              "version": "activity_request_v1"
+            },
+            "resume_confirmation_event_ids": [
+              "be0d0495-c616-436e-b1e3-cb1d89bf35b0"
+            ],
+            "return_verification": {
+              "activity_initiated_by": "unknown",
+              "activity_revision": 3,
+              "basis": [
+                "independent_answer"
+              ],
+              "cloud_transmission_allowed": false,
+              "episodes": [
+                {
+                  "closed_at": null,
+                  "evidence": [
+                    {
+                      "basis": "independent_answer",
+                      "evidence_id": "9528e5b2-abd3-46d8-8bad-a6096f725896",
+                      "independent": true,
+                      "item_version": "diagnostic_prompt_v1:7b0e628cfb95fb5feefcd4e518f19dd7540dd8176a3a1dbc3d3306d965fb1150",
+                      "occurred_at": "2026-09-09T21:27:29.037989+00:00",
+                      "prompt_id": "61e924fb-ffad-4c6c-a026-982abe234c3b",
+                      "question_identity": "exact_question_v1:42b0d192f6c55c897890fb0366be62edfeab0bd07683b7e940dfbc72fb44038a",
+                      "source_version": "02e89091ae58189e1fa583fba56e680aba4702707fe08d6e3afa7b4e0283e7c5"
+                    }
+                  ],
+                  "resume_confirmation_event_id": "be0d0495-c616-436e-b1e3-cb1d89bf35b0",
+                  "resume_confirmation_revision": 3,
+                  "resume_receipt_id": "7fe851c7-8a7a-4b00-a43f-3f02d5ed915c",
+                  "resume_request_event_id": "16d4b7dc-f979-451b-9c1d-f57e4c444b5f",
+                  "resume_request_revision": 2,
+                  "resume_requested_by": "child",
+                  "resumed_at": "2026-09-09T21:27:20.218304+00:00"
+                }
+              ],
+              "evidence_refs": [
+                "9528e5b2-abd3-46d8-8bad-a6096f725896"
+              ],
+              "fingerprint": "9cd6667a4686b642242f07842c66ad7c969f6222a3fb6655ab8760f2dfdb305a",
+              "habit_success": false,
+              "independent": true,
+              "local_only": true,
+              "outcome_id": "f93b23fe-8903-44f3-b9c8-b7ff6a5dbd2d",
+              "plan_item_id": "205c315c-d77e-4859-9e21-c47ccd70d857",
+              "reason": null,
+              "status": "verified",
+              "subject": "数学",
+              "task_source_version": "baccb378e4d0c1e9be021f4d492496a907ed8d2ea2eedfbd4e7772d91dd5d15d",
+              "task_type": "test_prep",
+              "version": "companion_return_v1"
+            },
+            "revision": 3,
+            "session_id": "f504bd01-f973-427b-922d-ed18529a1b7d",
+            "source_id": "055e9388-ae9d-4158-9a2f-41c4345cfc79",
+            "source_kind": "companion",
+            "source_valid": true,
+            "voice_provenance_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        ],
+        "outcome_evidence_fingerprint": "acd87a1f07ad6455e1ebe6f7960890b41c708b0d6be3fb47969fe7b5f5317622",
+        "parent_observed_sessions": 0,
+        "return_to_learning_sessions": 1,
+        "self_report_sessions": 0,
+        "task_resume_receipt_sessions": 1,
+        "total_minutes": 0.0,
+        "total_sessions": 1,
+        "usage_boundary_status": "within_recorded_limits",
+        "verified_child_return_sessions": 1,
+        "version": "companion_balance_v3",
+        "video_minutes": 0.0,
+        "video_sessions": 0,
+        "window_days": 14
+      },
+      "evidence_level": "cold_start",
+      "execution": {
+        "actual_minutes": 0,
+        "completed_tasks": 1,
+        "completion_rate": 0.5,
+        "deferred_tasks": 0,
+        "planned_tasks": 2,
+        "sessions": 1,
+        "window_days": 14
+      },
+      "goals": [
+        {
+          "completed_minutes": 0,
+          "completed_sessions": 0,
+          "focus": {
+            "as_of": null,
+            "attempt_count": 1,
+            "basis": "learning_feedback",
+            "cloud_transmission_allowed": false,
+            "distinct_items": 1,
+            "evidence_fingerprint": "72ac9e168032651731606a92949e20cd4a61592631a03189c4e4dcbce0923c6b",
+            "evidence_refs": [
+              "9528e5b2-abd3-46d8-8bad-a6096f725896"
+            ],
+            "evidence_scope": "current_valid_evidence",
+            "evidence_version": "reliable_learning_feedback_v4",
+            "independent_attempt_count": 1,
+            "independent_correct": 1,
+            "independent_distinct_items": 1,
+            "knowledge_node_id": "node-j3-math-discriminant",
+            "latest_evidence_at": "2026-09-09T21:27:29.037989+00:00",
+            "mastery_claim_allowed": false,
+            "next_action": "schedule_delayed_check",
+            "reason": "已有独立正确作答；仍需不同题目与跨天复测，不能由同题重复判断迁移。",
+            "retention_basis_refs": [],
+            "retention_success_count": 0,
+            "status": "independent_observed",
+            "subject": "数学",
+            "supported_attempt_count": 0,
+            "title": "根的判别式",
+            "track": "school",
+            "window_days": 90
+          },
+          "goal_kind": "program_cycle",
+          "status": "behind",
+          "target_minutes": 75,
+          "target_sessions": 5,
+          "target_statement": "在不挤占校内作业和睡眠的前提下，持续修复中考核心学科薄弱点并保留独立迁移证据。",
+          "title": "中考学科能力与薄弱点闭环",
+          "track": "junior_exam_readiness",
+          "week_end": "2026-09-13",
+          "week_start": "2026-09-07"
+        }
+      ],
+      "learning": {
+        "evidenced_node_count": 1,
+        "reliable_feedback": {
+          "cloud_transmission_allowed": false,
+          "evidence_fingerprint": "72ac9e168032651731606a92949e20cd4a61592631a03189c4e4dcbce0923c6b",
+          "excluded": {},
+          "mastery_claim_allowed": false,
+          "nodes": [
+            {
+              "attempt_count": 1,
+              "distinct_items": 1,
+              "evidence_refs": [
+                "9528e5b2-abd3-46d8-8bad-a6096f725896"
+              ],
+              "independent_attempt_count": 1,
+              "independent_correct": 1,
+              "independent_distinct_items": 1,
+              "knowledge_node_id": "node-j3-math-discriminant",
+              "latest_evidence_at": "2026-09-09T21:27:29.037989+00:00",
+              "mastery_claim_allowed": false,
+              "next_action": "schedule_delayed_check",
+              "reason": "已有独立正确作答；仍需不同题目与跨天复测，不能由同题重复判断迁移。",
+              "retention_basis_refs": [],
+              "retention_success_count": 0,
+              "status": "independent_observed",
+              "subject": "数学",
+              "supported_attempt_count": 0,
+              "title": "根的判别式",
+              "track": "school"
+            }
+          ],
+          "status": "evidence_available",
+          "version": "reliable_learning_feedback_v4",
+          "window_days": 90
+        },
+        "subject_aggregate_basis": "legacy_estimates_not_verified_mastery",
+        "subjects": [
+          {
+            "average_confidence": 0.2,
+            "average_hint_dependency": 0.0,
+            "average_mastery": 0.53,
+            "due_reviews": 1,
+            "node_count": 1,
+            "stable_nodes": 0,
+            "subject": "数学",
+            "weak_nodes": 1
+          }
+        ]
+      },
+      "limitations": [
+        "快照只汇总本机可追溯证据；没有记录不等于不会或没有学习。",
+        "行为计数不用于人格、情绪、医学或能力判断。",
+        "支持策略是可回滚建议，不自动改变家庭规则。",
+        "旧学科掌握分仅为历史估计；新的任务优先级采用经过来源核验的作答反馈。"
+      ],
+      "mistakes": {
+        "status_counts": {},
+        "top_clusters": []
+      },
+      "parent_corrections": [],
+      "parent_feedback": {
+        "average_effectiveness": null,
+        "executed_count": 0,
+        "feedback_count": 0,
+        "high_stress_count": 0,
+        "window_days": 14
+      },
+      "specialized_progress": [],
+      "support_strategy": {
+        "correction_sources": [],
+        "do_not_infer": [
+          "personality",
+          "motivation",
+          "diagnosis",
+          "ability_from_missing_data"
+        ],
+        "explanation_pacing": "standard_layered",
+        "interaction_tone": "gentle",
+        "mistake_priority": "due_or_relapsed_first",
+        "pacing_basis": "qualified_support_receipts_and_explicit_feedback",
+        "parent_correction_count": 0,
+        "reason": "根据提示依赖、仍卡住反馈和家庭规则选择；不改变安全、隐私或家庭边界。",
+        "require_independent_check": true,
+        "strategy_evolution": {
+          "candidate_version": null,
+          "feedback_count": 0,
+          "status": "baseline"
+        },
+        "task_segment_minutes": 35
+      },
+      "tutor_feedback": {
+        "still_stuck": 0,
+        "total": 0,
+        "understood": 0
+      },
+      "tutor_outcomes": {
+        "available_count": 0,
+        "boundary": "model_rubric_evidence_not_verified_mastery",
+        "candidate_count": 0,
+        "child_id": "child-junior-3",
+        "dimension_kind": "model_rubric_evidence_counts_not_calibrated_scores",
+        "fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "knowledge_evidence": [],
+        "level_counts": {},
+        "mapped_count": 0,
+        "outcome_count": 0,
+        "recent_outcomes": [],
+        "revoked_count": 0,
+        "source_unavailable_count": 0,
+        "unmapped_count": 0,
+        "version": "tutor_outcome_projection_v2"
+      }
+    }
+  },
+  "restarted": {
+    "snapshot_id": "9143cb5c-554e-4d85-a4fb-e088bbf837b0",
+    "child_id": "child-junior-3",
+    "model_version": "evidence_child_model_v5",
+    "evidence_fingerprint": "963b7f357555d1557903e3ddbc4190e88ee3c3cc047ef47b8002051402958247",
+    "is_current": true,
+    "created_at": "2026-09-09T21:27:38.395498+00:00",
+    "source_watermark": {
+      "child_model_correction": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_activity": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:20.199632+00:00"
+      },
+      "companion_activity_outcome": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:20.186208+00:00"
+      },
+      "companion_activity_outcome_event": {
+        "count": 3,
+        "latest": "2026-09-09T21:27:20.234038+00:00"
+      },
+      "companion_activity_voice_binding": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_outcome_projection": "6f854222451c119527249551f82dda27d2cf6a172c65f16c745a7ab4d1a07d47",
+      "controlled_content_session": {
+        "count": 0,
+        "latest": null
+      },
+      "controlled_game_session": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_feature": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_session": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:19.855593+00:00"
+      },
+      "goal_cycle": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.110568+00:00"
+      },
+      "goal_program": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:19.833303+00:00"
+      },
+      "habit_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "intervention": {
+        "count": 0,
+        "latest": null
+      },
+      "learning_evidence": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.037989+00:00"
+      },
+      "mastery_state": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.037989+00:00"
+      },
+      "mistake_case": {
+        "count": 0,
+        "latest": null
+      },
+      "parent_report_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "plan_item_event": {
+        "count": 4,
+        "latest": "2026-09-09T21:27:29.285279+00:00"
+      },
+      "projection": "4277bf26579bb9bdb1bcc545ddc99e8e0c0bb48a72d8e19c7b04a3a9063f68c0",
+      "specialized_assessment_event": {
+        "count": 0,
+        "latest": null
+      },
+      "strategy_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "tutor_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "weekly_goal": {
+        "count": 0,
+        "latest": null
+      }
+    },
+    "payload": {
+      "as_of": "2026-09-09T21:27:38.395498+00:00",
+      "behavior": {
+        "habit_experiments": {
+          "bounded_goal_success_count": 0,
+          "completed_count": 0,
+          "habit_success_count": 0,
+          "improving_count": 0,
+          "open": null,
+          "repeated_observed_behavior_count": 0
+        },
+        "intervention_feedback": {
+          "accepted": 0,
+          "declined": 0,
+          "unknown": 0
+        },
+        "observed_days": 0,
+        "signals": {
+          "away_candidates": 0,
+          "missing_observation": 0,
+          "reading": 0,
+          "stall_candidates": 0,
+          "writing": 0
+        },
+        "uncertainty": "仅为低频候选计数；未结合孩子确认前不作为行为事实。",
+        "window_days": 28
+      },
+      "child": {
+        "child_id": "child-junior-3",
+        "curriculum_region": "江苏南京",
+        "grade": "初三",
+        "nickname": "初三同学"
+      },
+      "companion_balance": {
+        "activity_minutes": 0.0,
+        "activity_sessions": 1,
+        "average_daily_minutes": 0.0,
+        "boundary_status": "return_observed",
+        "bounded_end_sessions": 1,
+        "child_ended_sessions": 0,
+        "cloud_transmission_allowed": false,
+        "game_minutes": 0.0,
+        "game_sessions": 0,
+        "guidance": "部分活动已有孩子返回的核验；单次返回不认证习惯改善或学习完成。",
+        "habit_success_sessions": 0,
+        "journal_sessions": 1,
+        "legacy_unverified_sessions": 0,
+        "outcome_evidence": [
+          {
+            "current_resume_status": "confirmed",
+            "current_source_fingerprint": "7264ab948cb753cc5519b344068bac75197d23f6962dd2b49614612e6445d7cd",
+            "evidence_input_hash": "38d4392b72cd1eae4b1f31a10791ebabe3df4b217b5efccc9b608eaff658c5ca",
+            "execution_classification": "unknown",
+            "feedback_basis": null,
+            "feedback_revision": null,
+            "historical_resume_confirmed": true,
+            "outcome_id": "f93b23fe-8903-44f3-b9c8-b7ff6a5dbd2d",
+            "request_provenance": {
+              "actor_basis": "child_session_voice_capture",
+              "autonomy": "unknown",
+              "binding": null,
+              "classification": "unknown",
+              "cloud_transmission_allowed": false,
+              "initiative": "unknown",
+              "local_only": true,
+              "offer_binding": null,
+              "reason": "original_request_unbound",
+              "speaker_identity": "unverified",
+              "status": "unknown",
+              "version": "activity_request_v1"
+            },
+            "resume_confirmation_event_ids": [
+              "be0d0495-c616-436e-b1e3-cb1d89bf35b0"
+            ],
+            "return_verification": {
+              "activity_initiated_by": "unknown",
+              "activity_revision": 3,
+              "basis": [
+                "independent_answer"
+              ],
+              "cloud_transmission_allowed": false,
+              "episodes": [
+                {
+                  "closed_at": "2026-09-09T21:27:29.285279+00:00",
+                  "evidence": [
+                    {
+                      "basis": "independent_answer",
+                      "evidence_id": "9528e5b2-abd3-46d8-8bad-a6096f725896",
+                      "independent": true,
+                      "item_version": "diagnostic_prompt_v1:7b0e628cfb95fb5feefcd4e518f19dd7540dd8176a3a1dbc3d3306d965fb1150",
+                      "occurred_at": "2026-09-09T21:27:29.037989+00:00",
+                      "prompt_id": "61e924fb-ffad-4c6c-a026-982abe234c3b",
+                      "question_identity": "exact_question_v1:42b0d192f6c55c897890fb0366be62edfeab0bd07683b7e940dfbc72fb44038a",
+                      "source_version": "02e89091ae58189e1fa583fba56e680aba4702707fe08d6e3afa7b4e0283e7c5"
+                    }
+                  ],
+                  "resume_confirmation_event_id": "be0d0495-c616-436e-b1e3-cb1d89bf35b0",
+                  "resume_confirmation_revision": 3,
+                  "resume_receipt_id": "7fe851c7-8a7a-4b00-a43f-3f02d5ed915c",
+                  "resume_request_event_id": "16d4b7dc-f979-451b-9c1d-f57e4c444b5f",
+                  "resume_request_revision": 2,
+                  "resume_requested_by": "child",
+                  "resumed_at": "2026-09-09T21:27:20.218304+00:00"
+                }
+              ],
+              "evidence_refs": [
+                "9528e5b2-abd3-46d8-8bad-a6096f725896"
+              ],
+              "fingerprint": "e7c4d991d65f7160ded2fcf5ca9015c2b3ff2de6b6cc0be8c2bfe2ae3545c550",
+              "habit_success": false,
+              "independent": true,
+              "local_only": true,
+              "outcome_id": "f93b23fe-8903-44f3-b9c8-b7ff6a5dbd2d",
+              "plan_item_id": "205c315c-d77e-4859-9e21-c47ccd70d857",
+              "reason": null,
+              "status": "verified",
+              "subject": "数学",
+              "task_source_version": "baccb378e4d0c1e9be021f4d492496a907ed8d2ea2eedfbd4e7772d91dd5d15d",
+              "task_type": "test_prep",
+              "version": "companion_return_v1"
+            },
+            "revision": 3,
+            "session_id": "f504bd01-f973-427b-922d-ed18529a1b7d",
+            "source_id": "055e9388-ae9d-4158-9a2f-41c4345cfc79",
+            "source_kind": "companion",
+            "source_valid": true,
+            "voice_provenance_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        ],
+        "outcome_evidence_fingerprint": "6f854222451c119527249551f82dda27d2cf6a172c65f16c745a7ab4d1a07d47",
+        "parent_observed_sessions": 0,
+        "return_to_learning_sessions": 1,
+        "self_report_sessions": 0,
+        "task_resume_receipt_sessions": 1,
+        "total_minutes": 0.0,
+        "total_sessions": 1,
+        "usage_boundary_status": "within_recorded_limits",
+        "verified_child_return_sessions": 1,
+        "version": "companion_balance_v3",
+        "video_minutes": 0.0,
+        "video_sessions": 0,
+        "window_days": 14
+      },
+      "evidence_level": "cold_start",
+      "execution": {
+        "actual_minutes": 0,
+        "completed_tasks": 1,
+        "completion_rate": 0.5,
+        "deferred_tasks": 0,
+        "planned_tasks": 2,
+        "sessions": 1,
+        "window_days": 14
+      },
+      "goals": [
+        {
+          "completed_minutes": 0,
+          "completed_sessions": 0,
+          "focus": {
+            "as_of": null,
+            "attempt_count": 1,
+            "basis": "learning_feedback",
+            "cloud_transmission_allowed": false,
+            "distinct_items": 1,
+            "evidence_fingerprint": "72ac9e168032651731606a92949e20cd4a61592631a03189c4e4dcbce0923c6b",
+            "evidence_refs": [
+              "9528e5b2-abd3-46d8-8bad-a6096f725896"
+            ],
+            "evidence_scope": "current_valid_evidence",
+            "evidence_version": "reliable_learning_feedback_v4",
+            "independent_attempt_count": 1,
+            "independent_correct": 1,
+            "independent_distinct_items": 1,
+            "knowledge_node_id": "node-j3-math-discriminant",
+            "latest_evidence_at": "2026-09-09T21:27:29.037989+00:00",
+            "mastery_claim_allowed": false,
+            "next_action": "schedule_delayed_check",
+            "reason": "已有独立正确作答；仍需不同题目与跨天复测，不能由同题重复判断迁移。",
+            "retention_basis_refs": [],
+            "retention_success_count": 0,
+            "status": "independent_observed",
+            "subject": "数学",
+            "supported_attempt_count": 0,
+            "title": "根的判别式",
+            "track": "school",
+            "window_days": 90
+          },
+          "goal_kind": "program_cycle",
+          "status": "behind",
+          "target_minutes": 75,
+          "target_sessions": 5,
+          "target_statement": "在不挤占校内作业和睡眠的前提下，持续修复中考核心学科薄弱点并保留独立迁移证据。",
+          "title": "中考学科能力与薄弱点闭环",
+          "track": "junior_exam_readiness",
+          "week_end": "2026-09-13",
+          "week_start": "2026-09-07"
+        }
+      ],
+      "learning": {
+        "evidenced_node_count": 1,
+        "reliable_feedback": {
+          "cloud_transmission_allowed": false,
+          "evidence_fingerprint": "72ac9e168032651731606a92949e20cd4a61592631a03189c4e4dcbce0923c6b",
+          "excluded": {},
+          "mastery_claim_allowed": false,
+          "nodes": [
+            {
+              "attempt_count": 1,
+              "distinct_items": 1,
+              "evidence_refs": [
+                "9528e5b2-abd3-46d8-8bad-a6096f725896"
+              ],
+              "independent_attempt_count": 1,
+              "independent_correct": 1,
+              "independent_distinct_items": 1,
+              "knowledge_node_id": "node-j3-math-discriminant",
+              "latest_evidence_at": "2026-09-09T21:27:29.037989+00:00",
+              "mastery_claim_allowed": false,
+              "next_action": "schedule_delayed_check",
+              "reason": "已有独立正确作答；仍需不同题目与跨天复测，不能由同题重复判断迁移。",
+              "retention_basis_refs": [],
+              "retention_success_count": 0,
+              "status": "independent_observed",
+              "subject": "数学",
+              "supported_attempt_count": 0,
+              "title": "根的判别式",
+              "track": "school"
+            }
+          ],
+          "status": "evidence_available",
+          "version": "reliable_learning_feedback_v4",
+          "window_days": 90
+        },
+        "subject_aggregate_basis": "legacy_estimates_not_verified_mastery",
+        "subjects": [
+          {
+            "average_confidence": 0.2,
+            "average_hint_dependency": 0.0,
+            "average_mastery": 0.53,
+            "due_reviews": 1,
+            "node_count": 1,
+            "stable_nodes": 0,
+            "subject": "数学",
+            "weak_nodes": 1
+          }
+        ]
+      },
+      "limitations": [
+        "快照只汇总本机可追溯证据；没有记录不等于不会或没有学习。",
+        "行为计数不用于人格、情绪、医学或能力判断。",
+        "支持策略是可回滚建议，不自动改变家庭规则。",
+        "旧学科掌握分仅为历史估计；新的任务优先级采用经过来源核验的作答反馈。"
+      ],
+      "mistakes": {
+        "status_counts": {},
+        "top_clusters": []
+      },
+      "parent_corrections": [],
+      "parent_feedback": {
+        "average_effectiveness": null,
+        "executed_count": 0,
+        "feedback_count": 0,
+        "high_stress_count": 0,
+        "window_days": 14
+      },
+      "specialized_progress": [],
+      "support_strategy": {
+        "correction_sources": [],
+        "do_not_infer": [
+          "personality",
+          "motivation",
+          "diagnosis",
+          "ability_from_missing_data"
+        ],
+        "explanation_pacing": "standard_layered",
+        "interaction_tone": "gentle",
+        "mistake_priority": "due_or_relapsed_first",
+        "pacing_basis": "qualified_support_receipts_and_explicit_feedback",
+        "parent_correction_count": 0,
+        "reason": "根据提示依赖、仍卡住反馈和家庭规则选择；不改变安全、隐私或家庭边界。",
+        "require_independent_check": true,
+        "strategy_evolution": {
+          "candidate_version": null,
+          "feedback_count": 0,
+          "status": "baseline"
+        },
+        "task_segment_minutes": 35
+      },
+      "tutor_feedback": {
+        "still_stuck": 0,
+        "total": 0,
+        "understood": 0
+      },
+      "tutor_outcomes": {
+        "available_count": 0,
+        "boundary": "model_rubric_evidence_not_verified_mastery",
+        "candidate_count": 0,
+        "child_id": "child-junior-3",
+        "dimension_kind": "model_rubric_evidence_counts_not_calibrated_scores",
+        "fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "knowledge_evidence": [],
+        "level_counts": {},
+        "mapped_count": 0,
+        "outcome_count": 0,
+        "recent_outcomes": [],
+        "revoked_count": 0,
+        "source_unavailable_count": 0,
+        "unmapped_count": 0,
+        "version": "tutor_outcome_projection_v2"
+      }
+    }
+  },
+  "withdrawn": {
+    "snapshot_id": "4a11a844-9c34-4028-8b36-3e90d8b45e78",
+    "child_id": "child-junior-3",
+    "model_version": "evidence_child_model_v5",
+    "evidence_fingerprint": "2ca0088532a568c98b2dd708a3749545d54a8106274b70ab9019f12c2dff3500",
+    "is_current": true,
+    "created_at": "2026-09-09T21:27:38.505128+00:00",
+    "source_watermark": {
+      "child_model_correction": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_activity": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:20.199632+00:00"
+      },
+      "companion_activity_outcome": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:20.186208+00:00"
+      },
+      "companion_activity_outcome_event": {
+        "count": 3,
+        "latest": "2026-09-09T21:27:20.234038+00:00"
+      },
+      "companion_activity_voice_binding": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_outcome_projection": "590e686290bc7d5b737f8ab7cb088acd0a62aedaca626e8355df2d8f150e4f54",
+      "controlled_content_session": {
+        "count": 0,
+        "latest": null
+      },
+      "controlled_game_session": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_feature": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_session": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:19.855593+00:00"
+      },
+      "goal_cycle": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.110568+00:00"
+      },
+      "goal_program": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:19.833303+00:00"
+      },
+      "habit_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "intervention": {
+        "count": 0,
+        "latest": null
+      },
+      "learning_evidence": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.037989+00:00"
+      },
+      "mastery_state": {
+        "count": 1,
+        "latest": "2026-09-09T21:27:29.037989+00:00"
+      },
+      "mistake_case": {
+        "count": 0,
+        "latest": null
+      },
+      "parent_report_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "plan_item_event": {
+        "count": 4,
+        "latest": "2026-09-09T21:27:29.285279+00:00"
+      },
+      "projection": "021a87b439b678051d29df6118311e5f51723e06d5439bb692e66b7ea85e8527",
+      "specialized_assessment_event": {
+        "count": 0,
+        "latest": null
+      },
+      "strategy_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "tutor_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "weekly_goal": {
+        "count": 0,
+        "latest": null
+      }
+    },
+    "payload": {
+      "as_of": "2026-09-09T21:27:38.505128+00:00",
+      "behavior": {
+        "habit_experiments": {
+          "bounded_goal_success_count": 0,
+          "completed_count": 0,
+          "habit_success_count": 0,
+          "improving_count": 0,
+          "open": null,
+          "repeated_observed_behavior_count": 0
+        },
+        "intervention_feedback": {
+          "accepted": 0,
+          "declined": 0,
+          "unknown": 0
+        },
+        "observed_days": 0,
+        "signals": {
+          "away_candidates": 0,
+          "missing_observation": 0,
+          "reading": 0,
+          "stall_candidates": 0,
+          "writing": 0
+        },
+        "uncertainty": "仅为低频候选计数；未结合孩子确认前不作为行为事实。",
+        "window_days": 28
+      },
+      "child": {
+        "child_id": "child-junior-3",
+        "curriculum_region": "江苏南京",
+        "grade": "初三",
+        "nickname": "初三同学"
+      },
+      "companion_balance": {
+        "activity_minutes": 0.0,
+        "activity_sessions": 1,
+        "average_daily_minutes": 0.0,
+        "boundary_status": "return_evidence_missing",
+        "bounded_end_sessions": 1,
+        "child_ended_sessions": 0,
+        "cloud_transmission_allowed": false,
+        "game_minutes": 0.0,
+        "game_sessions": 0,
+        "guidance": "已有原任务恢复回执，但尚不能核验孩子实际回到学习；任务后来完成不抹去该历史回执。",
+        "habit_success_sessions": 0,
+        "journal_sessions": 1,
+        "legacy_unverified_sessions": 0,
+        "outcome_evidence": [
+          {
+            "current_resume_status": "confirmed",
+            "current_source_fingerprint": "7264ab948cb753cc5519b344068bac75197d23f6962dd2b49614612e6445d7cd",
+            "evidence_input_hash": "38d4392b72cd1eae4b1f31a10791ebabe3df4b217b5efccc9b608eaff658c5ca",
+            "execution_classification": "unknown",
+            "feedback_basis": null,
+            "feedback_revision": null,
+            "historical_resume_confirmed": true,
+            "outcome_id": "f93b23fe-8903-44f3-b9c8-b7ff6a5dbd2d",
+            "request_provenance": {
+              "actor_basis": "child_session_voice_capture",
+              "autonomy": "unknown",
+              "binding": null,
+              "classification": "unknown",
+              "cloud_transmission_allowed": false,
+              "initiative": "unknown",
+              "local_only": true,
+              "offer_binding": null,
+              "reason": "original_request_unbound",
+              "speaker_identity": "unverified",
+              "status": "unknown",
+              "version": "activity_request_v1"
+            },
+            "resume_confirmation_event_ids": [
+              "be0d0495-c616-436e-b1e3-cb1d89bf35b0"
+            ],
+            "return_verification": {
+              "activity_initiated_by": "unknown",
+              "activity_revision": 3,
+              "basis": [],
+              "cloud_transmission_allowed": false,
+              "episodes": [],
+              "evidence_refs": [],
+              "fingerprint": "2dfbddd40645c1c043f78d25a7e3afeb4e6b0611dd9ec0f53c3c3dbcc35e3ea2",
+              "habit_success": false,
+              "independent": false,
+              "local_only": true,
+              "outcome_id": "f93b23fe-8903-44f3-b9c8-b7ff6a5dbd2d",
+              "plan_item_id": "205c315c-d77e-4859-9e21-c47ccd70d857",
+              "reason": "no_qualified_after_resume_evidence",
+              "status": "unknown",
+              "subject": "数学",
+              "task_source_version": "baccb378e4d0c1e9be021f4d492496a907ed8d2ea2eedfbd4e7772d91dd5d15d",
+              "task_type": "test_prep",
+              "version": "companion_return_v1"
+            },
+            "revision": 3,
+            "session_id": "f504bd01-f973-427b-922d-ed18529a1b7d",
+            "source_id": "055e9388-ae9d-4158-9a2f-41c4345cfc79",
+            "source_kind": "companion",
+            "source_valid": true,
+            "voice_provenance_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        ],
+        "outcome_evidence_fingerprint": "590e686290bc7d5b737f8ab7cb088acd0a62aedaca626e8355df2d8f150e4f54",
+        "parent_observed_sessions": 0,
+        "return_to_learning_sessions": 0,
+        "self_report_sessions": 0,
+        "task_resume_receipt_sessions": 1,
+        "total_minutes": 0.0,
+        "total_sessions": 1,
+        "usage_boundary_status": "within_recorded_limits",
+        "verified_child_return_sessions": 0,
+        "version": "companion_balance_v3",
+        "video_minutes": 0.0,
+        "video_sessions": 0,
+        "window_days": 14
+      },
+      "evidence_level": "cold_start",
+      "execution": {
+        "actual_minutes": 0,
+        "completed_tasks": 1,
+        "completion_rate": 0.5,
+        "deferred_tasks": 0,
+        "planned_tasks": 2,
+        "sessions": 1,
+        "window_days": 14
+      },
+      "goals": [
+        {
+          "completed_minutes": 0,
+          "completed_sessions": 0,
+          "focus": {
+            "as_of": null,
+            "attempt_count": 1,
+            "basis": "learning_feedback",
+            "cloud_transmission_allowed": false,
+            "distinct_items": 1,
+            "evidence_fingerprint": "72ac9e168032651731606a92949e20cd4a61592631a03189c4e4dcbce0923c6b",
+            "evidence_refs": [
+              "9528e5b2-abd3-46d8-8bad-a6096f725896"
+            ],
+            "evidence_scope": "current_valid_evidence",
+            "evidence_version": "reliable_learning_feedback_v4",
+            "independent_attempt_count": 1,
+            "independent_correct": 1,
+            "independent_distinct_items": 1,
+            "knowledge_node_id": "node-j3-math-discriminant",
+            "latest_evidence_at": "2026-09-09T21:27:29.037989+00:00",
+            "mastery_claim_allowed": false,
+            "next_action": "schedule_delayed_check",
+            "reason": "已有独立正确作答；仍需不同题目与跨天复测，不能由同题重复判断迁移。",
+            "retention_basis_refs": [],
+            "retention_success_count": 0,
+            "status": "independent_observed",
+            "subject": "数学",
+            "supported_attempt_count": 0,
+            "title": "根的判别式",
+            "track": "school",
+            "window_days": 90
+          },
+          "goal_kind": "program_cycle",
+          "status": "behind",
+          "target_minutes": 75,
+          "target_sessions": 5,
+          "target_statement": "在不挤占校内作业和睡眠的前提下，持续修复中考核心学科薄弱点并保留独立迁移证据。",
+          "title": "中考学科能力与薄弱点闭环",
+          "track": "junior_exam_readiness",
+          "week_end": "2026-09-13",
+          "week_start": "2026-09-07"
+        }
+      ],
+      "learning": {
+        "evidenced_node_count": 0,
+        "reliable_feedback": {
+          "cloud_transmission_allowed": false,
+          "evidence_fingerprint": "6d7c4b49495b2b8c43a40116550639005f6fb790456d852a3b525c3cc13597a4",
+          "excluded": {
+            "withdrawn": 1
+          },
+          "mastery_claim_allowed": false,
+          "nodes": [],
+          "status": "needs_baseline",
+          "version": "reliable_learning_feedback_v4",
+          "window_days": 90
+        },
+        "subject_aggregate_basis": "legacy_estimates_not_verified_mastery",
+        "subjects": [
+          {
+            "average_confidence": 0.2,
+            "average_hint_dependency": 0.0,
+            "average_mastery": 0.53,
+            "due_reviews": 1,
+            "node_count": 1,
+            "stable_nodes": 0,
+            "subject": "数学",
+            "weak_nodes": 1
+          }
+        ]
+      },
+      "limitations": [
+        "快照只汇总本机可追溯证据；没有记录不等于不会或没有学习。",
+        "行为计数不用于人格、情绪、医学或能力判断。",
+        "支持策略是可回滚建议，不自动改变家庭规则。",
+        "旧学科掌握分仅为历史估计；新的任务优先级采用经过来源核验的作答反馈。"
+      ],
+      "mistakes": {
+        "status_counts": {},
+        "top_clusters": []
+      },
+      "parent_corrections": [],
+      "parent_feedback": {
+        "average_effectiveness": null,
+        "executed_count": 0,
+        "feedback_count": 0,
+        "high_stress_count": 0,
+        "window_days": 14
+      },
+      "specialized_progress": [],
+      "support_strategy": {
+        "correction_sources": [],
+        "do_not_infer": [
+          "personality",
+          "motivation",
+          "diagnosis",
+          "ability_from_missing_data"
+        ],
+        "explanation_pacing": "standard_layered",
+        "interaction_tone": "gentle",
+        "mistake_priority": "due_or_relapsed_first",
+        "pacing_basis": "qualified_support_receipts_and_explicit_feedback",
+        "parent_correction_count": 0,
+        "reason": "根据提示依赖、仍卡住反馈和家庭规则选择；不改变安全、隐私或家庭边界。",
+        "require_independent_check": true,
+        "strategy_evolution": {
+          "candidate_version": null,
+          "feedback_count": 0,
+          "status": "baseline"
+        },
+        "task_segment_minutes": 35
+      },
+      "tutor_feedback": {
+        "still_stuck": 0,
+        "total": 0,
+        "understood": 0
+      },
+      "tutor_outcomes": {
+        "available_count": 0,
+        "boundary": "model_rubric_evidence_not_verified_mastery",
+        "candidate_count": 0,
+        "child_id": "child-junior-3",
+        "dimension_kind": "model_rubric_evidence_counts_not_calibrated_scores",
+        "fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "knowledge_evidence": [],
+        "level_counts": {},
+        "mapped_count": 0,
+        "outcome_count": 0,
+        "recent_outcomes": [],
+        "revoked_count": 0,
+        "source_unavailable_count": 0,
+        "unmapped_count": 0,
+        "version": "tutor_outcome_projection_v2"
+      }
+    }
+  },
+  "other": {
+    "snapshot_id": "eaf38e5b-0080-4723-a541-d4a4a1c732f0",
+    "child_id": "child-primary-4",
+    "model_version": "evidence_child_model_v5",
+    "evidence_fingerprint": "5654332badce9ed4e48bbaeca04af80eb5bf2357a0ca014e5d1b38a9659f9a85",
+    "is_current": true,
+    "created_at": "2026-09-09T21:27:29.234271+00:00",
+    "source_watermark": {
+      "child_model_correction": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_activity": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_activity_outcome": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_activity_outcome_event": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_activity_voice_binding": {
+        "count": 0,
+        "latest": null
+      },
+      "companion_outcome_projection": "4780999a67422fa765a4a4771210e0351665dcb591769ef70a294982a24e4a68",
+      "controlled_content_session": {
+        "count": 0,
+        "latest": null
+      },
+      "controlled_game_session": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_feature": {
+        "count": 0,
+        "latest": null
+      },
+      "daily_session": {
+        "count": 0,
+        "latest": null
+      },
+      "goal_cycle": {
+        "count": 0,
+        "latest": null
+      },
+      "goal_program": {
+        "count": 2,
+        "latest": "2026-09-09T21:27:19.833303+00:00"
+      },
+      "habit_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "intervention": {
+        "count": 0,
+        "latest": null
+      },
+      "learning_evidence": {
+        "count": 0,
+        "latest": null
+      },
+      "mastery_state": {
+        "count": 0,
+        "latest": null
+      },
+      "mistake_case": {
+        "count": 0,
+        "latest": null
+      },
+      "parent_report_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "plan_item_event": {
+        "count": 0,
+        "latest": null
+      },
+      "projection": "bf1dad5d6da2594337a742be7109d0b041c84bf7a201b5e3cac66ca491aac105",
+      "specialized_assessment_event": {
+        "count": 0,
+        "latest": null
+      },
+      "strategy_experiment": {
+        "count": 0,
+        "latest": null
+      },
+      "tutor_feedback": {
+        "count": 0,
+        "latest": null
+      },
+      "weekly_goal": {
+        "count": 0,
+        "latest": null
+      }
+    },
+    "payload": {
+      "as_of": "2026-09-09T21:27:29.234271+00:00",
+      "behavior": {
+        "habit_experiments": {
+          "bounded_goal_success_count": 0,
+          "completed_count": 0,
+          "habit_success_count": 0,
+          "improving_count": 0,
+          "open": null,
+          "repeated_observed_behavior_count": 0
+        },
+        "intervention_feedback": {
+          "accepted": 0,
+          "declined": 0,
+          "unknown": 0
+        },
+        "observed_days": 0,
+        "signals": {
+          "away_candidates": 0,
+          "missing_observation": 0,
+          "reading": 0,
+          "stall_candidates": 0,
+          "writing": 0
+        },
+        "uncertainty": "仅为低频候选计数；未结合孩子确认前不作为行为事实。",
+        "window_days": 28
+      },
+      "child": {
+        "child_id": "child-primary-4",
+        "curriculum_region": "江苏南京",
+        "grade": "四年级",
+        "nickname": "四年级同学"
+      },
+      "companion_balance": {
+        "activity_minutes": 0.0,
+        "activity_sessions": 0,
+        "average_daily_minutes": 0.0,
+        "boundary_status": "no_evidence",
+        "bounded_end_sessions": 0,
+        "child_ended_sessions": 0,
+        "cloud_transmission_allowed": false,
+        "game_minutes": 0.0,
+        "game_sessions": 0,
+        "guidance": "尚无可核验的陪伴结果记录；不据此判断活动效果或返回学习。",
+        "habit_success_sessions": 0,
+        "journal_sessions": 0,
+        "legacy_unverified_sessions": 0,
+        "outcome_evidence": [],
+        "outcome_evidence_fingerprint": "4780999a67422fa765a4a4771210e0351665dcb591769ef70a294982a24e4a68",
+        "parent_observed_sessions": 0,
+        "return_to_learning_sessions": 0,
+        "self_report_sessions": 0,
+        "task_resume_receipt_sessions": 0,
+        "total_minutes": 0.0,
+        "total_sessions": 0,
+        "usage_boundary_status": "no_records",
+        "verified_child_return_sessions": 0,
+        "version": "companion_balance_v3",
+        "video_minutes": 0.0,
+        "video_sessions": 0,
+        "window_days": 14
+      },
+      "evidence_level": "cold_start",
+      "execution": {
+        "actual_minutes": 0,
+        "completed_tasks": 0,
+        "completion_rate": null,
+        "deferred_tasks": 0,
+        "planned_tasks": 0,
+        "sessions": 0,
+        "window_days": 14
+      },
+      "goals": [],
+      "learning": {
+        "evidenced_node_count": 0,
+        "reliable_feedback": {
+          "cloud_transmission_allowed": false,
+          "evidence_fingerprint": "8f1fd89a663b87cc929025cb4f45f74850454f10a22b1961064e680da2f9f1db",
+          "excluded": {},
+          "mastery_claim_allowed": false,
+          "nodes": [],
+          "status": "needs_baseline",
+          "version": "reliable_learning_feedback_v4",
+          "window_days": 90
+        },
+        "subject_aggregate_basis": "legacy_estimates_not_verified_mastery",
+        "subjects": []
+      },
+      "limitations": [
+        "快照只汇总本机可追溯证据；没有记录不等于不会或没有学习。",
+        "行为计数不用于人格、情绪、医学或能力判断。",
+        "支持策略是可回滚建议，不自动改变家庭规则。",
+        "旧学科掌握分仅为历史估计；新的任务优先级采用经过来源核验的作答反馈。"
+      ],
+      "mistakes": {
+        "status_counts": {},
+        "top_clusters": []
+      },
+      "parent_corrections": [],
+      "parent_feedback": {
+        "average_effectiveness": null,
+        "executed_count": 0,
+        "feedback_count": 0,
+        "high_stress_count": 0,
+        "window_days": 14
+      },
+      "specialized_progress": [],
+      "support_strategy": {
+        "correction_sources": [],
+        "do_not_infer": [
+          "personality",
+          "motivation",
+          "diagnosis",
+          "ability_from_missing_data"
+        ],
+        "explanation_pacing": "standard_layered",
+        "interaction_tone": "gentle",
+        "mistake_priority": "due_or_relapsed_first",
+        "pacing_basis": "qualified_support_receipts_and_explicit_feedback",
+        "parent_correction_count": 0,
+        "reason": "根据提示依赖、仍卡住反馈和家庭规则选择；不改变安全、隐私或家庭边界。",
+        "require_independent_check": true,
+        "strategy_evolution": {
+          "candidate_version": null,
+          "feedback_count": 0,
+          "status": "baseline"
+        },
+        "task_segment_minutes": 25
+      },
+      "tutor_feedback": {
+        "still_stuck": 0,
+        "total": 0,
+        "understood": 0
+      },
+      "tutor_outcomes": {
+        "available_count": 0,
+        "boundary": "model_rubric_evidence_not_verified_mastery",
+        "candidate_count": 0,
+        "child_id": "child-primary-4",
+        "dimension_kind": "model_rubric_evidence_counts_not_calibrated_scores",
+        "fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "knowledge_evidence": [],
+        "level_counts": {},
+        "mapped_count": 0,
+        "outcome_count": 0,
+        "recent_outcomes": [],
+        "revoked_count": 0,
+        "source_unavailable_count": 0,
+        "unmapped_count": 0,
+        "version": "tutor_outcome_projection_v2"
+      }
+    }
+  }
+}

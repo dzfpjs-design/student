@@ -1,0 +1,44 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "codex/**"]
+  pull_request:
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m venv .venv
+      - run: .venv\Scripts\python.exe -m pip install -e "services/local_agent[dev]"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --run
+      - run: .venv\Scripts\python.exe services/local_agent/scripts/download_local_models.py
+      - run: .venv\Scripts\python.exe -m pytest services/local_agent/tests -q
+      - run: npm run build:agent:win
+      - shell: powershell
+        run: ./scripts/smoke-windows-agent.ps1
+      - run: npm run pack:win
+      - shell: powershell
+        run: ./scripts/smoke-windows-installer.ps1
+      - shell: powershell
+        run: Get-FileHash release/*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content release/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: home-study-companion-windows
+          path: release/*
+          retention-days: 14

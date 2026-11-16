@@ -1,0 +1,26 @@
+.family-work-queue { min-width: 0; color: #25322f; line-height: 1.5; overflow-wrap: anywhere; }
+.family-work-queue > header, .family-work-queue article > header { display: flex; align-items: center; gap: 14px; justify-content: space-between; }
+.family-work-queue h2 { font-size: 22px; margin: 0; }
+.family-work-queue h3 { font-size: 17px; margin: 4px 0; }
+.family-work-queue header span { font-size: 13px; color: #52636b; }
+.family-work-queue button { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; white-space: normal; padding: 8px 12px; border: 1px solid #b7c6c1; border-radius: 4px; background: #fff; color: #26483f; }
+.family-work-queue button:disabled { opacity: .55; }
+.family-work-queue button:focus-visible { outline: 2px solid #287662; outline-offset: 2px; }
+.family-work-queue button svg { flex: 0 0 auto; }
+.family-work-queue select { min-width: 0; max-width: 100%; }
+.family-work-queue article { border-bottom: 1px solid #d2dcd8; padding: 18px 0; }
+.family-work-queue article[aria-current=true] { border-left: 3px solid #287662; padding-left: 12px; }
+.family-work-queue article.is-urgent { border-top: 3px solid #ae3d3d; }
+.family-work-queue article input[type=checkbox] { width: 20px; height: 20px; flex: 0 0 auto; }
+.family-work-queue dl { margin: 12px 0; }
+.family-work-queue dl > div { display: grid; grid-template-columns: minmax(90px, 140px) minmax(0, 1fr); gap: 12px; margin-bottom: 6px; }
+.family-work-queue dt { color: #566963; }
+.family-work-queue dd { margin: 0; }
+.family-work-queue footer, .family-work-recent { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 0; }
+.family-work-queue [role=alert], .family-work-pending { padding: 10px 0; color: #8f3535; border-bottom: 1px solid #dfb8b8; }
+@media (max-width: 600px) {
+  .family-work-queue > header { flex-wrap: wrap; }
+  .family-work-queue > header > div { flex: 1 0 100%; }
+  .family-work-queue dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+.family-work-system-status{border-left:3px solid #2f6f63;background:#eef7f4;padding:10px 12px;color:#234f47}

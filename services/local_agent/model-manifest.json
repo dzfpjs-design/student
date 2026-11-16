@@ -1,0 +1,22 @@
+{
+  "model_dir": "sherpa-onnx-zipformer-zh-en-2023-11-22",
+  "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-zipformer-zh-en-2023-11-22.tar.bz2",
+  "files": {
+    "encoder-epoch-34-avg-19.int8.onnx": {
+      "minimum_bytes": 50000000,
+      "sha256": "28780a73b0fc5a05ec579ad4dbbc7d8fcd09fed5e6c431f84dcaab8f8170d9bf"
+    },
+    "decoder-epoch-34-avg-19.onnx": {
+      "minimum_bytes": 4000000,
+      "sha256": "110dc19143f0731ce0f64513e524d7d8f729e37107e1392da790f66d6c936a0b"
+    },
+    "joiner-epoch-34-avg-19.int8.onnx": {
+      "minimum_bytes": 500000,
+      "sha256": "498861ff0963ecbbff101a940ed533a715e5d68ee96431a3b092d0ca00c3ba38"
+    },
+    "tokens.txt": {
+      "minimum_bytes": 10000,
+      "sha256": "2d5d6245197582cea396b23fa29d592705be31bac9a97bb74a8d1bca3ca6a0e0"
+    }
+  }
+}

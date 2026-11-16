@@ -1,0 +1,28 @@
+{
+  "cohort": "formula_layout_heuristic_diagnostics",
+  "diagnostic_only": true,
+  "unverified": true,
+  "metric_boundary": "Trigger counts only, not precision, recall, formula detection accuracy, OCR quality, or review workload.",
+  "provider_eligible": false,
+  "review_eligible": false,
+  "affects_ocr_text": false,
+  "affects_mistake_or_knowledge": false,
+  "cohorts": {
+    "mathwriting_rendered_formulas": {
+      "input_page_count": 500,
+      "pages_read": 500,
+      "unreadable_page_count": 0,
+      "resized_to_budget_page_count": 0,
+      "pages_with_candidate_count": 30,
+      "candidate_count": 37
+    },
+    "mendeley_raw_exam_pages": {
+      "input_page_count": 50,
+      "pages_read": 50,
+      "unreadable_page_count": 0,
+      "resized_to_budget_page_count": 50,
+      "pages_with_candidate_count": 36,
+      "candidate_count": 164
+    }
+  }
+}

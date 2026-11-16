@@ -1,0 +1,403 @@
+{
+  "schema_version": 1,
+  "status": "pending_manual_review",
+  "scope": "Small stratified review only; images remain external/local and are not stored in this file.",
+  "instructions": [
+    "For every reviewed page, count distinct newly added correction marks after alignment.",
+    "For every component choose true_positive or false_positive. A true positive must reference one ground_truth_mark_id.",
+    "Use the same ground_truth_mark_id only when components are fragments of the same physical mark; duplicates count once for recall.",
+    "Do not use these results as Chinese K-9, handwriting, or formula accuracy."
+  ],
+  "pages": [
+    {
+      "sample_id": "Student_1/page-1.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_1/page-2.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_1/page-4.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_10/page-1.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_10/page-2.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_10/page-4.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_11/page-2.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_15/page-5.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_15/page-6.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_18/page-2.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_19/page-3.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_19/page-4.jpg",
+      "ground_truth_mark_count": null
+    },
+    {
+      "sample_id": "Student_2/page-4.jpg",
+      "ground_truth_mark_count": null
+    }
+  ],
+  "annotations": [
+    {
+      "annotation_id": "Student_1/page-1.jpg#3",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        512,
+        1021,
+        153,
+        134
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#7",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        512,
+        1235,
+        114,
+        156
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#9",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        2026,
+        1543,
+        1074,
+        909
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#11",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        559,
+        1751,
+        118,
+        163
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#12",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        2566,
+        1810,
+        309,
+        263
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#13",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        2272,
+        1948,
+        322,
+        309
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#15",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        548,
+        2125,
+        90,
+        105
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#16",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        515,
+        2303,
+        99,
+        105
+      ],
+      "shape_candidate": "circle",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#5",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        1094,
+        1162,
+        9,
+        8
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-2.jpg#4",
+      "sample_id": "Student_1/page-2.jpg",
+      "bbox_xywh": [
+        810,
+        1391,
+        11,
+        9
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_10/page-1.jpg#5",
+      "sample_id": "Student_10/page-1.jpg",
+      "bbox_xywh": [
+        1258,
+        1126,
+        9,
+        10
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_10/page-1.jpg#7",
+      "sample_id": "Student_10/page-1.jpg",
+      "bbox_xywh": [
+        1904,
+        1232,
+        9,
+        8
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_10/page-2.jpg#3",
+      "sample_id": "Student_10/page-2.jpg",
+      "bbox_xywh": [
+        1466,
+        539,
+        12,
+        10
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_10/page-4.jpg#5",
+      "sample_id": "Student_10/page-4.jpg",
+      "bbox_xywh": [
+        267,
+        3211,
+        8,
+        9
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_10/page-4.jpg#7",
+      "sample_id": "Student_10/page-4.jpg",
+      "bbox_xywh": [
+        1187,
+        3791,
+        9,
+        11
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_11/page-2.jpg#1",
+      "sample_id": "Student_11/page-2.jpg",
+      "bbox_xywh": [
+        731,
+        561,
+        10,
+        9
+      ],
+      "shape_candidate": "cross",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#1",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        493,
+        482,
+        478,
+        252
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#2",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        538,
+        829,
+        286,
+        119
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#4",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        1378,
+        1124,
+        579,
+        426
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#6",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        1241,
+        1226,
+        75,
+        444
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#8",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        539,
+        1396,
+        324,
+        152
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#10",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        545,
+        1604,
+        99,
+        177
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#14",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        515,
+        1964,
+        87,
+        139
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    },
+    {
+      "annotation_id": "Student_1/page-1.jpg#17",
+      "sample_id": "Student_1/page-1.jpg",
+      "bbox_xywh": [
+        572,
+        2438,
+        204,
+        69
+      ],
+      "shape_candidate": "tick",
+      "verdict": "pending",
+      "ground_truth_mark_id": null,
+      "reviewer_note": null
+    }
+  ]
+}
