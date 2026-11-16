@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "pretest": "node scripts/check-private-resources.mjs test",
     "test": "vitest run",
+    "test:integration:native-task": "node scripts/run-native-task-integration.mjs",
     "test:watch": "vitest",
     "test:electron:parent-delivery": "node scripts/electron-parent-report-delivery-e2e.mjs",
     "pretest:backend": "node scripts/check-private-resources.mjs backend",

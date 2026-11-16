@@ -28,6 +28,8 @@ vi.mock('./VoiceCalibrationPanel', async () => {
 vi.mock('./DocumentCameraCapture', () => ({DocumentCameraCapture: () => null}))
 vi.mock('./ContinuousDocumentMonitor', () => ({ContinuousDocumentMonitor: () => null}))
 const net = globalThis.fetch
+const integrationEnabled = process.env.HSC_RUN_NATIVE_TASK_INTEGRATION === '1'
+if (!integrationEnabled) console.info('[SKIPPED] Native task + SQLite integration: run npm run test:integration:native-task')
 const token = 'synthetic-native-task-token'
 const liveServers = new Set<ChildProcessWithoutNullStreams>()
 
@@ -102,7 +104,7 @@ async function request(url: string, path: string, method: string, body: unknown,
 }
 afterEach(() => {cleanup(); resetRuntimeCache(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); harness.props = null})
 
-it('starts and resumes the same task through signed native routes after an unclean restart', async () => {
+it.skipIf(!integrationEnabled)('starts and resumes the same task through signed native routes after an unclean restart', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'hsc-synthetic-native-task-'))
   let fixture: Fixture | undefined
   let gateway: NativeRealtimeCapabilityGateway | undefined
