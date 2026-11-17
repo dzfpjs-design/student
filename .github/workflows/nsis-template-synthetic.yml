@@ -1,0 +1,56 @@
+name: Synthetic electron-builder template isolation
+"on":
+  push:
+    branches:
+      - codex/nsis-template-synthetic
+permissions:
+  contents: read
+jobs:
+  synthetic-template:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - name: Fetch only reviewed synthetic inputs and execute
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:GITHUB_SHA -cnotmatch '^[a-f0-9]{40}$') { throw 'COMMIT_ID_INVALID' }
+          $id = [Guid]::NewGuid().ToString('N')
+          $temp = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')
+          $stage = Join-Path $temp ('synthetic-template-input-' + $id)
+          if ($id -cnotmatch '^[a-f0-9]{32}$' -or -not $stage.StartsWith($temp + '\synthetic-template-input-', [StringComparison]::OrdinalIgnoreCase)) { throw 'STAGE_SCOPE_INVALID' }
+          $createdStage = $false
+          $expected = @{
+            'package.json' = 'c5ba7e2daf5e6e0ff9efb6a46fbc15ba5c4ad57e9e55c71480c914aca4448a1e'
+            'package-lock.json' = 'e7c458f41d01a51183bf68ab90ad3595a4f2f354eaf1d25863089151e22943bd'
+            'main.js' = '52f2cf9aa3adcf827629b1370ebf04eb8df0fa40c3fa0eb4edc4b3f577ff7880'
+            'run.ps1' = '296b2751f615160c2005899cb6bada44c43821f6c5a7ac0080b7f0e05e7f3b6f'
+          }
+          try {
+            if (Test-Path -LiteralPath $stage) { throw 'STAGE_ALREADY_EXISTS' }
+            New-Item -ItemType Directory -Path $stage -ErrorAction Stop | Out-Null
+            $createdStage = $true
+            $base = 'https://raw.githubusercontent.com/dzfpjs-design/student/' + $env:GITHUB_SHA + '/ci/nsis-template-synthetic/'
+            foreach ($name in $expected.Keys) {
+              if ($name -notin @('package.json','package-lock.json','main.js','run.ps1')) { throw 'SYNTHETIC_INPUT_NAME_INVALID' }
+              $out = Join-Path $stage $name
+              Invoke-WebRequest -Uri ($base + $name) -OutFile $out -TimeoutSec 60
+              if ((Get-FileHash -LiteralPath $out -Algorithm SHA256).Hash.ToLowerInvariant() -cne $expected[$name]) { throw 'SYNTHETIC_INPUT_HASH_MISMATCH' }
+            }
+            $env:NPM_CONFIG_USERCONFIG = Join-Path $stage 'synthetic-user.npmrc'
+            $env:NPM_CONFIG_GLOBALCONFIG = Join-Path $stage 'synthetic-global.npmrc'
+            [IO.File]::WriteAllText($env:NPM_CONFIG_USERCONFIG, '')
+            [IO.File]::WriteAllText($env:NPM_CONFIG_GLOBALCONFIG, '')
+            $env:NPM_CONFIG_REGISTRY = 'https://registry.npmjs.org/'
+            $env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
+            Push-Location $stage
+            try {
+              npm ci --ignore-scripts --no-audit --no-fund
+              if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_NPM_CI_FAILED' }
+              node -e "if(require('electron-builder/package.json').version!=='26.15.3'||require('app-builder-lib/package.json').version!=='26.15.3'||require('electron/package.json').version!=='44.0.0')process.exit(1)"
+              if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_TOOL_VERSION_MISMATCH' }
+              & ./run.ps1
+            } finally { Pop-Location }
+          } finally {
+            if ($createdStage -and $id -cmatch '^[a-f0-9]{32}$' -and $stage.StartsWith($temp + '\synthetic-template-input-', [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $stage)) { Remove-Item -LiteralPath $stage -Recurse -Force }
+          }
