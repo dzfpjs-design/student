@@ -20,12 +20,13 @@ $ownedRegistry = $false
 $ownedProcesses = [Collections.Generic.List[Diagnostics.Process]]::new()
 if ($root -match '\s' -or -not $root.StartsWith($temp + '\synthetic-template-', [StringComparison]::OrdinalIgnoreCase)) { throw 'SYNTHETIC_PATH_INVALID' }
 
-# Window discovery is diagnostic only; never dismiss an unidentified dialog.
+# Only the exact known synthetic-template messages on the launched updater can be acknowledged.
 Add-Type -TypeDefinition @'
 using System;
 using System.Text;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 public static class SyntheticWindows {
   private delegate bool Callback(IntPtr h, IntPtr unused);
   [DllImport("user32.dll")] private static extern bool EnumWindows(Callback f, IntPtr p);
@@ -34,6 +35,53 @@ public static class SyntheticWindows {
   [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr h, Callback f, IntPtr p);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetWindowText(IntPtr h, StringBuilder text, int length);
+  [DllImport("user32.dll")] private static extern int GetDlgCtrlID(IntPtr h);
+  [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  private static readonly HashSet<IntPtr> attempted = new HashSet<IntPtr>();
+  private static string Text(IntPtr h) { var t = new StringBuilder(2048); GetWindowText(h, t, t.Capacity); return t.ToString(); }
+  private static string Class(IntPtr h) { var c = new StringBuilder(128); GetClassName(h, c, c.Capacity); return c.ToString(); }
+  private static uint Owner(IntPtr h) { uint p; GetWindowThreadProcessId(h, out p); return p; }
+  public static string[] AcknowledgeKnown(uint root, string product) {
+    var results = new List<string>();
+    var windows = new List<IntPtr>();
+    EnumWindows((h, unused) => { if (Owner(h) == root && IsWindowVisible(h) && Class(h) == "#32770") windows.Add(h); return true; }, IntPtr.Zero);
+    foreach (var h in windows) {
+      if (attempted.Contains(h)) {
+        results.Add("pending window=" + h.ToInt64());
+        continue;
+      }
+      var texts = new List<string>();
+      var buttons = new List<IntPtr>();
+      EnumChildWindows(h, (child, unused) => {
+        if (Owner(child) != root) return true;
+        string cls = Class(child);
+        if (cls == "Static") { var text = Text(child); if (text.Length > 0) texts.Add(text); }
+        if (cls == "Button") buttons.Add(child);
+        return true;
+      }, IntPtr.Zero);
+      if (texts.Count != 1) { results.Add("unknown window=" + h.ToInt64()); continue; }
+      string body = texts[0].Replace("\r\n", "\n");
+      const string failure = "Failed to uninstall old application files. Please try running the installer again.: ";
+      string retry = product + " cannot be closed. \nPlease close it manually and click Retry to continue.";
+      int id; string kind;
+      if (body.StartsWith(failure, StringComparison.Ordinal) && Regex.IsMatch(body.Substring(failure.Length), @"^-?[0-9]{1,10}$")) {
+        id = 1; kind = "uninstall_failed_code=" + body.Substring(failure.Length);
+      } else if (body == retry) { id = 2; kind = "cannot_close_cancel"; }
+      else { results.Add("unknown window=" + h.ToInt64()); continue; }
+      var matching = buttons.FindAll(b => GetDlgCtrlID(b) == id && Owner(b) == root && IsWindowVisible(b));
+      if (matching.Count != 1 || !IsWindow(h) || Owner(h) != root || !IsWindow(matching[0]) || Owner(matching[0]) != root) {
+        results.Add("ambiguous window=" + h.ToInt64()); continue;
+      }
+      attempted.Add(h); // Never click the same window twice.
+      bool posted = PostMessage(matching[0], 0x00F5, IntPtr.Zero, IntPtr.Zero); // BM_CLICK
+      results.Add((posted ? "posted " : "post_failed ") + kind + " window=" + h.ToInt64());
+    }
+    foreach (var h in new List<IntPtr>(attempted)) {
+      if (!IsWindow(h)) { results.Add("closed window=" + h.ToInt64()); attempted.Remove(h); }
+    }
+    return results.ToArray();
+  }
   public static string[] List(uint wanted) {
     var result = new List<string>();
     EnumWindows((h, unused) => {
@@ -55,7 +103,7 @@ public static class SyntheticWindows {
   }
 }
 '@
-function Wait-Owned([string]$file, [string[]]$arguments, [int]$seconds = 45) {
+function Wait-Owned([string]$file, [string[]]$arguments, [int]$seconds = 45, [bool]$allowTemplateDialog = $false) {
     $process = Start-Process -FilePath $file -ArgumentList $arguments -PassThru
     $ownedProcesses.Add($process)
     # Hold Process handles and creation timestamps to avoid PID-reuse attribution.
@@ -63,6 +111,12 @@ function Wait-Owned([string]$file, [string[]]$arguments, [int]$seconds = 45) {
     $tree[$process.Id] = @{ process=$process; ticks=$process.StartTime.ToUniversalTime().Ticks }
     $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
     $lastReport = [DateTime]::MinValue
+    $lastDialogCheck = [DateTime]::MinValue
+    if ($allowTemplateDialog) {
+        if ($scenario -cnotin @('crc','exit7') -or
+            [IO.Path]::GetFullPath($process.Path) -ine [IO.Path]::GetFullPath($file) -or
+            $process.SessionId -ne [Diagnostics.Process]::GetCurrentProcess().SessionId) { throw 'SYNTHETIC_UPDATER_IDENTITY_MISMATCH' }
+    }
     while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
         $all = @(Get-CimInstance Win32_Process -ErrorAction Stop)
         $changed = $true
@@ -84,6 +138,12 @@ function Wait-Owned([string]$file, [string[]]$arguments, [int]$seconds = 45) {
                     Write-Host "SYNTHETIC_PROCESS case=$scenario event=observed pid=$pidValue parent=$parentId name=$base"
                 } catch { continue }
             }
+        }
+        if ($allowTemplateDialog -and [DateTime]::UtcNow -ge $lastDialogCheck.AddSeconds(1) -and -not $process.HasExited -and $process.StartTime.ToUniversalTime().Ticks -eq $tree[$process.Id].ticks) {
+            foreach ($action in @([SyntheticWindows]::AcknowledgeKnown([uint32]$process.Id, $name))) {
+                Write-Host "SYNTHETIC_DIALOG case=$scenario owner_pid=$($process.Id) result=$action"
+            }
+            $lastDialogCheck = [DateTime]::UtcNow
         }
         if ([DateTime]::UtcNow -ge $lastReport.AddSeconds(5)) {
             foreach ($entry in @($tree.GetEnumerator())) {
@@ -230,7 +290,7 @@ SectionEnd
             if ((Get-FileHash -LiteralPath $before.uninstaller -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash) { throw 'SYNTHETIC_STUB_COPY_MISMATCH' }
         }
         if ($scenario -eq 'missing') { Remove-Item -LiteralPath $before.uninstaller -Force }
-        try { $exit=Wait-Owned $v2.installer @('/S',"/D=$program") }
+        try { $exit=Wait-Owned $v2.installer @('/S',"/D=$program") 45 ($scenario -in @('crc','exit7')) }
         catch {
             # These are observational snapshots only; a surviving child could still
             # be writing. Never treat them as a passed preservation check.
