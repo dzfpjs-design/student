@@ -30,3 +30,11 @@ any production use. Compiling its native helper may create system temporary
 files. Pre-existing mapped writes and concurrent hostile changes are not proven
 impossible; full hash/identity checks are evidence, not a transactional snapshot.
 No family archive or path belongs in this public repository or CI.
+
+`pinned-wrapper-template.txt` is a synthetic-only template with placeholders;
+CI renders a UTF-8 BOM script with a synthetic host, synthetic Chinese path,
+fixed synthetic ASAR hash and embedded reviewed core. The normal `-File` tests
+check success, hash mismatch, host mismatch and missing opt-in. The template
+contains no home path or user data. The separately rendered private device
+wrapper is not part of this repository or CI and still requires independent
+review, exact hash verification, target policy permission and explicit approval.

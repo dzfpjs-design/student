@@ -1,0 +1,15 @@
+param([switch]$RunPinned)
+$ErrorActionPreference='Stop'
+if(-not $RunPinned){Write-Output 'ASAR_PROBE_SCOPE_FAILED';exit 1}
+if($env:COMPUTERNAME -cne '__PINNED_HOST__'){Write-Output 'ASAR_PROBE_SCOPE_FAILED';exit 1}
+$pinnedPath='__PINNED_PATH__'
+$pinnedSha='__PINNED_SHA__'
+try {
+__REVIEWED_STREAMING_CORE__
+ $evidence=Read-HscAsarEvidence $pinnedPath $pinnedSha
+ if($evidence.module_sha256 -cnotmatch '^[a-f0-9]{64}$' -or $evidence.marker_api -isnot [bool] -or $evidence.marker_smtp -isnot [bool]){throw 'RESULT_INVALID'}
+ Write-Output ('ASAR_PROBE_OK module_sha256='+$evidence.module_sha256+' marker_api='+$evidence.marker_api.ToString().ToLowerInvariant()+' marker_smtp='+$evidence.marker_smtp.ToString().ToLowerInvariant())
+} catch {
+ Write-Output 'ASAR_PROBE_FAILED'
+ exit 1
+}
