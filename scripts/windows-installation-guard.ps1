@@ -19,6 +19,25 @@ function Test-HscTargetRecord([object]$record) {
   return $false
 }
 
+function Open-HscConfirmedOptionalKey([object]$Base,[string]$Path) {
+  # OpenSubKey can return null on failure; only treat an enumerated absence as
+  # missing. An inaccessible parent, race, or null open after presence blocks.
+  $current=$Base; $owned=$false
+  try {
+    foreach ($part in $Path.Split('\')) {
+      if ([string]::IsNullOrWhiteSpace($part)) { throw 'REGISTRY_PATH_INVALID' }
+      $children=@($current.GetSubKeyNames())
+      if ($part -inotIn $children) { return $null }
+      $next=$current.OpenSubKey($part,$false)
+      if ($null -eq $next) { throw 'REGISTRY_PRESENT_BUT_UNREADABLE' }
+      if ($owned) { $current.Dispose() }
+      $current=$next;$owned=$true
+    }
+    $owned=$false
+    return $current
+  } finally { if ($owned) { $current.Dispose() } }
+}
+
 function Get-HscInstallRegistrySnapshot {
   $records = New-Object System.Collections.ArrayList
   $roots = New-Object System.Collections.ArrayList
@@ -29,14 +48,14 @@ function Get-HscInstallRegistrySnapshot {
         $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey($hive,$view)
         if ($null -eq $base) { throw 'REGISTRY_ROOT_UNAVAILABLE' }
         foreach ($id in @($script:HscExpectedGuid,"{$script:HscExpectedGuid}",$script:HscExpectedAppId,'home-study-companion')) {
-          $known = $base.OpenSubKey("Software\$id",$false)
+          $known = Open-HscConfirmedOptionalKey $base "Software\$id"
           if ($null -ne $known) {
             try { [void]$records.Add([pscustomobject]@{KeyName=$id;DisplayName=$null;InstallLocation=$null;UninstallString=$null;QuietUninstallString=$null;DisplayIcon=$null}) }
             finally { $known.Dispose() }
           }
         }
-        $uninstall=$base.OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall',$false)
-        if ($null -eq $uninstall) { throw 'REGISTRY_UNINSTALL_ROOT_UNAVAILABLE' }
+        $uninstall=Open-HscConfirmedOptionalKey $base 'Software\Microsoft\Windows\CurrentVersion\Uninstall'
+        if ($null -eq $uninstall) { [void]$roots.Add("$hive/$view"); continue }
         $names=@($uninstall.GetSubKeyNames())
         if ($names.Count -gt 50000) { throw 'REGISTRY_ENUMERATION_TOO_LARGE' }
         foreach ($name in $names) {

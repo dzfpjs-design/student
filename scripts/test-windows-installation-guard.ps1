@@ -45,4 +45,15 @@ Assert-HscIsolatedInstallSafe -ReadRegistry $changingReader -PathExists $noPaths
 $blocked=$false
 try { Assert-HscTargetRegistryAbsent $changingReader } catch { $blocked=$_.Exception.Message -eq 'SMOKE_INSTALL_EXISTING_OR_UNCONFIRMED' }
 if (-not $blocked -or $script:syntheticReadCount -ne 2) { throw 'SYNTHETIC_RECHECK_FAILED' }
+$denied=[pscustomobject]@{}
+$denied | Add-Member ScriptMethod GetSubKeyNames { throw 'synthetic access denied' }
+$blocked=$false
+try { Open-HscConfirmedOptionalKey $denied 'synthetic' | Out-Null } catch { $blocked=$true }
+if (-not $blocked) { throw 'SYNTHETIC_ENUM_DENIAL_NOT_BLOCKED' }
+$raced=[pscustomobject]@{}
+$raced | Add-Member ScriptMethod GetSubKeyNames { return @('present') }
+$raced | Add-Member ScriptMethod OpenSubKey { param($name,$writable) return $null }
+$blocked=$false
+try { Open-HscConfirmedOptionalKey $raced 'present' | Out-Null } catch { $blocked=$true }
+if (-not $blocked) { throw 'SYNTHETIC_PRESENT_NULL_NOT_BLOCKED' }
 Write-Host 'SYNTHETIC_INSTALL_GUARD_PASSED'
