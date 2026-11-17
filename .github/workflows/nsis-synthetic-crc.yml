@@ -1,0 +1,190 @@
+name: Synthetic NSIS CRC isolation
+"on":
+  push:
+    branches:
+      - codex/nsis-synthetic-crc-repro
+permissions:
+  contents: read
+jobs:
+  synthetic-nsis:
+    runs-on: windows-2022
+    timeout-minutes: 6
+    steps:
+      - name: Build and test isolated synthetic installers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $id = [guid]::NewGuid().ToString('D')
+          if ($id -cnotmatch '^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$') { throw 'SYNTHETIC_ID_INVALID' }
+          $tempRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')
+          $root = Join-Path $tempRoot ('synthetic-nsis-crc-' + $id)
+          if (-not $root.StartsWith($tempRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'SYNTHETIC_SCOPE_INVALID' }
+          $program = Join-Path $root 'program'
+          $data = Join-Path $root 'data'
+          $registry = 'Software\SyntheticOnlyNsisCrc\' + $id
+          $registryPath = 'HKCU:\' + $registry
+          $setup = Join-Path $root 'synthetic-setup.exe'
+          $update = Join-Path $root 'synthetic-update.exe'
+          $uninstall = Join-Path $program 'synthetic-uninstall.exe'
+          $trace = Join-Path $root 'uninstall-result.txt'
+          $marker = Join-Path $data 'synthetic-marker.txt'
+          $nsis = (Get-Command makensis.exe -ErrorAction SilentlyContinue).Source
+          if (-not $nsis) { $nsis = Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe' }
+          if (-not (Test-Path -LiteralPath $nsis -PathType Leaf)) { throw 'RUNNER_NSIS_UNAVAILABLE' }
+          $owned = @()
+          $createdRoot = $false
+          $registryOwned = $false
+          function Run-Synthetic([string]$exe, [int]$seconds = 35) {
+            $process = Start-Process -FilePath $exe -ArgumentList '/S' -PassThru
+            $script:owned += $process.Id
+            $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
+            while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
+              # Dismiss only windows owned by this synthetic process or its direct synthetic child.
+              $children = @(Get-CimInstance Win32_Process -Filter ("ParentProcessId=" + $process.Id) -ErrorAction SilentlyContinue)
+              foreach ($child in $children) {
+                if ($child.Name -ieq 'synthetic-uninstall.exe' -and $child.ExecutablePath -and
+                    $child.ExecutablePath.StartsWith($program + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                  $window = Get-Process -Id $child.ProcessId -ErrorAction SilentlyContinue
+                  if ($window -and $window.MainWindowHandle -ne 0) { [void]$window.CloseMainWindow() }
+                }
+              }
+              Start-Sleep -Milliseconds 200
+              $process.Refresh()
+            }
+            if (-not $process.HasExited) {
+              $children = @(Get-CimInstance Win32_Process -Filter ("ParentProcessId=" + $process.Id) -ErrorAction SilentlyContinue)
+              foreach ($child in $children) {
+                if ($child.Name -ieq 'synthetic-uninstall.exe' -and $child.ExecutablePath -and
+                    $child.ExecutablePath.StartsWith($program + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                  Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue
+                }
+              }
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              throw 'SYNTHETIC_PROCESS_TIMEOUT_INCONCLUSIVE'
+            }
+            $process.WaitForExit()
+            return $process.ExitCode
+          }
+          Add-Type -TypeDefinition @'
+          public static class SyntheticCrc32 {
+            public static uint Compute(byte[] bytes, int from, int to) {
+              uint crc = 0xffffffffu;
+              for (int n = from; n < to; n++) {
+                crc ^= bytes[n];
+                for (int k = 0; k < 8; k++) crc = (crc & 1u) != 0 ? 0xedb88320u ^ (crc >> 1) : crc >> 1;
+              }
+              return crc ^ 0xffffffffu;
+            }
+          }
+          '@
+          $setupNsi = @'
+          Unicode true
+          Name "Synthetic CRC control"
+          OutFile "${OUTPUT}"
+          InstallDir "${APPDIR}"
+          RequestExecutionLevel user
+          SilentInstall silent
+          SilentUnInstall silent
+          Section
+            SetOutPath "$INSTDIR"
+            FileOpen $0 "$INSTDIR\version.txt" w
+            FileWrite $0 "v1"
+            FileClose $0
+            WriteRegStr HKCU "Software\SyntheticOnlyNsisCrc\${TESTID}" "Version" "v1"
+            WriteUninstaller "$INSTDIR\synthetic-uninstall.exe"
+          SectionEnd
+          Section "Uninstall"
+            Delete "$INSTDIR\version.txt"
+            DeleteRegKey HKCU "Software\SyntheticOnlyNsisCrc\${TESTID}"
+            SetErrorLevel 0
+          SectionEnd
+          '@
+          $updateNsi = @'
+          Unicode true
+          Name "Synthetic CRC updater"
+          OutFile "${OUTPUT}"
+          InstallDir "${APPDIR}"
+          RequestExecutionLevel user
+          SilentInstall silent
+          Section
+            ExecWait '"$INSTDIR\synthetic-uninstall.exe" /S /KEEP_APP_DATA /currentuser --updated _?=$INSTDIR' $0
+            IfErrors exec_failed 0
+            FileOpen $1 "${TRACE}" w
+            FileWrite $1 "$0"
+            FileClose $1
+            StrCmp $0 0 success
+            SetErrorLevel $0
+            Quit
+          exec_failed:
+            FileOpen $1 "${TRACE}" w
+            FileWrite $1 "EXEC_FAILED"
+            FileClose $1
+            SetErrorLevel 250
+            Quit
+          success:
+            FileOpen $1 "$INSTDIR\version.txt" w
+            FileWrite $1 "v2"
+            FileClose $1
+            WriteRegStr HKCU "Software\SyntheticOnlyNsisCrc\${TESTID}" "Version" "v2"
+            SetErrorLevel 0
+          SectionEnd
+          '@
+          try {
+            if ((Test-Path -LiteralPath $root) -or (Test-Path -LiteralPath $registryPath)) { throw 'SYNTHETIC_SCOPE_ALREADY_EXISTS' }
+            New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
+            $createdRoot = $true
+            New-Item -ItemType Directory -Path $data -ErrorAction Stop | Out-Null
+            $registryOwned = $true
+            [IO.File]::WriteAllText($marker, 'SYNTHETIC-ONLY-NOT-REAL-DATA')
+            $markerSha = (Get-FileHash -LiteralPath $marker -Algorithm SHA256).Hash
+            $setupSource = Join-Path $root 'setup.nsi'
+            $updateSource = Join-Path $root 'update.nsi'
+            [IO.File]::WriteAllText($setupSource, $setupNsi, [Text.Encoding]::ASCII)
+            [IO.File]::WriteAllText($updateSource, $updateNsi, [Text.Encoding]::ASCII)
+            & $nsis "/DOUTPUT=$setup" "/DAPPDIR=$program" "/DTESTID=$id" $setupSource
+            if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_SETUP_COMPILE_FAILED' }
+            & $nsis "/DOUTPUT=$update" "/DAPPDIR=$program" "/DTESTID=$id" "/DTRACE=$trace" $updateSource
+            if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_UPDATE_COMPILE_FAILED' }
+            if ((Run-Synthetic $setup) -ne 0) { throw 'SYNTHETIC_SETUP_FAILED' }
+            if ((Run-Synthetic $update) -ne 0 -or (Get-Content -Raw -LiteralPath $trace) -ne '0' -or
+                (Get-Content -Raw -LiteralPath (Join-Path $program 'version.txt')) -ne 'v2') { throw 'SYNTHETIC_CONTROL_FAILED' }
+            Remove-Item -LiteralPath $trace -Force
+            if ((Run-Synthetic $setup) -ne 0) { throw 'SYNTHETIC_RESET_FAILED' }
+            $bytes = [IO.File]::ReadAllBytes($uninstall)
+            $signature = [byte[]](0xef,0xbe,0xad,0xde) + [Text.Encoding]::ASCII.GetBytes('NullsoftInst')
+            $header = -1
+            for ($i = 512; $i + 28 -lt $bytes.Length; $i += 512) {
+              $signatureFound = $true
+              for ($j = 0; $j -lt $signature.Length; $j++) { if ($bytes[$i + 4 + $j] -ne $signature[$j]) { $signatureFound = $false; break } }
+              if ($signatureFound) { $header = $i; break }
+            }
+            if ($header -lt 0) { throw 'SYNTHETIC_NSIS_HEADER_NOT_FOUND' }
+            $total = [BitConverter]::ToUInt32($bytes, $header + 24)
+            $end = [long]$header + $total - 4
+            if ($end -le ($header + 28) -or $end + 4 -gt $bytes.Length) { throw 'SYNTHETIC_NSIS_CRC_BOUNDS_INVALID' }
+            $stored = [BitConverter]::ToUInt32($bytes, [int]$end)
+            $before = [SyntheticCrc32]::Compute($bytes, 512, [int]$end)
+            if ($before -ne $stored) { throw 'SYNTHETIC_CONTROL_CRC_INVALID' }
+            $flip = $header + 28 + [int][Math]::Floor(($end - $header - 28) / 2)
+            $bytes[$flip] = $bytes[$flip] -bxor 1
+            $after = [SyntheticCrc32]::Compute($bytes, 512, [int]$end)
+            if ($after -eq $stored) { throw 'SYNTHETIC_CRC_DID_NOT_CHANGE' }
+            [IO.File]::WriteAllBytes($uninstall, $bytes)
+            $updateExit = Run-Synthetic $update
+            $oldExit = if (Test-Path -LiteralPath $trace) { (Get-Content -Raw -LiteralPath $trace).Trim() } else { 'NO_TRACE' }
+            $version = (Get-Content -Raw -LiteralPath (Join-Path $program 'version.txt')).Trim()
+            $regVersion = (Get-ItemProperty -LiteralPath $registryPath -Name Version).Version
+            if ($oldExit -eq '0' -or $updateExit -eq 0 -or $oldExit -eq 'NO_TRACE' -or $version -ne 'v1' -or $regVersion -ne 'v1') { throw 'SYNTHETIC_FAILURE_CONTROL_MISMATCH' }
+            if ((Get-FileHash -LiteralPath $marker -Algorithm SHA256).Hash -ne $markerSha) { throw 'SYNTHETIC_DATA_CHANGED' }
+            Write-Output ("SYNTHETIC_RESULT control_uninstall=0 crc_was_valid=true crc_after_flip_invalid=true old_uninstall_exit=$oldExit update_exit=$updateExit data_unchanged=true")
+          } finally {
+            foreach ($processId in $owned) {
+              $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+              if ($process -and $process.Path -and $process.Path.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+              }
+            }
+            if ($registryOwned -and $id -cmatch '^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$' -and (Test-Path -LiteralPath $registryPath)) { Remove-Item -LiteralPath $registryPath -Recurse -Force }
+            if ($createdRoot -and $id -cmatch '^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$' -and $root.StartsWith($tempRoot + '\synthetic-nsis-crc-', [StringComparison]::OrdinalIgnoreCase) -and
+                (Test-Path -LiteralPath $root)) { Remove-Item -LiteralPath $root -Recurse -Force }
+          }
