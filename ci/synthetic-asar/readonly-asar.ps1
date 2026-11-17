@@ -68,9 +68,9 @@ function Assert-UniqueJsonKeys([string]$Text){
     if($stack.Count -eq 0 -or $null -eq $stack.Peek()){throw 'JSON_KEY_CONTEXT_INVALID'}
     $count++;if($count -gt 50000){throw 'JSON_KEYS_LIMIT'}
     $literal=$Text.Substring($start,$end-$start)
-    $decoded=@(ConvertFrom-Json -InputObject ('['+$literal+']') -ErrorAction Stop)
-    if($decoded.Count -ne 1 -or $decoded[0] -isnot [string]){throw 'JSON_KEY_INVALID'}
-    if(-not $stack.Peek().Add($decoded[0])){throw 'JSON_DUPLICATE_KEY'}
+    $decoded=ConvertFrom-Json -InputObject ('{"key":'+$literal+'}') -ErrorAction Stop
+    if($decoded.key -isnot [string]){throw 'JSON_KEY_INVALID'}
+    if(-not $stack.Peek().Add($decoded.key)){throw 'JSON_DUPLICATE_KEY'}
    }
    continue
   }
