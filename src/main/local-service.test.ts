@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DiagnosticRecorder, sanitizeDiagnosticValue } from './diagnostics'
 
 const spawned = vi.hoisted(() => [] as Array<{ args: string[]; env: NodeJS.ProcessEnv; child: EventEmitter & { exitCode: number | null; stdout: EventEmitter; stderr: EventEmitter; kill: ReturnType<typeof vi.fn> } }>)
 
@@ -645,3 +646,19 @@ it('reports the exact safe recovery action when the tutor recovery marker blocks
  expect(manager.getRuntime().error).toContain('请保留其他文件')
  expect(manager.getRuntime().status).toBe('error')
 })
+
+it.each(['storage','media_key_recovery','rotation_model_unclassified','tutor_recovery_marker'] as const)(
+ 'persists only the fixed protected-startup reason %s',async reason=>{
+  const root=await mkdtemp(join(tmpdir(),'hsc-protected-startup-diagnostic-'))
+  try {
+   const recorder=new DiagnosticRecorder(root)
+   const manager=new LocalServiceManager(event=>{void recorder.record({source:'local_service',...event})})
+   manager.reportProtectedStartupFailure(reason)
+   await recorder.flush()
+   const raw=await readFile(recorder.logPath,'utf8');const rows=raw.trim().split('\n').map(line=>JSON.parse(line))
+   const failure=rows.find(row=>row.event==='protected_startup_failed')
+   expect(failure?.details).toEqual({protected_startup_reason:reason})
+   expect(raw).not.toContain('/tmp/hsc-local-service-test')
+   expect(sanitizeDiagnosticValue({protected_startup_reason:'PRIVATE_TEXT',path:'PRIVATE_PATH',message:'PRIVATE_SPEECH'})).toEqual({})
+  } finally { await rm(root,{recursive:true,force:true}) }
+ })

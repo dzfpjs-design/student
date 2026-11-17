@@ -433,7 +433,7 @@ export class LocalServiceManager {
         : reason === 'media_key_recovery'
         ? '本地媒体密钥缺失、损坏或无法安全保存，学习服务未启动。请保留整个档案并恢复原有受保护密钥后重启；可移植备份应在新的隔离档案中恢复。系统不会自动更换密钥，也不会删除原资料。'
         : '受保护的本地配置无法读取，学习服务未启动。请保留现有资料并联系维护者，系统不会自动更换密钥。' }
-    this.emitDiagnostic('protected_startup_failed', undefined, 'error', this.runtime.error)
+    this.emitDiagnostic('protected_startup_failed', { protected_startup_reason: reason }, 'error', this.runtime.error)
   }
 
   getRuntime(): LocalServiceRuntime {

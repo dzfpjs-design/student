@@ -194,6 +194,7 @@ ENUMS.frame_skin_band = new Set(['lt_025', '025_to_10', '10_to_22', 'ge_22'])
 ENUMS.frame_content_motion = new Set(['changed', 'unchanged', 'unavailable'])
 ENUMS.frame_paper_band = new Set(['lt_10', 'ge_10'])
 ENUMS.frame_light_band = new Set(['dark', 'usable'])
+ENUMS.protected_startup_reason = new Set(['storage','media_key_recovery','rotation_model_unclassified','tutor_recovery_marker'])
 // Fixed structured stdout producers, still filtered through the same closed schema.
 for(const event of ["privacy_database_delete_failed", "privacy_analysis_candidate_residual", "privacy_delete_dependency_blocked", "learning_adaptation_pending", "document_learning_worker_error", "speaking_candidate_worker_error", "pet_audio_worker_error"])EVENTS.add(event)
 for(const code of ['RUNTIME_AWAKE_UNCONFIRMED','LOCAL_SERVICE_SHUTDOWN_PENDING','LOCAL_SERVICE_SHUTDOWN_ABNORMAL'])ERROR_CODES.add(code)
