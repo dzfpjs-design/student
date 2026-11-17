@@ -27,7 +27,7 @@ jobs:
             $test = Join-Path $stage 'test_windows_backup_gates.py'
             $url = 'https://raw.githubusercontent.com/dzfpjs-design/student/' + $env:GITHUB_SHA + '/ci/windows-backup-gates/test_windows_backup_gates.py'
             Invoke-WebRequest -Uri $url -OutFile $test -TimeoutSec 60
-            if ((Get-FileHash -LiteralPath $test -Algorithm SHA256).Hash.ToLowerInvariant() -cne '859e5def36d02cbf1e826589cc7ca144d2c1710573501072039eb5d39751f62d') { throw 'SYNTHETIC_INPUT_HASH_MISMATCH' }
+            if ((Get-FileHash -LiteralPath $test -Algorithm SHA256).Hash.ToLowerInvariant() -cne '8b1a2c8cc8f8571bee2360ca89c368aebdceca1e79532aad32b9abdd1980d668') { throw 'SYNTHETIC_INPUT_HASH_MISMATCH' }
             $env:PYTHONDONTWRITEBYTECODE = '1'
             python -c "import os; assert os.name == 'nt' and os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_OS') == 'Windows'"
             if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_PLATFORM_FAILED' }

@@ -1,8 +1,10 @@
 """Windows runner-only synthetic checks; not a production backup/repair tool."""
 from __future__ import annotations
 import hashlib
+from contextlib import closing
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import sqlite3
@@ -29,11 +31,24 @@ def powershell(script, env):
 
 
 def sddl(path):
+    # Caller must first constrain path to this test's owned synthetic objects.
     # This deliberately excludes SACL. Reading Owner/Group/DACL is not a full ACL backup.
-    result = powershell("$ErrorActionPreference='Stop'; $a=Get-Acl -LiteralPath $env:HSC_SYNTHETIC_TARGET; "
-                        "$s=[System.Security.AccessControl.AccessControlSections]; "
-                        "$a.GetSecurityDescriptorSddlForm($s::Owner -bor $s::Group -bor $s::Access)",
-                        {'HSC_SYNTHETIC_TARGET': str(path)})
+    command = ("$ErrorActionPreference='Stop'; try { "
+               "$a=Get-Acl -LiteralPath $env:HSC_SYNTHETIC_TARGET; "
+               "$sections=[System.Security.AccessControl.AccessControlSections]::Owner -bor "
+               "[System.Security.AccessControl.AccessControlSections]::Group -bor "
+               "[System.Security.AccessControl.AccessControlSections]::Access; "
+               "$a.GetSecurityDescriptorSddlForm($sections) "
+               "} catch { $kind=$_.Exception.GetType().FullName; $id=$_.FullyQualifiedErrorId; "
+               "[Console]::Error.WriteLine('HSC_SYNTHETIC_ACL_ERROR type=' + $kind + ' id=' + $id); exit 1 }")
+    try:
+        result = powershell(command, {'HSC_SYNTHETIC_TARGET': str(path)})
+    except subprocess.CalledProcessError as error:
+        # Only a tightly bounded error type/id is surfaced; stderr, values and paths stay private.
+        marker = re.search(r'HSC_SYNTHETIC_ACL_ERROR type=([A-Za-z0-9_.+]{1,160}) id=([A-Za-z0-9_.+,]{1,160})',
+                           error.stderr or '')
+        details = ('type=' + marker.group(1) + ' id=' + marker.group(2)) if marker else 'type=unknown id=unknown'
+        raise RuntimeError('SYNTHETIC_ACL_FAILED ' + details) from None
     if not result or len(result) > 16000:
         raise RuntimeError('SYNTHETIC_SDDL_UNAVAILABLE')
     return result
@@ -144,6 +159,18 @@ class WindowsSyntheticBackupTests(unittest.TestCase):
                 except FileNotFoundError:
                     pass
 
+    def read_sddl(self, target):
+        registry_targets = {'Registry::HKEY_CURRENT_USER\\' + key for key in self.keys}
+        if isinstance(target, str):
+            if target not in registry_targets:
+                raise RuntimeError('SYNTHETIC_ACL_TARGET_INVALID')
+        else:
+            allowed = {self.root / 'original', self.root / 'restored',
+                       self.root / 'original' / 'sample.txt', self.root / 'restored' / 'sample.txt'}
+            if target not in allowed:
+                raise RuntimeError('SYNTHETIC_ACL_TARGET_INVALID')
+        return sddl(target)
+
     def test_registry_snapshot_independent_restore_and_acl_read(self):
         source, restored = self.keys
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, source, 0, winreg.KEY_WRITE) as key:
@@ -152,15 +179,15 @@ class WindowsSyntheticBackupTests(unittest.TestCase):
         with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, source + '\\child', 0, winreg.KEY_WRITE) as key:
             winreg.SetValueEx(key, 'sample', 0, winreg.REG_BINARY, b'fixture')
         before = reg_read_tree(source)
-        source_sddl = sddl('Registry::HKEY_CURRENT_USER\\' + source)
+        source_sddl = self.read_sddl('Registry::HKEY_CURRENT_USER\\' + source)
         backup = self.root / 'registry-snapshot.json'
         backup.write_text(json.dumps({'tree': before, 'readable_sddl': source_sddl}, sort_keys=True), encoding='utf-8')
         disk_snapshot = json.loads(backup.read_text(encoding='utf-8'))
         reg_restore_tree(restored, disk_snapshot['tree'])
         self.assertEqual(reg_read_tree(source), before)
         self.assertEqual(reg_read_tree(restored), before)
-        self.assertEqual(disk_snapshot['readable_sddl'], sddl('Registry::HKEY_CURRENT_USER\\' + source))
-        self.assertEqual(source_sddl, sddl('Registry::HKEY_CURRENT_USER\\' + restored))
+        self.assertEqual(disk_snapshot['readable_sddl'], self.read_sddl('Registry::HKEY_CURRENT_USER\\' + source))
+        self.assertEqual(source_sddl, self.read_sddl('Registry::HKEY_CURRENT_USER\\' + restored))
         # The comparison is only for readable Owner/Group/DACL, never SACL.
 
     def test_sqlite_live_wal_snapshot_and_stopped_write_raw_restore(self):
@@ -178,9 +205,9 @@ class WindowsSyntheticBackupTests(unittest.TestCase):
         wal = Path(str(db) + '-wal')
         shm = Path(str(db) + '-shm')
         self.assertTrue(wal.is_file() and wal.stat().st_size > 0 and shm.is_file())
-        with sqlite3.connect(str(online)) as target:
+        with closing(sqlite3.connect(str(online))) as target:
             source.backup(target)
-        with sqlite3.connect(str(online)) as restored:
+        with closing(sqlite3.connect(str(online))) as restored:
             self.assertEqual(restored.execute('pragma integrity_check').fetchone()[0], 'ok')
             self.assertEqual(restored.execute('select value from marker').fetchone()[0], 'committed in WAL')
         # This sample has one owner; holding a write transaction freezes that owner.
@@ -188,13 +215,27 @@ class WindowsSyntheticBackupTests(unittest.TestCase):
         source.execute('begin immediate')
         before = {}
         for path in (db, wal, shm):
-            before[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
-            shutil.copyfile(path, raw / path.name)
+            try:
+                before[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError as error:
+                raise RuntimeError('SYNTHETIC_RAW_READ_FAILED file=' + path.name +
+                                   ' errno=' + str(error.errno) + ' winerror=' + str(getattr(error, 'winerror', None))) from None
+            try:
+                shutil.copyfile(path, raw / path.name)
+            except OSError as error:
+                raise RuntimeError('SYNTHETIC_RAW_COPY_FAILED file=' + path.name +
+                                   ' errno=' + str(error.errno) + ' winerror=' + str(getattr(error, 'winerror', None))) from None
         for path in (db, wal, shm):
-            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), before[path.name])
-            self.assertEqual(hashlib.sha256((raw / path.name).read_bytes()).hexdigest(), before[path.name])
+            try:
+                source_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+                copied_hash = hashlib.sha256((raw / path.name).read_bytes()).hexdigest()
+            except OSError as error:
+                raise RuntimeError('SYNTHETIC_RAW_VERIFY_FAILED file=' + path.name +
+                                   ' errno=' + str(error.errno) + ' winerror=' + str(getattr(error, 'winerror', None))) from None
+            self.assertEqual(source_hash, before[path.name])
+            self.assertEqual(copied_hash, before[path.name])
         source.rollback()
-        with sqlite3.connect(str(raw / db.name)) as restored:
+        with closing(sqlite3.connect(str(raw / db.name))) as restored:
             self.assertEqual(restored.execute('pragma integrity_check').fetchone()[0], 'ok')
             self.assertEqual(restored.execute('select value from marker').fetchone()[0], 'committed in WAL')
 
@@ -206,8 +247,8 @@ class WindowsSyntheticBackupTests(unittest.TestCase):
         shutil.copytree(original, restored)
         reject_reparse(original)
         reject_reparse(restored)
-        self.assertEqual(sddl(original), sddl(restored))
-        self.assertEqual(sddl(original / 'sample.txt'), sddl(restored / 'sample.txt'))
+        self.assertEqual(self.read_sddl(original), self.read_sddl(restored))
+        self.assertEqual(self.read_sddl(original / 'sample.txt'), self.read_sddl(restored / 'sample.txt'))
         hardlink = original / 'hardlink.txt'
         try:
             os.link(original / 'sample.txt', hardlink)
