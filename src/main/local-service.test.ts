@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DiagnosticRecorder, sanitizeDiagnosticValue } from './diagnostics'
 
 const spawned = vi.hoisted(() => [] as Array<{ args: string[]; env: NodeJS.ProcessEnv; child: EventEmitter & { exitCode: number | null; stdout: EventEmitter; stderr: EventEmitter; kill: ReturnType<typeof vi.fn> } }>)
 
@@ -60,7 +59,7 @@ import {
   localServiceHealthTimeout,
   resolveServiceWorkingDirectory
 } from './local-service'
-import { DiagnosticRecorder } from './diagnostics'
+import { DiagnosticRecorder, sanitizeDiagnosticValue } from './diagnostics'
 
 it('allows cold starts and database upgrades time to finish for the installed Windows worker only', () => {
   const installed = { platform: 'win32', packaged: true, managed: true, rotationAuthOnly: false } as const
