@@ -2,6 +2,8 @@
 # Runs only on a disposable GitHub-hosted Windows runner; never reads product data.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if ($env:SYNTHETIC_SCENARIO -cnotin @('normal','crc','exit7','missing')) { throw 'SYNTHETIC_SCENARIO_INVALID' }
+$scenario = $env:SYNTHETIC_SCENARIO
 $testGuid = [Guid]::NewGuid().ToString('D')
 $testId = $testGuid.Replace('-', '')
 if ($testId -cnotmatch '^[a-f0-9]{32}$') { throw 'SYNTHETIC_GUID_INVALID' }
@@ -18,31 +20,95 @@ $ownedRegistry = $false
 $ownedProcesses = [Collections.Generic.List[Diagnostics.Process]]::new()
 if ($root -match '\s' -or -not $root.StartsWith($temp + '\synthetic-template-', [StringComparison]::OrdinalIgnoreCase)) { throw 'SYNTHETIC_PATH_INVALID' }
 
-function Wait-Owned([string]$file, [string[]]$arguments, [int]$seconds = 90) {
+# Window discovery is diagnostic only; never dismiss an unidentified dialog.
+Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+public static class SyntheticWindows {
+  private delegate bool Callback(IntPtr h, IntPtr unused);
+  [DllImport("user32.dll")] private static extern bool EnumWindows(Callback f, IntPtr p);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetClassName(IntPtr h, StringBuilder text, int length);
+  [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr h, Callback f, IntPtr p);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetWindowText(IntPtr h, StringBuilder text, int length);
+  public static string[] List(uint wanted) {
+    var result = new List<string>();
+    EnumWindows((h, unused) => {
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (pid == wanted && IsWindowVisible(h)) {
+        var cls = new StringBuilder(128); GetClassName(h, cls, cls.Capacity);
+        var labels = new StringBuilder();
+        Callback collect = (child, unused2) => {
+          var text = new StringBuilder(512); GetWindowText(child, text, text.Capacity);
+          labels.Append(text.ToString()); return true;
+        };
+        EnumChildWindows(h, collect, IntPtr.Zero);
+        string category = labels.ToString().IndexOf("installer integrity check has failed", StringComparison.OrdinalIgnoreCase) >= 0 ? "integrity_text" : "unknown";
+        result.Add(cls.ToString() + ":" + category);
+      }
+      return true;
+    }, IntPtr.Zero);
+    return result.ToArray();
+  }
+}
+'@
+function Wait-Owned([string]$file, [string[]]$arguments, [int]$seconds = 45) {
     $process = Start-Process -FilePath $file -ArgumentList $arguments -PassThru
     $ownedProcesses.Add($process)
+    # Hold Process handles and creation timestamps to avoid PID-reuse attribution.
+    $tree = @{}
+    $tree[$process.Id] = @{ process=$process; ticks=$process.StartTime.ToUniversalTime().Ticks }
     $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
+    $lastReport = [DateTime]::MinValue
     while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
-        # The real template copies the child to NSIS's temporary plug-in dir.
-        # Touch only direct children with its exact name under the runner temp.
-        foreach ($child in @(Get-CimInstance Win32_Process -Filter ("ParentProcessId=" + $process.Id) -ErrorAction SilentlyContinue)) {
-            if ($child.Name -ieq 'old-uninstaller.exe' -and $child.ExecutablePath -and
-                $child.ExecutablePath.StartsWith($env:TEMP.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
-                $window = Get-Process -Id $child.ProcessId -ErrorAction SilentlyContinue
-                if ($window -and $window.MainWindowHandle -ne 0) { [void]$window.CloseMainWindow() }
+        $all = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+        $changed = $true
+        while ($changed) {
+            $changed = $false
+            foreach ($row in $all) {
+                $pidValue = [int]$row.ProcessId
+                $parentId = [int]$row.ParentProcessId
+                if ($tree.ContainsKey($pidValue) -or -not $tree.ContainsKey($parentId)) { continue }
+                $candidate = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
+                if (-not $candidate) { continue }
+                try {
+                    $ticks = $candidate.StartTime.ToUniversalTime().Ticks
+                    $parent = $tree[$parentId]
+                    if ($ticks -lt $parent.ticks -or $parent.process.HasExited) { continue }
+                    $tree[$pidValue] = @{process=$candidate; ticks=$ticks}
+                    $changed = $true
+                    $base = if ($row.Name -match '^[A-Za-z0-9_. -]{1,80}$') { $row.Name } else { 'unknown' }
+                    Write-Host "SYNTHETIC_PROCESS case=$scenario event=observed pid=$pidValue parent=$parentId name=$base"
+                } catch { continue }
             }
+        }
+        if ([DateTime]::UtcNow -ge $lastReport.AddSeconds(5)) {
+            foreach ($entry in @($tree.GetEnumerator())) {
+                try {
+                    $p = $entry.Value.process
+                    if (-not $p.HasExited -and $p.StartTime.ToUniversalTime().Ticks -eq $entry.Value.ticks) {
+                        $classes = @([SyntheticWindows]::List([uint32]$entry.Key))
+                        foreach ($class in $classes) {
+                            $safeClass = if ($class -match '^[A-Za-z0-9_#.: -]{1,100}$') { $class } else { 'unknown' }
+                            Write-Host "SYNTHETIC_WINDOW case=$scenario owner_pid=$($entry.Key) class=$safeClass action=none"
+                        }
+                    }
+                } catch { Write-Host "SYNTHETIC_PROCESS case=$scenario pid=$($entry.Key) state=unavailable" }
+            }
+            $lastReport = [DateTime]::UtcNow
         }
         Start-Sleep -Milliseconds 200
         $process.Refresh()
     }
     if (-not $process.HasExited) {
-        foreach ($child in @(Get-CimInstance Win32_Process -Filter ("ParentProcessId=" + $process.Id) -ErrorAction SilentlyContinue)) {
-            if ($child.Name -ieq 'old-uninstaller.exe' -and $child.ExecutablePath -and
-                $child.ExecutablePath.StartsWith($env:TEMP.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
-                Stop-Process -Id $child.ProcessId -Force -ErrorAction SilentlyContinue
-            }
-        }
-        try { $process.Kill() } catch {}
+        # Abort only the exact process object started above. Descendants are left to
+        # the disposable runner teardown; no path/registry cleanup after a timeout.
+        $env:SYNTHETIC_TIMEOUT_OBSERVED = '1'
+        try { if ($process.StartTime.ToUniversalTime().Ticks -eq $tree[$process.Id].ticks) { $process.Kill() } } catch {}
+        Write-Host "SYNTHETIC_TEMPLATE_RESULT case=$scenario status=inconclusive reason=timeout child_exit=unknown"
         throw 'SYNTHETIC_TIMEOUT_INCONCLUSIVE'
     }
     $process.WaitForExit()
@@ -150,7 +216,7 @@ SectionEnd
     & $nsis "/DOUTPUT=$stub" $stubSource
     if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_STUB_BUILD_FAILED' }
     if ((Wait-Owned $stub @('/S')) -ne 7) { throw 'SYNTHETIC_STUB_EXIT_MISMATCH' }
-    foreach ($scenario in @('normal','crc','exit7','missing')) {
+    foreach ($scenario in @($scenario)) {
         $program=Join-Path $root ('program-' + $scenario)
         Reset-Synthetic $program
         if ((Wait-Owned $v1.installer @('/S',"/D=$program")) -ne 0) { throw 'SYNTHETIC_V1_INSTALL_FAILED' }
@@ -164,7 +230,24 @@ SectionEnd
             if ((Get-FileHash -LiteralPath $before.uninstaller -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $stub -Algorithm SHA256).Hash) { throw 'SYNTHETIC_STUB_COPY_MISMATCH' }
         }
         if ($scenario -eq 'missing') { Remove-Item -LiteralPath $before.uninstaller -Force }
-        $exit=Wait-Owned $v2.installer @('/S',"/D=$program")
+        try { $exit=Wait-Owned $v2.installer @('/S',"/D=$program") }
+        catch {
+            # These are observational snapshots only; a surviving child could still
+            # be writing. Never treat them as a passed preservation check.
+            if ($env:SYNTHETIC_TIMEOUT_OBSERVED -eq '1') {
+                $observedProgram = 'unknown'; $observedData = 'unknown'; $observedRegistry = 'unknown'
+                try {
+                    $observedHash = (Get-FileHash -LiteralPath (Join-Path $program 'resources\app.asar') -Algorithm SHA256).Hash
+                    if ($observedHash -eq $v1.asar) { $observedProgram = 'v1' }
+                    elseif ($observedHash -eq $v2.asar) { $observedProgram = 'v2' }
+                    else { $observedProgram = 'other' }
+                } catch {}
+                try { $observedData = if ((Get-FileHash -LiteralPath $db -Algorithm SHA256).Hash -eq $dataHash) { 'same' } else { 'changed' } } catch {}
+                try { $observedRegistry = (Read-SyntheticRegistration $program).version } catch {}
+                Write-Host "SYNTHETIC_TIMEOUT_SNAPSHOT case=$scenario program=$observedProgram registry_version=$observedRegistry data=$observedData stable=unknown"
+            }
+            throw
+        }
         $after=Read-SyntheticRegistration $program
         $afterAsar=(Get-FileHash -LiteralPath (Join-Path $program 'resources\app.asar') -Algorithm SHA256).Hash
         Assert-SyntheticData $db $dataHash
@@ -178,7 +261,11 @@ SectionEnd
     foreach ($p in $ownedProcesses) {
         try { if (-not $p.HasExited) { $p.Kill() } } catch {}
     }
+    if ($env:SYNTHETIC_TIMEOUT_OBSERVED -eq '1') {
+        Write-Host 'SYNTHETIC_CLEANUP deferred=runner_teardown reason=live_descendants_possible'
+    } else {
     if ($ownedRegistry) { foreach ($key in @($installKey,$uninstallKey)) { if (Test-Path -LiteralPath $key) { Remove-Item -LiteralPath $key -Recurse -Force } } }
     if ($ownedProfile -and $name -cmatch '^synthetic-nsis-[a-f0-9]{32}$' -and (Test-Path -LiteralPath $syntheticDataDir)) { Remove-Item -LiteralPath $syntheticDataDir -Recurse -Force }
     if ($ownedRoot -and $root.StartsWith($temp + '\synthetic-template-', [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $root)) { Remove-Item -LiteralPath $root -Recurse -Force }
+    }
 }
