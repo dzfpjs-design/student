@@ -1,0 +1,52 @@
+name: Synthetic ASAR read-only parser
+"on":
+  push:
+    branches: [codex/asar-synthetic-parser]
+permissions:
+  contents: read
+jobs:
+  synthetic-parser:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        shell_name: [powershell, pwsh]
+    steps:
+      - name: Verify inputs and run permitted synthetic script
+        shell: pwsh
+        env:
+          SYNTHETIC_TEST_SHELL: ${{ matrix.shell_name }}
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:GITHUB_SHA -cnotmatch '^[a-f0-9]{40}$' -or $env:SYNTHETIC_TEST_SHELL -cnotin @('powershell','pwsh')) { throw 'SYNTHETIC_CONTEXT_INVALID' }
+          $id=[Guid]::NewGuid().ToString('N')
+          $temp=[IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')
+          $stage=Join-Path $temp ('synthetic-asar-'+$id)
+          if($id -cnotmatch '^[a-f0-9]{32}$' -or -not $stage.StartsWith($temp+'\synthetic-asar-',[StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $stage)){throw 'SYNTHETIC_STAGE_INVALID'}
+          $created=$false
+          $expected=@{
+            'test-parser.ps1'='984ab43822d2e6d460395ccf6bf1fbcdb4a70b7be84838dc7876d5851ab9d762'
+            'fixture.asar'='370f33344da9de9cfd8546ce2a432943876b9ad898347ea06843aa6c3f6fd51b'
+            'unpacked.asar'='6369ab4c01e49cf53f196c115c05bd9a9da333fa300432af93b7df6792a1161e'
+          }
+          try {
+            New-Item -ItemType Directory -Path $stage -ErrorAction Stop | Out-Null
+            $created=$true
+            $base='https://raw.githubusercontent.com/dzfpjs-design/student/'+$env:GITHUB_SHA+'/ci/synthetic-asar/'
+            foreach($name in $expected.Keys){
+              if($name -cnotin @('test-parser.ps1','fixture.asar','unpacked.asar')){throw 'SYNTHETIC_INPUT_INVALID'}
+              $out=Join-Path $stage $name
+              Invoke-WebRequest -Uri ($base+$name) -OutFile $out -TimeoutSec 60
+              if((Get-FileHash -LiteralPath $out -Algorithm SHA256).Hash.ToLowerInvariant() -cne $expected[$name]){throw 'SYNTHETIC_INPUT_HASH_MISMATCH'}
+            }
+            $script=Join-Path $stage 'test-parser.ps1'
+            if($env:SYNTHETIC_TEST_SHELL -ceq 'powershell') { & powershell.exe -NoLogo -NoProfile -NonInteractive -File $script -FixtureDir $stage }
+            else { & pwsh.exe -NoLogo -NoProfile -NonInteractive -File $script -FixtureDir $stage }
+            if($LASTEXITCODE -ne 0){throw 'SYNTHETIC_PARSER_TEST_FAILED'}
+          } finally {
+            if($created){
+              foreach($name in @('test-parser.ps1','fixture.asar','unpacked.asar')){ $p=Join-Path $stage $name; if(Test-Path -LiteralPath $p -PathType Leaf){Remove-Item -LiteralPath $p -Force} }
+              Remove-Item -LiteralPath $stage -Force
+            }
+          }
