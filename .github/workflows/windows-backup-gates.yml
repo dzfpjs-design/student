@@ -1,0 +1,38 @@
+name: Synthetic Windows backup gates
+"on":
+  push:
+    branches: [codex/synthetic-recovery-gates]
+permissions:
+  contents: read
+jobs:
+  synthetic-backup:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - name: Run the reviewed synthetic-only checks
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:GITHUB_SHA -cnotmatch '^[a-f0-9]{40}$') { throw 'SYNTHETIC_COMMIT_INVALID' }
+          if ($env:RUNNER_OS -cne 'Windows' -or $env:GITHUB_ACTIONS -cne 'true') { throw 'SYNTHETIC_RUNNER_INVALID' }
+          $id = [Guid]::NewGuid().ToString('N')
+          $base = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')
+          $stage = Join-Path $base ('hsc-backup-gates-input-' + $id)
+          if ($id -cnotmatch '^[a-f0-9]{32}$' -or -not $stage.StartsWith($base + '\hsc-backup-gates-input-', [StringComparison]::OrdinalIgnoreCase)) { throw 'SYNTHETIC_STAGE_INVALID' }
+          $created = $false
+          try {
+            if (Test-Path -LiteralPath $stage) { throw 'SYNTHETIC_STAGE_EXISTS' }
+            New-Item -ItemType Directory -Path $stage -ErrorAction Stop | Out-Null
+            $created = $true
+            $test = Join-Path $stage 'test_windows_backup_gates.py'
+            $url = 'https://raw.githubusercontent.com/dzfpjs-design/student/' + $env:GITHUB_SHA + '/ci/windows-backup-gates/test_windows_backup_gates.py'
+            Invoke-WebRequest -Uri $url -OutFile $test -TimeoutSec 60
+            if ((Get-FileHash -LiteralPath $test -Algorithm SHA256).Hash.ToLowerInvariant() -cne '859e5def36d02cbf1e826589cc7ca144d2c1710573501072039eb5d39751f62d') { throw 'SYNTHETIC_INPUT_HASH_MISMATCH' }
+            $env:PYTHONDONTWRITEBYTECODE = '1'
+            python -c "import os; assert os.name == 'nt' and os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_OS') == 'Windows'"
+            if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_PLATFORM_FAILED' }
+            python $test
+            if ($LASTEXITCODE -ne 0) { throw 'SYNTHETIC_TEST_FAILED' }
+          } finally {
+            if ($created -and $id -cmatch '^[a-f0-9]{32}$' -and $stage.StartsWith($base + '\hsc-backup-gates-input-', [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $stage)) { Remove-Item -LiteralPath $stage -Recurse -Force }
+          }
