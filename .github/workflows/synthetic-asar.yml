@@ -29,7 +29,7 @@ jobs:
             'test-parser.ps1'='984ab43822d2e6d460395ccf6bf1fbcdb4a70b7be84838dc7876d5851ab9d762'
             'fixture.asar'='370f33344da9de9cfd8546ce2a432943876b9ad898347ea06843aa6c3f6fd51b'
             'unpacked.asar'='6369ab4c01e49cf53f196c115c05bd9a9da333fa300432af93b7df6792a1161e'
-            'readonly-asar.ps1'='d4747d3e4fbbd40325d42ed0c2f52d429e5972ed773deb495d200d821a80d524'
+            'readonly-asar.ps1'='49f00e34f31c842d00f7b5ee1182c586e92a2f1fd64b8a0f85ac7928000da4b4'
             'test-readonly-asar.ps1'='71bef39fc55a6b5736a66e1b8ef6c125cd7868e0aef9b3d8217bf567470d5f13'
           }
           try {

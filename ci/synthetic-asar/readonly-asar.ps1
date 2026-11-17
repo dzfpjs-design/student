@@ -3,6 +3,7 @@ Set-StrictMode -Version Latest
 if (-not ('HscAsarNative' -as [type])) {
  Add-Type -TypeDefinition @'
 using System;
+using System.Text;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 public static class HscAsarNative {
