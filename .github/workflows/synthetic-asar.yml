@@ -29,13 +29,15 @@ jobs:
             'test-parser.ps1'='984ab43822d2e6d460395ccf6bf1fbcdb4a70b7be84838dc7876d5851ab9d762'
             'fixture.asar'='370f33344da9de9cfd8546ce2a432943876b9ad898347ea06843aa6c3f6fd51b'
             'unpacked.asar'='6369ab4c01e49cf53f196c115c05bd9a9da333fa300432af93b7df6792a1161e'
+            'readonly-asar.ps1'='d4747d3e4fbbd40325d42ed0c2f52d429e5972ed773deb495d200d821a80d524'
+            'test-readonly-asar.ps1'='71bef39fc55a6b5736a66e1b8ef6c125cd7868e0aef9b3d8217bf567470d5f13'
           }
           try {
             New-Item -ItemType Directory -Path $stage -ErrorAction Stop | Out-Null
             $created=$true
             $base='https://raw.githubusercontent.com/dzfpjs-design/student/'+$env:GITHUB_SHA+'/ci/synthetic-asar/'
             foreach($name in $expected.Keys){
-              if($name -cnotin @('test-parser.ps1','fixture.asar','unpacked.asar')){throw 'SYNTHETIC_INPUT_INVALID'}
+              if($name -cnotin @('test-parser.ps1','fixture.asar','unpacked.asar','readonly-asar.ps1','test-readonly-asar.ps1')){throw 'SYNTHETIC_INPUT_INVALID'}
               $out=Join-Path $stage $name
               Invoke-WebRequest -Uri ($base+$name) -OutFile $out -TimeoutSec 60
               if((Get-FileHash -LiteralPath $out -Algorithm SHA256).Hash.ToLowerInvariant() -cne $expected[$name]){throw 'SYNTHETIC_INPUT_HASH_MISMATCH'}
@@ -44,9 +46,13 @@ jobs:
             if($env:SYNTHETIC_TEST_SHELL -ceq 'powershell') { & powershell.exe -NoLogo -NoProfile -NonInteractive -File $script -FixtureDir $stage }
             else { & pwsh.exe -NoLogo -NoProfile -NonInteractive -File $script -FixtureDir $stage }
             if($LASTEXITCODE -ne 0){throw 'SYNTHETIC_PARSER_TEST_FAILED'}
+            $streamScript=Join-Path $stage 'test-readonly-asar.ps1'
+            if($env:SYNTHETIC_TEST_SHELL -ceq 'powershell') { & powershell.exe -NoLogo -NoProfile -NonInteractive -File $streamScript -FixtureDir $stage }
+            else { & pwsh.exe -NoLogo -NoProfile -NonInteractive -File $streamScript -FixtureDir $stage }
+            if($LASTEXITCODE -ne 0){throw 'SYNTHETIC_STREAM_TEST_FAILED'}
           } finally {
             if($created){
-              foreach($name in @('test-parser.ps1','fixture.asar','unpacked.asar')){ $p=Join-Path $stage $name; if(Test-Path -LiteralPath $p -PathType Leaf){Remove-Item -LiteralPath $p -Force} }
+              foreach($name in @('test-parser.ps1','fixture.asar','unpacked.asar','readonly-asar.ps1','test-readonly-asar.ps1')){ $p=Join-Path $stage $name; if(Test-Path -LiteralPath $p -PathType Leaf){Remove-Item -LiteralPath $p -Force} }
               Remove-Item -LiteralPath $stage -Force
             }
           }
