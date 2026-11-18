@@ -32,11 +32,9 @@ FEEDBACK = {'judgement':'correct','feedback':'计算和结论一致。','explana
 
 @pytest.fixture
 def world(tmp_path, normal_provider_owner, monkeypatch):
-    import socket
+    from socketpair_network_guard import install_socketpair_only_network_guard
     network=[]
-    def deny(*a,**kw):
-        network.append(True);raise AssertionError('EXTERNAL_NETWORK_FORBIDDEN')
-    monkeypatch.setattr(socket.socket,'connect',deny)
+    install_socketpair_only_network_guard(monkeypatch,network)
     db = Database(tmp_path/'public.db'); db.initialize()
     repo=StudyRepository(db); repo.seed_family()
     LearningStateService(db).seed_catalog()
