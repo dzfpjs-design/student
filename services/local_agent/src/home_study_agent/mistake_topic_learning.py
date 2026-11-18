@@ -14,7 +14,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 
 from .cloud_privacy import sanitize_cloud_text, sensitive_categories
-from .mistake_learning import MistakeLearningError, _diagnostic, _fail, _hash, _json, _now, _owner, _permission, _source, analysis_for_graph
+from .mistake_learning import MistakeLearningError, _diagnostic, _fail, _hash, _json, _now, _owner, _permission, _source, _tutor_route_identity, analysis_for_graph, independent_analysis_context_key
+from .mistake_graph_study import reviewed_graph_subject, study_targets
 from .model_gateway import ModelRequest
 from .privacy_operation_receipt import generation
 
@@ -123,12 +124,12 @@ def _graph_hint(graph: dict, primary: dict, names: tuple[str, ...], authorize_la
         _fail('MISTAKE_TOPIC_SOURCE_CHANGED')
     hint = {'review_status': _review_status(primary.get('review_status')),
             'prerequisite_hypotheses': []}
-    primary_label = _cloud_label(primary, authorize_label)
+    primary_label = _cloud_label(primary, authorize_label) if primary.get('review_status') == 'approved' else None
     if primary_label is not None:
         hint['knowledge_point'] = _safe_text(primary_label, names, 200)
     for node in prerequisites[:6]:
-        if (not isinstance(node, dict) or node.get('review_status') in ('rejected', 'restricted')
-                or node.get('relation_review_status') in ('rejected', 'restricted')):
+        if (not isinstance(node, dict) or node.get('review_status') != 'approved'
+                or node.get('relation_review_status') != 'approved'):
             continue
         label = _cloud_label(node, authorize_label)
         if label is not None:
@@ -215,14 +216,25 @@ class MistakeTopicLearning:
                 WHERE child_id=? AND mistake_id=? AND source_revision=?''', (child_id, ref.mistake_id, revision)).fetchone()
             graph = _stored_graph(analysis_row['graph_json']) if analysis_row else None
             has_analysis = bool(analysis_row and analysis_row['analysis_json'])
-            analysis = analysis_for_graph(analysis_row, graph) if has_analysis and (not keyed or analysis_row['analysis_context_key']) else None
+            analysis = analysis_for_graph(analysis_row, graph, _tutor_route_identity(self.gateway)) if has_analysis and (not keyed or analysis_row['analysis_context_key']) else None
             matched = graph is not None and graph['status'] == 'matched'
-            graph_subject = graph.get('subject') if graph else None
-            inferred_subject = graph_subject.strip() if isinstance(graph_subject, str) else ''
-            source_subject = (inferred_subject or source['subject']) if keyed else (source['subject'].strip() or inferred_subject)
+            inferred_subject = reviewed_graph_subject(graph) or ''
+            unreviewed_match = bool(matched and isinstance(graph.get('primary'), dict) and graph['primary'].get('review_status') != 'approved')
+            route = _tutor_route_identity(self.gateway)
+            independent = bool(route is not None and has_analysis and analysis_row['analysis_context_key'] == independent_analysis_context_key(route))
+            if analysis and graph and not independent:
+                try:
+                    targets=study_targets(graph)
+                    if not targets or any(_cloud_label(target,self.authorize_graph_label) is None for target in targets):
+                        analysis=None
+                except (TypeError,ValueError,KeyError):
+                    analysis=None
+            # Never derive the fallback's subject or label from the unreviewed graph.
+            source_subject = (inferred_subject or source['subject']) if keyed else (source['subject'].strip() if unreviewed_match else source['subject'].strip() or inferred_subject)
             if not keyed and matched and self.current_graph_version is not None and graph.get('graph_version') != self.current_graph_version():
                 _fail('MISTAKE_TOPIC_GRAPH_STALE')
-            if (not keyed and not analysis) or _normalized(source_subject) != subject or keyed != matched:
+            if ((not keyed and not analysis) or _normalized(source_subject) != subject
+                    or (keyed and not matched) or (not keyed and matched and not (unreviewed_match and independent))):
                 _fail('MISTAKE_TOPIC_SOURCE_MISMATCH', 422)
             analysis = analysis or {}
             if index == 1:
@@ -235,11 +247,11 @@ class MistakeTopicLearning:
             case = {'case_ref': alias, 'question': _safe_text(source['question'], names, 4000),
                     'question_truncated': len(source['question']) > 4000,
                     'original_answer': _safe_text(source['original_answer'], names, 1800), 'possible_causes': causes}
-            if matched:
+            if keyed:
                 primary = graph.get('primary')
                 if (graph.get('graph_version') != ref.graph_version or not isinstance(primary, dict)
                         or primary.get('key') != body.knowledge_node_key or not isinstance(primary.get('title'), str)
-                        or not primary['title'].strip() or primary.get('review_status') in ('rejected', 'restricted')):
+                        or not primary['title'].strip() or primary.get('review_status') != 'approved'):
                     _fail('MISTAKE_TOPIC_SOURCE_CHANGED')
                 case['graph_hint'] = _graph_hint(graph, primary, names, self.authorize_graph_label)
                 if _normalized(primary['title']) == point and graph_title is None:
@@ -263,11 +275,16 @@ class MistakeTopicLearning:
             model_context['knowledge_point'] = graph_title
         topic_key = _hash([subject, 'graph', body.knowledge_node_key]) if keyed else _hash([subject, point])
         prompt_version = GRAPH_PROMPT_VERSION if keyed else PROMPT_VERSION
-        return TopicSnapshot(topic_key, _hash([prompt_version, topic_key, manifest, model_context]), generation(c),
+        route = _tutor_route_identity(self.gateway)
+        # Old topic rows lack model identity and cannot be assigned to a
+        # current route retroactively, even when no route is configured now.
+        source_parts = [prompt_version, topic_key, manifest, model_context, {'tutor_route': route}]
+        return TopicSnapshot(topic_key, _hash(source_parts), generation(c),
                              manifest, model_context, aliases, names)
 
-    @staticmethod
-    def _cached(c, child_id: str, snapshot: TopicSnapshot):
+    def _cached(self, c, child_id: str, snapshot: TopicSnapshot):
+        if _tutor_route_identity(self.gateway) is None:
+            return None
         return c.execute('''SELECT explanation_json,created_at FROM mistake_learning_topic
             WHERE child_id=? AND topic_key=? AND source_key=? AND storage_generation=?''',
                          (child_id, snapshot.topic_key, snapshot.source_key, snapshot.storage_generation)).fetchone()

@@ -377,7 +377,7 @@ def test_semantic_export_requires_verified_manual_label_and_local_evidence(tmp_p
             ('copy', '说明不等式两边都乘以同一个负数方向改变', 'curated', '不等式两边都乘以同一个负数方向改变'),
             ('unknown', '判断不等式与方向的关系', 'model', '相关来源未给出')]:
             connection.execute('INSERT INTO kg_atomic_definition_draft VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                (key,key,title,'小学3-4','数学','concept','{}','','{}','[]','[]','[]',.9,'unreviewed',source_method,'manual-test'))
+                (key,key,title,'小学3-4','数学','concept','{}','','{}','[]','[]','[]',.9,'approved',source_method,'manual-test'))
             connection.execute('INSERT INTO kg_atomic_draft_evidence VALUES(?,?,?)', (key, 'local-source', quote))
             if key != 'unknown':
                 connection.execute('INSERT INTO kg_atomic_label_cloud_right VALUES(?,?,?,?,?)',
@@ -388,9 +388,30 @@ def test_semantic_export_requires_verified_manual_label_and_local_evidence(tmp_p
             return {'status':'ambiguous', 'candidates_truncated':False, 'alternatives':[{'key':k,'title':connection.execute('select title from kg_atomic_definition_draft where draft_id=?',(k,)).fetchone()[0]} for k in keys]}
     options, mapping = matcher.semantic_options(graph(['safe']))
     assert options == [{'ref':'C1','label':'判断不等式两边乘除负数时不等号方向改变'}] and mapping == {'C1':'safe'}
+    with sqlite3.connect(build) as connection:
+        connection.execute("UPDATE kg_atomic_definition_draft SET review_status='unreviewed' WHERE draft_id='safe'")
+    assert matcher.semantic_options(graph(['safe'])) == ([], {})
+    with sqlite3.connect(app) as connection:
+        connection.execute("INSERT INTO kg_atomic_review_decision VALUES('draft','safe','approved','parent','','{}','approve-safe','now')")
+    assert matcher.semantic_options(graph(['safe']))[0]
+    with sqlite3.connect(app) as connection:
+        connection.execute("UPDATE kg_atomic_review_decision SET action='rejected' WHERE entity_key='safe'")
+    assert matcher.semantic_options(graph(['safe'])) == ([], {})
+    with sqlite3.connect(app) as connection:
+        connection.execute("UPDATE kg_atomic_review_decision SET action='approved' WHERE entity_key='safe'")
     for keys in (['copy'], ['unknown'], ['safe','copy']):
         assert matcher.semantic_options(graph(keys)) == ([], {})
     assert matcher.semantic_options(graph(['safe']) | {'candidates_truncated': True}) == ([], {})
+    with sqlite3.connect(build) as connection:
+        connection.execute('ALTER TABLE kg_atomic_label_cloud_right ADD COLUMN expires_at TEXT')
+        connection.execute("UPDATE kg_atomic_label_cloud_right SET expires_at='2000-01-01T00:00:00+00:00' WHERE draft_id='safe'")
+    assert matcher.semantic_options(graph(['safe'])) == ([], {})
+    with sqlite3.connect(build) as connection:
+        connection.execute("UPDATE kg_atomic_label_cloud_right SET expires_at='not-a-date' WHERE draft_id='safe'")
+    assert matcher.semantic_options(graph(['safe'])) == ([], {})
+    with sqlite3.connect(build) as connection:
+        connection.execute("UPDATE kg_atomic_label_cloud_right SET expires_at='2999-01-01T00:00:00+00:00' WHERE draft_id='safe'")
+    assert matcher.semantic_options(graph(['safe']))[0]
     with sqlite3.connect(build) as connection:
         connection.execute("UPDATE kg_atomic_label_cloud_right SET title_sha256='stale' WHERE draft_id='safe'")
     assert matcher.semantic_options(graph(['safe'])) == ([], {})

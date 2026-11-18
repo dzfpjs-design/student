@@ -86,7 +86,7 @@ def _immutable_capture(capture):
 class RealtimeCapabilityTools:
     def __init__(self, database, *, runtime=None, registry=None, authorize=None,
                  execute_turn=None, page_source_store=None, authorize_receipt=None, complete_turn=None,
-                 current_graph_version=None):
+                 current_graph_version=None, tutor_route_identity=None, graph_cloud_authorizer=None):
         self.database = database
         self.runtime = runtime or AgentRuntimeStore(database, page_source_store=page_source_store)
         self.registry = registry or CapabilityRegistry(DEFAULT_CAPABILITIES + (PREPARE_SPEC,))
@@ -94,6 +94,8 @@ class RealtimeCapabilityTools:
         self.authorize_receipt = self.authorize if authorize_receipt is None else authorize_receipt
         self.complete_turn = complete_turn
         self.current_graph_version = current_graph_version
+        self.tutor_route_identity = tutor_route_identity
+        self.graph_cloud_authorizer = graph_cloud_authorizer
         self.digest = _hash
         self.execute_turn = execute_turn  # existing app execute_agent_turn dispatcher
         self.page_source_store = page_source_store

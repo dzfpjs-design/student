@@ -32,11 +32,18 @@ it('keeps old feedback visible and offers a new practice after the graph changes
   status:'stale',attempts:1,help_count:0,feedback:{kind:'model_formative',judgement:'correct',feedback:'之前的回答已保存。',explanation:'旧反馈内容。',reference_answer:'2',next_hint:''}
  }]}
  render(<CloudMistakeLearning childId={child.child_id} mistakeId={state.mistake_id} active refreshToken={0}/>)
- expect(await screen.findByText('知识点已更新，旧练习和反馈已保留。请重新生成本轮练习。')).toBeVisible()
+ expect(await screen.findByText('知识点依据已变化或尚未核对，旧练习和反馈已保留。请重新生成本轮练习。')).toBeVisible()
  expect(screen.getByText('之前的回答已保存。')).toBeVisible()
  expect(screen.queryByRole('button',{name:'保存回答，看看这一步'})).not.toBeInTheDocument()
  expect(screen.getByRole('button',{name:'练两题'})).toBeEnabled()
 })
+it('explains why old analysis is hidden when the tutor route is not configured',async()=>{
+ state={...state,analysis:null,analysis_review_required:true,tutor_route_configured:false}
+ render(<MistakeBook child={child} sessionId="public-session" embedded onClose={()=>undefined}/>)
+ fireEvent.click(await screen.findByRole('button',{name:'错因分析'}))
+ expect(await screen.findByText('原分析已保留。请先在家长中心配置讲题模型，再重新分析。')).toBeInTheDocument()
+})
+
 it('ordinary mistakes open directly into analysis and today practice without asking the child for grading evidence or diagnosis forms',async()=>{
  render(<MistakeBook child={child} sessionId="public-session" embedded onClose={()=>undefined}/>)
  expect(await screen.findByRole('button',{name:'分析这题'})).toBeInTheDocument()
@@ -552,4 +559,74 @@ it('privacy pause blocks the same pending intake reply from re-saving a cleared 
  act(()=>{window.dispatchEvent(new Event('hsc-privacy-pause'));localStorage.clear();window.dispatchEvent(new CustomEvent('hsc-cloud-mistake-cleared',{detail:{childId:child.child_id}}))})
  await act(async()=>{resolve({version:1,child_id:child.child_id,mistake_id:'late-case',saved:true})})
  expect(saved).not.toHaveBeenCalled();expect(localStorage.length).toBe(0)
+})
+
+it('does not present unreviewed graph matches as a confirmed topic', async () => {
+ const {first,second} = topicCases()
+ const graph: MistakeGraphContext = {status:'matched',graph_version:'graph@v2',subject:'数学',
+  primary:{key:'unreviewed-point',title:'待审核知识点',review_status:'unreviewed',confidence:.95},prerequisites:[],alternatives:[]}
+ const items = [first,second].map(item=>({...item,graph_context:graph}))
+ vi.mocked(mistakeLearningApi.library).mockResolvedValue({version:1,child_id:child.child_id,items,today:{date:'2026-10-29',due_count:2,remaining_questions:2}})
+ vi.mocked(mistakeLearningApi.state).mockImplementation(async id=>{
+  const item = items.find(candidate=>candidate.mistake_id===id)!
+  return {...item,focus:{mistake_id:id,child_id:child.child_id,session_id:'public-session',source_revision:item.source_revision,focus_generation:1,focus_created_at:'2026-10-29T09:02:00Z',learning_session_id:item.learning_session_id!,revision:item.revision,practice_item_id:null,practice_created_at:null}}
+ })
+ const fetchTopic = vi.fn()
+ vi.stubGlobal('fetch',fetchTopic)
+ render(<MistakeBook child={child} sessionId="public-session" embedded onClose={()=>undefined}/>)
+ await screen.findByRole('button',{name:'图文核对'})
+ fireEvent.click(screen.getByRole('button',{name:'高频题型'}))
+ expect(screen.getByText(/部分知识点还需核对/)).toBeVisible()
+ expect(screen.queryByRole('heading',{name:'待审核知识点'})).not.toBeInTheDocument()
+ expect(screen.queryByRole('button',{name:'打开云端专题'})).not.toBeInTheDocument()
+ expect(fetchTopic).not.toHaveBeenCalled()
+})
+
+it('shows an unreviewed match as a hypothesis and suppresses stale prerequisite claims', async () => {
+ const {first,second} = topicCases()
+ const graph: MistakeGraphContext = {status:'matched',graph_version:'graph@v2',subject:'数学',
+  primary:{key:'unreviewed-point',title:'磁极线索',review_status:'unreviewed',confidence:.95},
+  prerequisites:[{key:'unreviewed-pre',title:'待核对的前置',review_status:'unreviewed',relation_review_status:'unreviewed'}],alternatives:[]}
+ const item = {...first,graph_context:graph,graph_review_focus:{title:'磁极线索',kind:'primary' as const,state:'due' as const},analysis:{...first.analysis,prerequisite_checks:[{title:'待核对的前置',question:'旧的错误检查？'}]}}
+ const items = [item,second]
+ vi.mocked(mistakeLearningApi.library).mockResolvedValue({version:1,child_id:child.child_id,items,today:{date:'2026-10-29',due_count:2,remaining_questions:2}})
+ vi.mocked(mistakeLearningApi.state).mockImplementation(async id=>{
+  const value = items.find(candidate=>candidate.mistake_id===id)!
+  return {...value,focus:{mistake_id:id,child_id:child.child_id,session_id:'public-session',source_revision:value.source_revision,focus_generation:1,focus_created_at:'2026-10-29T09:02:00Z',learning_session_id:value.learning_session_id!,revision:value.revision,practice_item_id:null,practice_created_at:null}}
+ })
+ render(<MistakeBook child={child} sessionId="public-session" embedded onClose={()=>undefined}/>)
+ await screen.findByRole('button',{name:'图文核对'})
+ fireEvent.click(screen.getByRole('button',{name:'错因分析'}))
+ expect(await screen.findByText('待核对线索 · 磁极线索')).toBeVisible()
+ expect(screen.getByText('候选知识点，结合原题核对。')).toBeVisible()
+ expect(screen.queryByText('复习重点「磁极线索」')).not.toBeInTheDocument()
+ expect(screen.queryByText('旧的错误检查？')).not.toBeInTheDocument()
+ expect(screen.queryByText(/可以先检查.*待核对的前置/)).not.toBeInTheDocument()
+})
+
+it('offers an independent-analysis topic when graph matches are unreviewed', async () => {
+ const {first,second} = topicCases()
+ const graph: MistakeGraphContext = {status:'matched',graph_version:'graph@v2',subject:'数学',
+  primary:{key:'unreviewed-point',title:'待审核图谱标签',review_status:'unreviewed',confidence:.95},prerequisites:[],alternatives:[]}
+ const label='相同的独立分析标签'
+ const items=[first,second].map(item=>({...item,graph_context:graph,analysis_independent:true,
+  analysis:{...item.analysis,knowledge_points:[{label,description:'依据题目独立分析。'}]}}))
+ vi.mocked(mistakeLearningApi.library).mockResolvedValue({version:1,child_id:child.child_id,items,today:{date:'2026-10-29',due_count:2,remaining_questions:2}})
+ vi.mocked(mistakeLearningApi.state).mockImplementation(async id=>{
+  const item=items.find(candidate=>candidate.mistake_id===id)!
+  return {...item,focus:{mistake_id:id,child_id:child.child_id,sessionId:'public-session',session_id:'public-session',source_revision:item.source_revision,focus_generation:1,focus_created_at:'2026-10-29T09:02:00Z',learning_session_id:item.learning_session_id!,revision:item.revision,practice_item_id:null,practice_created_at:null}}
+ })
+ const fetchTopic=vi.fn().mockImplementation(async (_url,req)=>Response.json({version:1,child_id:child.child_id,...JSON.parse(req.body),status:'missing',explanation:null,created_at:null}))
+ vi.stubGlobal('fetch',fetchTopic)
+ render(<MistakeBook child={child} sessionId="public-session" embedded onClose={()=>undefined}/>)
+ await screen.findByRole('button',{name:'图文核对'})
+ fireEvent.click(screen.getByRole('button',{name:'高频题型'}))
+ expect(screen.getByRole('heading',{name:label})).toBeVisible()
+ expect(screen.queryByRole('heading',{name:'待审核图谱标签'})).not.toBeInTheDocument()
+ fireEvent.click(screen.getByRole('button',{name:'打开云端专题'}))
+ await waitFor(()=>expect(fetchTopic).toHaveBeenCalledOnce())
+ const sent=JSON.parse(fetchTopic.mock.calls[0][1].body)
+ expect(sent.knowledge_point).toBe(label)
+ expect(sent.knowledge_node_key).toBeUndefined()
+ expect(JSON.stringify(sent)).not.toContain('unreviewed-point')
 })

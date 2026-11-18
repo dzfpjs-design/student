@@ -81,7 +81,9 @@ def world(tmp_path, normal_provider_owner, monkeypatch):
                     value = {'candidates': [candidate | {'checkpoint_ref': target['ref']}
                                             for candidate, target in zip(PRACTICE['candidates'], plan)]}
         return httpx.Response(200,request=req,json={'choices':[{'message':{'content':json.dumps(value,ensure_ascii=False)},'finish_reason':'stop'}],'usage':{'prompt_tokens':40,'completion_tokens':50}})
-    gw=ModelGateway(Settings(data_dir=tmp_path,database_path=db.path,model_api_key='public-synthetic'),transport=httpx.MockTransport(transport))
+    gw=ModelGateway(Settings(data_dir=tmp_path,database_path=db.path,model_api_key='public-synthetic',
+                             tutor_explanation_api_key='synthetic-tutor-key-only',
+                             tutor_explanation_base_url='https://synthetic-tutor.invalid/v1'),transport=httpx.MockTransport(transport))
     service=MistakeLearningService(db,gw)
     app=FastAPI(); app.include_router(create_router(service,authorize_request=lambda r:r.headers.get('x-public-auth')=='yes'))
     client=TestClient(app,headers={'x-public-auth':'yes'})
@@ -421,6 +423,73 @@ def test_step_verifier_withholds_the_whole_solution_and_allows_only_one_repair(w
     assert (one_step in saved) is accept_revision
 
 
+def test_unconfigured_tutor_does_not_reuse_or_delete_legacy_analysis(world,request):
+    from dataclasses import replace
+    from home_study_agent.mistake_learning import analysis_context_key
+    db,service,_,mid,sid,_,_,_=world
+    configured=service.gateway
+    service.gateway=ModelGateway(replace(configured.settings,tutor_explanation_api_key=None),transport=configured._client._transport)
+    request.addfinalizer(lambda:asyncio.run(service.gateway.close()))
+    assert service.gateway.configured_for('mistake_learning_analyze') is False
+    post(world,'focus','legacy-no-route-focus')
+    with db.connect() as c:
+        c.execute('UPDATE mistake_learning_state SET analysis_json=?,analysis_context_key=? WHERE mistake_id=?',
+                  (json.dumps(ANALYSIS),analysis_context_key(None,False),mid))
+        c.commit()
+        before=tuple(c.execute('SELECT analysis_json,analysis_context_key FROM mistake_learning_state WHERE mistake_id=?',(mid,)).fetchone())
+    state=service.state(mid,child_id=CHILD,session_id=sid)
+    assert state['analysis'] is None and state['analysis_review_required'] is True and state['tutor_route_configured'] is False
+    result=post(world,'analyze','legacy-no-route-analyze').json()
+    assert result['action_status']=='failed' and result['analysis'] is None
+    with db.connect() as c:
+        assert tuple(c.execute('SELECT analysis_json,analysis_context_key FROM mistake_learning_state WHERE mistake_id=?',(mid,)).fetchone())==before
+
+
+def test_dedicated_tutor_analysis_is_visible_only_for_the_same_route(world,request):
+    from dataclasses import replace
+    from home_study_agent.realtime_capability_tools import RealtimeCapabilityTools
+    from home_study_agent.realtime_native_context import load_native_context
+    from home_study_agent.mistake_learning import _tutor_route_identity
+    db,service,client,mid,sid,_,controls,privacy=world
+    base_gateway=service.gateway
+    settings=replace(base_gateway.settings,tutor_explanation_api_key='synthetic-tutor-key-only',
+        tutor_explanation_base_url='https://synthetic-tutor.invalid/v1',tutor_explanation_model='deepseek-v4.1-flash')
+    gateways=[ModelGateway(settings,transport=base_gateway._client._transport)]
+    request.addfinalizer(lambda: [asyncio.run(gateway.close()) for gateway in gateways])
+    service.gateway=gateways[0]
+    class Matcher(_AuthorizedSyntheticLabels):
+        def cache_version(self,*,connection=None): return 'fixture-v1'
+        def match(self,child_id,source):
+            return {'graph_version':'fixture-v1','status':'matched',
+                    'primary':{'key':'p','title':'根的判别式','review_status':'approved','confidence':.99},
+                    'prerequisites':[],'alternatives':[]}
+    service.graph_matcher=Matcher()
+    privacy.update_preferences({'cloud_audio_allowed':True})
+    post(world,'focus','dedicated-focus')
+    result=post(world,'analyze','dedicated-analysis').json()
+    assert result['analysis'] and result['graph_context']['graph_version']=='fixture-v1'
+    assert service.state(mid,child_id=CHILD,session_id=sid)['analysis']==result['analysis']
+    native=RealtimeCapabilityTools(db,current_graph_version=service.graph_matcher.cache_version,
+        tutor_route_identity=lambda:_tutor_route_identity(service.gateway),graph_cloud_authorizer=service._graph_cloud_allowed)
+    assert load_native_context(native,sid,authorize=lambda *args:True)['runtime_facts']['mistake_learning']['analysis']
+    gateways.append(ModelGateway(replace(settings,tutor_explanation_model='deepseek-synthetic-b'),transport=base_gateway._client._transport))
+    service.gateway=gateways[-1]
+    assert service.state(mid,child_id=CHILD,session_id=sid)['analysis'] is None
+    assert post(world,'analyze','dedicated-analysis').json()['analysis'] is None
+    assert service.read_action('dedicated-analysis',child_id=CHILD,mistake_id=mid)['analysis'] is None
+    assert 'analysis' not in load_native_context(native,sid,authorize=lambda *args:True)['runtime_facts']['mistake_learning']
+    service.gateway=gateways[0]
+    with db.connect() as c:
+        c.execute('UPDATE mistake_learning_state SET analysis_context_key=NULL WHERE mistake_id=?',(mid,))
+        c.commit()
+        previous=tuple(c.execute('SELECT analysis_json,analysis_context_key FROM mistake_learning_state WHERE mistake_id=?',(mid,)).fetchone())
+    controls['hook']=lambda:setattr(service,'gateway',gateways[1])
+    failed=post(world,'analyze','route-changed-in-flight').json()
+    assert failed['action_status']=='failed' and failed['analysis'] is None
+    with db.connect() as c:
+        assert tuple(c.execute('SELECT analysis_json,analysis_context_key FROM mistake_learning_state WHERE mistake_id=?',(mid,)).fetchone())==previous
+
+
 def test_graph_guides_case_practice_and_next_review_without_promoting_mastery(world):
     db, service, client, mid, sid, calls, controls, _ = world
 
@@ -439,8 +508,8 @@ def test_graph_guides_case_practice_and_next_review_without_promoting_mastery(wo
             return {
                 'graph_version': self.version, 'status': 'matched',
                 'primary': {'key': 'local-private-main', 'title': '根的判别式', 'review_status': 'approved', 'confidence': .99},
-                'prerequisites': [{'key': 'local-private-before', 'title': '平方运算', 'review_status': 'unreviewed',
-                                   'relation_review_status': 'unreviewed'}],
+                'prerequisites': [{'key': 'local-private-before', 'title': '平方运算', 'review_status': 'approved',
+                                   'relation_review_status': 'approved'}],
                 'alternatives': [],
             }
 
@@ -520,6 +589,9 @@ def test_graph_change_keeps_old_feedback_without_finishing_new_review(world):
     privacy.update_preferences({'cloud_audio_allowed': True})
     native = RealtimeCapabilityTools(db)
     native.current_graph_version = service.graph_matcher.cache_version
+    from home_study_agent.mistake_learning import _tutor_route_identity
+    native.tutor_route_identity = lambda: _tutor_route_identity(service.gateway)
+    native.graph_cloud_authorizer=service._graph_cloud_allowed
     due = load_native_context(native, sid, authorize=lambda *args: True)['runtime_facts']['mistake_review_today']
     assert due['due_count'] == 1 and due['remaining_questions'] == 2
     updated = service.state(mid, child_id=CHILD, session_id=sid)
@@ -612,6 +684,9 @@ def test_native_context_hides_only_stale_graph_derived_content(world):
     old_item = practice['practice_items'][0]
     native = RealtimeCapabilityTools(db)
     native.current_graph_version = service.graph_matcher.cache_version
+    from home_study_agent.mistake_learning import _tutor_route_identity
+    native.tutor_route_identity = lambda: _tutor_route_identity(service.gateway)
+    native.graph_cloud_authorizer=service._graph_cloud_allowed
     current = load_native_context(native, sid, authorize=lambda *args: True)
     before = current['runtime_facts']['mistake_learning']
     assert before['question'] and before['analysis'] and before['practice']['question'] == old_item['question']
@@ -647,15 +722,15 @@ def test_native_context_hides_only_stale_graph_derived_content(world):
         c.execute('UPDATE mistake_learning_item SET validation_json=? WHERE practice_item_id=?',
                   (json.dumps(validation), old_item['practice_item_id']))
         c.execute('UPDATE mistake_learning_state SET analysis_context_key=? WHERE mistake_id=?',
-                  (_main_learning.analysis_context_key(None, False), mid))
+                  (_main_learning.analysis_context_key(None, _tutor_route_identity(service.gateway)), mid))
         c.commit()
     unbound = load_native_context(native, sid, authorize=lambda *args: True)['runtime_facts']['mistake_learning']
     assert unbound['question'] == before['question']
-    assert unbound['analysis'] and unbound['practice']['question'] == old_item['question']
+    assert 'analysis' not in unbound and 'practice' not in unbound
     refreshed = service.state(mid, child_id=CHILD, session_id=sid)
     assert refreshed['graph_context']['graph_version'] == 'fixture-v2' and refreshed['analysis']
     restored = load_native_context(native, sid, authorize=lambda *args: True)['runtime_facts']['mistake_learning']
-    assert restored['analysis'] and restored['practice']['question'] == old_item['question']
+    assert restored['analysis'] and 'practice' not in restored
 
 
 def test_native_mixed_legacy_batch_skips_stale_question_before_graph_refresh(world):
@@ -691,58 +766,14 @@ def test_native_mixed_legacy_batch_skips_stale_question_before_graph_refresh(wor
     native = RealtimeCapabilityTools(db)
     native.current_graph_version = service.graph_matcher.cache_version
     before_refresh = load_native_context(native, sid, authorize=lambda *args: True)['runtime_facts']['mistake_learning']
-    assert before_refresh['practice']['question'] == second['question']
-    from home_study_agent.realtime_native_input import record_native_input
-    from home_study_agent.realtime_native_mistake_onset import BOUND
-    from home_study_agent.voice_capture_binding import VoiceCaptureBindingService
+    assert 'practice' not in before_refresh
     with db.connect() as c:
         focus = native_focus(c, sid, current_graph_version='fixture-v2')
-        graph_before = c.execute('SELECT graph_json FROM mistake_learning_state WHERE mistake_id=?', (mid,)).fetchone()[0]
-    carrier = {key: focus[key] for key in BOUND} | {'version': 1, 'question_visible': True}
-    captures = VoiceCaptureBindingService(db, current_graph_version=service.graph_matcher.cache_version)
-    captured_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-    admission = record_native_input(captures, sid, {'version': 1, 'local_input_id': 'mixed-admission',
-        'transcript': '我的答案是没有实数解。', 'captured_at_ms': captured_ms,
-        'capture_reference': {'child_id': CHILD, 'mistake_learning': carrier}}, authorize=lambda *args: True)
-    with db.connect() as c:
-        audit = json.loads(c.execute('SELECT summary_json FROM audit_event WHERE audit_id=?',
-                           ('native-mistake-onset-'+admission['voice_input_id'],)).fetchone()[0])
-        assert audit['validation'] == 'current' and audit['carrier']['practice_item_id'] == second['practice_item_id']
-        assert c.execute('SELECT graph_json FROM mistake_learning_state WHERE mistake_id=?', (mid,)).fetchone()[0] == graph_before
-    stale_carrier = dict(carrier, practice_item_id=first['practice_item_id'])
-    stale_admission = record_native_input(captures, sid, {'version': 1, 'local_input_id': 'mixed-stale-admission',
-        'transcript': '我的答案是十六。', 'captured_at_ms': int(datetime.now(timezone.utc).timestamp() * 1000),
-        'capture_reference': {'child_id': CHILD, 'mistake_learning': stale_carrier}}, authorize=lambda *args: True)
-    with db.connect() as c:
-        stale_audit = json.loads(c.execute('SELECT summary_json FROM audit_event WHERE audit_id=?',
-                                 ('native-mistake-onset-'+stale_admission['voice_input_id'],)).fetchone()[0])
-        assert stale_audit['validation'] == 'stale'
-    from types import SimpleNamespace
-    from home_study_agent.privacy_operation_receipt import generation
-    from home_study_agent.realtime_native_context import record_native_input_witness
-    with db.connect() as c:
-        c.execute('BEGIN IMMEDIATE')
-        record_native_input_witness(SimpleNamespace(page_source_store=None), c, sid,
-                                    admission['voice_input_id'], expected_generation=generation(c))
-        voice = dict(c.execute('SELECT * FROM voice_input WHERE voice_input_id=?', (admission['voice_input_id'],)).fetchone())
-        c.commit()
-    onset = {'speech_started_at': datetime.fromtimestamp(captured_ms / 1000, timezone.utc).isoformat()}
-    with db.connect() as c:
-        plan = compose(c, {'session_id': sid, 'child_id': CHILD}, voice, onset,
-                       {'operation': 'answer'}, turn_id='mixed-legacy-answer',current_graph_version='fixture-v2')
-        assert plan['action']['mistake_learning_source']['practice_item_id'] == second['practice_item_id']
+        assert focus['practice_item_id'] is None
         after = [tuple(r) for r in c.execute('SELECT practice_item_id,validation_json,answered_at FROM mistake_learning_item WHERE mistake_id=? ORDER BY position', (mid,))]
         assert after == before
-    response = post(world, 'answer', 'mistake-voice:'+voice['voice_input_id'],
-                    practice_item_id=second['practice_item_id'], voice_input_id=voice['voice_input_id'],
-                    source_revision=initial_view['source_revision'])
-    assert response.status_code == 200, response.text
-    assert response.json()['action_status'] == 'completed'
-    with db.connect() as c:
-        first_after = c.execute('SELECT validation_json,answered_at FROM mistake_learning_item WHERE practice_item_id=?', (first['practice_item_id'],)).fetchone()
-        second_after = c.execute('SELECT validation_json,answered_at,feedback_json FROM mistake_learning_item WHERE practice_item_id=?', (second['practice_item_id'],)).fetchone()
-    assert tuple(first_after) == before[0][1:]
-    assert second_after['validation_json'] == before[1][1] and second_after['answered_at'] and second_after['feedback_json']
+    response = post(world,'answer','mixed-legacy-answer',practice_item_id=second['practice_item_id'],utterance='我的答案是没有实数解。')
+    assert response.status_code==409 and response.json()['detail']['code']=='MISTAKE_LEARNING_PRACTICE_CHANGED'
 
 
 def test_actual_cloud_http_analysis_practice_answers_persist_and_no_mastery(world):
@@ -1145,7 +1176,7 @@ def test_practice_generation_and_verification_share_one_total_deadline(world,mon
     result=post(world,'practice','shared-deadline')
     assert result.json()['action_status']=='completed'
     assert len(seen)==2
-    assert 0<seen[1]<seen[0]<=65
+    assert 0<seen[1]<seen[0]<=115
 
 
 def test_generation_change_between_reservation_commit_and_snapshot_never_dispatches(world,monkeypatch):
@@ -1215,7 +1246,7 @@ def test_semantic_graph_choice_uses_existing_analyze_call_and_persists(world, tm
         connection.execute('CREATE TABLE kg_atomic_label_cloud_right(draft_id TEXT PRIMARY KEY,title_sha256 TEXT,origin TEXT,basis TEXT,status TEXT,created_at TEXT)')
         connection.execute("INSERT INTO kg_resource VALUES('private-book','restricted')")
         connection.execute('INSERT INTO kg_atomic_definition_draft VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-            ('sign','sign',title,'初中7-9','数学','concept','{}','','{}','[]','[]','[]',.9,'unreviewed'))
+            ('sign','sign',title,'初中7-9','数学','concept','{}','','{}','[]','[]','[]',.9,'approved'))
         connection.execute('INSERT INTO kg_atomic_definition_draft VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
             ('private-pre','private-pre','未授权前置标签仅保留本地','初中7-9','数学','concept','{}','','{}','[]','[]','[]',.9,'unreviewed'))
         connection.execute('INSERT INTO kg_atomic_relation_candidate VALUES(?,?,?,?,?,?,?)',
@@ -1242,7 +1273,7 @@ def test_semantic_graph_choice_uses_existing_analyze_call_and_persists(world, tm
     assert result['action_status'] == 'completed', result
     assert result['graph_context']['status'] == 'matched'
     assert result['graph_context']['primary']['key'] == 'sign'
-    assert result['graph_context']['primary']['review_status'] == 'unreviewed'
+    assert result['graph_context']['primary']['review_status'] == 'approved'
     assert result['graph_context']['verification']['method'] == 'model_semantic_v1'
     assert result['graph_context']['prerequisites'][0]['key'] == 'private-pre'
     assert result['analysis']
@@ -1285,7 +1316,7 @@ def test_semantic_graph_choice_uses_existing_analyze_call_and_persists(world, tm
         'original_review':True, 'style':'socratic', 'utterance':'请一步一步讲。'}).json()
     assert coached['action_status'] == 'completed', coached
     assert coached['graph_context']['status'] == 'matched'
-    assert coached['graph_context']['primary']['review_status'] == 'unreviewed'
+    assert coached['graph_context']['primary']['review_status'] == 'approved'
     assert coached['coach_phase'] == 'question'
 
     with sqlite3.connect(build) as connection:
@@ -1313,7 +1344,7 @@ def test_persisted_practice_focus_rechecks_label_rights_before_cloud(world):
             return ([{'ref':'C1','label':item['title']}], {'C1':item['key']}) if self.allowed else ([], {})
         def match(self, child_id, source):
             return {'graph_version':self.version,'status':'matched',
-                    'primary':{'key':'local-label','title':label,'review_status':'unreviewed','confidence':.9},
+                    'primary':{'key':'local-label','title':label,'review_status':'approved','confidence':.9},
                     'prerequisites':[],'alternatives':[]}
     matcher = Matcher()
     service.graph_matcher = matcher
@@ -1322,8 +1353,300 @@ def test_persisted_practice_focus_rechecks_label_rights_before_cloud(world):
     item = practice['practice_items'][0]
     assert item['graph_target']['title'] == label
     matcher.allowed = False
+    before=len(calls)
     reply = post(world, 'coach', 'rights-coach', practice_item_id=item['practice_item_id'],
-                 utterance='我不明白，请继续引导。').json()
-    assert reply['action_status'] == 'completed', reply
-    payload = calls[-1]['messages'][1]['content']
-    assert 'practice_focus' not in payload and label not in payload
+                 utterance='我不明白，请继续引导。')
+    assert reply.status_code==409 and reply.json()['detail']['code']=='MISTAKE_LEARNING_CLOUD_LABEL_RIGHT_REQUIRED'
+    assert len(calls)==before
+
+
+def test_unreviewed_graph_stays_hypothesis_across_api_cloud_and_restart(world):
+    db, service, client, mid, sid, calls, _, _ = world
+    class Matcher:
+        def cache_version(self, *, connection=None):
+            return 'fixture-unreviewed-v1'
+        def semantic_options(self, graph):
+            item = graph['alternatives'][0]
+            return [{'ref': 'C1', 'label': item['title']}], {'C1': item['key']}
+        def match(self, *args, **kwargs):
+            return {'graph_version': 'fixture-unreviewed-v1', 'status': 'matched',
+                    'primary': {'key': 'main', 'title': '未审主知识点', 'review_status': 'unreviewed', 'confidence': .99},
+                    'prerequisites': [{'key': 'pre', 'title': '未审前置', 'review_status': 'unreviewed',
+                                       'relation_review_status': 'unreviewed'}], 'alternatives': []}
+    service.graph_matcher = Matcher()
+    result = post(world, 'analyze', 'unreviewed-analyze').json()
+    assert result['action_status'] == 'completed', result
+    assert result['graph_context']['primary']['review_status'] == 'unreviewed'
+    assert result['graph_review_focus'] is None
+    sent = json.dumps(calls, ensure_ascii=False)
+    assert '未审主知识点' not in sent and '未审前置' not in sent
+    reopened = MistakeLearningService(Database(db.path), service.gateway, graph_matcher=service.graph_matcher)
+    saved = reopened.state(mid, child_id=CHILD, session_id=sid)
+    assert saved['graph_context']['primary']['review_status'] == 'unreviewed'
+    assert saved['graph_review_focus'] is None
+
+
+@pytest.mark.parametrize('changed',['primary','relation','unknown'])
+def test_historical_practice_target_requires_current_review_even_when_graph_hash_matches(world,changed):
+    from home_study_agent.mistake_learning import _hash,native_focus,_tutor_route_identity
+    from home_study_agent.realtime_capability_tools import RealtimeCapabilityTools
+    from home_study_agent.realtime_native_context import load_native_context
+    db,service,_,mid,sid,calls,_,privacy=world
+    class Matcher(_AuthorizedSyntheticLabels):
+        available=True
+        def cache_version(self,*,connection=None):return 'historical-review-v1' if self.available else None
+        def match(self,*args,**kwargs):
+            return {'graph_version':'historical-review-v1','status':'matched',
+                'primary':{'key':'main','title':'已审主节点','review_status':'approved','confidence':.99},
+                'prerequisites':[{'key':'pre','title':'已审前置','review_status':'approved','relation_review_status':'approved'}],
+                'alternatives':[]}
+    service.graph_matcher=Matcher()
+    post(world,'focus','historical-focus')
+    generated=post(world,'practice','historical-practice',count=2).json()
+    assert generated['action_status']=='completed'
+    first=generated['practice_items'][0]
+    with db.connect() as c:
+        graph=json.loads(c.execute('SELECT graph_json FROM mistake_learning_state WHERE mistake_id=?',(mid,)).fetchone()[0])
+        if changed=='primary': graph['primary']['review_status']='unreviewed'
+        elif changed=='relation': graph['prerequisites'][0]['relation_review_status']='unreviewed'
+        else: service.graph_matcher.available=False
+        c.execute('UPDATE mistake_learning_state SET graph_json=? WHERE mistake_id=?',(json.dumps(graph,ensure_ascii=False),mid))
+        for item in c.execute('SELECT practice_item_id,validation_json FROM mistake_learning_item WHERE mistake_id=?',(mid,)).fetchall():
+            validation=json.loads(item['validation_json']); validation['graph_target']['graph_sha']=_hash(graph)
+            c.execute('UPDATE mistake_learning_item SET validation_json=? WHERE practice_item_id=?',(json.dumps(validation,ensure_ascii=False),item['practice_item_id']))
+        c.execute("UPDATE mistake_learning_item SET feedback_json=?,answered_at='2026-01-01T00:00:00+00:00' WHERE practice_item_id=?",
+                  (json.dumps(FEEDBACK,ensure_ascii=False),generated['practice_items'][1]['practice_item_id']))
+        c.commit()
+        preserved=[tuple(row) for row in c.execute('SELECT practice_item_id,question,feedback_json FROM mistake_learning_item WHERE mistake_id=? ORDER BY practice_item_id',(mid,))]
+    state=service.state(mid,child_id=CHILD,session_id=sid)
+    assert state['practice_items'][0]['status']=='stale' and state['practice_items'][0]['graph_target'] is None
+    replay=post(world,'practice','historical-practice',count=2).json()
+    assert replay['practice_items'][0]['status']=='stale' and replay['practice_items'][0]['graph_target'] is None
+    receipt=service.read_action('historical-practice',child_id=CHILD,mistake_id=mid)
+    assert receipt['practice_items'][0]['status']=='stale' and receipt['practice_items'][0]['graph_target'] is None
+    with db.connect() as c:
+        focus=native_focus(c,sid,current_graph_version=None if changed=='unknown' else 'historical-review-v1')
+        assert focus['practice_item_id']!=first['practice_item_id']
+    privacy.update_preferences({'cloud_audio_allowed':True})
+    native=RealtimeCapabilityTools(db,current_graph_version=service.graph_matcher.cache_version,
+        tutor_route_identity=lambda:_tutor_route_identity(service.gateway))
+    projected=load_native_context(native,sid,authorize=lambda *args:True)['runtime_facts']['mistake_learning']
+    assert 'practice' not in projected
+    before_calls=len(calls)
+    result=post(world,'answer','historical-answer',practice_item_id=first['practice_item_id'],utterance='我算完了。')
+    assert result.status_code==409 and result.json()['detail']['code']=='MISTAKE_LEARNING_PRACTICE_CHANGED'
+    coaching=post(world,'coach','historical-coach',practice_item_id=first['practice_item_id'],utterance='讲讲这一题。')
+    assert coaching.status_code==409 and coaching.json()['detail']['code']=='MISTAKE_LEARNING_PRACTICE_CHANGED'
+    assert len(calls)==before_calls
+    with db.connect() as c:
+        assert [tuple(row) for row in c.execute('SELECT practice_item_id,question,feedback_json FROM mistake_learning_item WHERE mistake_id=? ORDER BY practice_item_id',(mid,))]==preserved
+
+
+def test_revoked_label_right_blocks_old_graph_practice_from_cloud_and_native(world):
+    from home_study_agent.mistake_learning import _tutor_route_identity
+    from home_study_agent.realtime_capability_tools import RealtimeCapabilityTools
+    from home_study_agent.realtime_native_context import load_native_context
+    db,service,_,mid,sid,calls,controls,privacy=world
+    class Matcher:
+        allowed=True
+        def cache_version(self,*,connection=None):return 'rights-stable-v1'
+        def match(self,*args,**kwargs):
+            return {'graph_version':'rights-stable-v1','status':'matched','subject':'数学',
+                'primary':{'key':'sensitive-label','title':'授权标签哨兵','review_status':'approved','confidence':.99},
+                'prerequisites':[],'alternatives':[]}
+        def semantic_options(self,graph):
+            if not self.allowed:return [],{}
+            item=graph['alternatives'][0]
+            return [{'ref':'C1','label':item['title']}],{'C1':item['key']}
+    matcher=Matcher();service.graph_matcher=matcher
+    controls['practice_response']={'candidates':[PRACTICE['candidates'][0] | {'checkpoint_ref':'MAIN',
+        'prompt':'授权标签哨兵：方程 x²-2x-3=0 的判别式是多少？',
+        'explanation':'授权标签哨兵：判别式4+12=16。'}]}
+    privacy.update_preferences({'cloud_audio_allowed':True})
+    post(world,'focus','right-focus')
+    generated=post(world,'practice','right-practice',count=1).json()
+    assert generated['action_status']=='completed' and generated['practice_items'][0]['status']=='ready'
+    item=generated['practice_items'][0];matcher.allowed=False
+    before=len(calls)
+    assert service.state(mid,child_id=CHILD,session_id=sid)['practice_items'][0]['question']==item['question']
+    for operation in ('answer','coach'):
+        response=post(world,operation,'right-revoked-'+operation,practice_item_id=item['practice_item_id'],utterance='我算好了。')
+        assert response.status_code==409 and response.json()['detail']['code']=='MISTAKE_LEARNING_CLOUD_LABEL_RIGHT_REQUIRED'
+    native=RealtimeCapabilityTools(db,current_graph_version=matcher.cache_version,
+        tutor_route_identity=lambda:_tutor_route_identity(service.gateway),graph_cloud_authorizer=service._graph_cloud_allowed)
+    projected=load_native_context(native,sid,authorize=lambda *args:True)['runtime_facts']['mistake_learning']
+    assert 'practice' not in projected and '授权标签哨兵' not in json.dumps(projected,ensure_ascii=False)
+    assert len(calls)==before
+    matcher.allowed=True
+    controls['hook']=lambda:setattr(matcher,'allowed',False)
+    result=post(world,'answer','right-revoked-in-flight',practice_item_id=item['practice_item_id'],utterance='我算好了。').json()
+    assert result['action_status']=='failed'
+    with db.connect() as c:
+        assert c.execute('SELECT answered_at FROM mistake_learning_item WHERE practice_item_id=?',(item['practice_item_id'],)).fetchone()[0] is None
+
+
+def test_revoked_label_right_does_not_resend_prior_graph_coaching_history(world):
+    _,service,_,_,_,calls,controls,_=world
+    class Matcher:
+        allowed=True
+        def cache_version(self,*,connection=None):return 'coach-right-v1'
+        def match(self,*args,**kwargs):
+            return {'graph_version':'coach-right-v1','status':'matched','subject':'数学',
+                'primary':{'key':'coach-label','title':'撤销讲解标签哨兵','review_status':'approved','confidence':.99},
+                'prerequisites':[],'alternatives':[]}
+        def semantic_options(self,graph):
+            if not self.allowed:return [],{}
+            item=graph['alternatives'][0];return [{'ref':'C1','label':item['title']}],{'C1':item['key']}
+    matcher=Matcher();service.graph_matcher=matcher
+    controls['coach_response']={'phase':'question','text':'撤销讲解标签哨兵是什么？'}
+    assert post(world,'coach','rights-history-first',original_review=True,utterance='请讲解。').json()['action_status']=='completed'
+    matcher.allowed=False
+    controls['coach_response']={'phase':'question','text':'你准备先看哪一步？'}
+    before=len(calls)
+    result=post(world,'coach','rights-history-second',original_review=True,utterance='继续讲。').json()
+    assert result['action_status']=='completed'
+    assert '撤销讲解标签哨兵' not in json.dumps(calls[before:],ensure_ascii=False)
+
+
+def test_unproven_unreviewed_legacy_practice_is_blocked_but_new_source_only_practice_survives(world):
+    from home_study_agent.mistake_learning import _tutor_route_identity
+    from home_study_agent.realtime_capability_tools import RealtimeCapabilityTools
+    from home_study_agent.realtime_native_context import load_native_context
+    db,service,_,mid,sid,calls,_,privacy=world
+    class Matcher(_AuthorizedSyntheticLabels):
+        def cache_version(self,*,connection=None):return 'unreviewed-source-v1'
+        def match(self,*args,**kwargs):
+            return {'graph_version':'unreviewed-source-v1','status':'matched','subject':'未审核学科哨兵',
+                    'primary':{'key':'unreviewed','title':'未审核主节点','review_status':'unreviewed','confidence':.99},
+                    'prerequisites':[],'alternatives':[]}
+    service.graph_matcher=Matcher()
+    post(world,'focus','legacy-unbound-focus')
+    first=post(world,'practice','legacy-unbound-original',count=2).json()
+    assert first['action_status']=='completed' and first['practice_items'][0]['status']=='ready'
+    old_id=first['practice_items'][0]['practice_item_id']
+    with db.connect() as c:
+        rows=c.execute('SELECT practice_item_id,validation_json FROM mistake_learning_item WHERE mistake_id=?',(mid,)).fetchall()
+        for row in rows:
+            validation=json.loads(row['validation_json']);validation.pop('graph_free_origin',None)
+            c.execute("UPDATE mistake_learning_item SET validation_json=?,question='旧未审学科题面哨兵' WHERE practice_item_id=?",
+                      (json.dumps(validation,ensure_ascii=False),row['practice_item_id']))
+        c.commit()
+        before=[tuple(row) for row in c.execute('SELECT practice_item_id,question,feedback_json FROM mistake_learning_item WHERE mistake_id=? ORDER BY practice_item_id',(mid,))]
+    state=service.state(mid,child_id=CHILD,session_id=sid)
+    assert all(item['status']=='stale' for item in state['practice_items'])
+    assert post(world,'practice','legacy-unbound-original',count=2).json()['practice_items'][0]['status']=='stale'
+    privacy.update_preferences({'cloud_audio_allowed':True})
+    native=RealtimeCapabilityTools(db,current_graph_version=service.graph_matcher.cache_version,
+        tutor_route_identity=lambda:_tutor_route_identity(service.gateway))
+    assert 'practice' not in load_native_context(native,sid,authorize=lambda *args:True)['runtime_facts']['mistake_learning']
+    voice,_=native_onset(db,sid,'legacy-unbound-voice','我算完了。',old_id,expected_validation='stale',
+                         current_graph_version='unreviewed-source-v1')
+    from home_study_agent.agent_runtime import InvalidAgentPlanError
+    from home_study_agent.realtime_native_mistake_onset import require_current
+    with db.connect() as c, pytest.raises(InvalidAgentPlanError,match='NATIVE_MISTAKE_ONSET_STALE'):
+        require_current(c,voice,native_focus(c,sid,current_graph_version='unreviewed-source-v1'),
+                        current_graph_version='unreviewed-source-v1')
+    count=len(calls)
+    for operation in ('answer','coach'):
+        response=post(world,operation,'legacy-unbound-'+operation,practice_item_id=old_id,utterance='我算完了。')
+        assert response.status_code==409 and response.json()['detail']['code']=='MISTAKE_LEARNING_PRACTICE_CHANGED'
+    assert len(calls)==count
+    new=post(world,'practice','legacy-unbound-regenerate',count=2).json()
+    assert new['action_status']=='completed' and all(item['status']=='ready' for item in new['practice_items'])
+    assert '旧未审学科题面哨兵' not in json.dumps(calls[count:],ensure_ascii=False)
+    with db.connect() as c:
+        assert [tuple(row) for row in c.execute('SELECT practice_item_id,question,feedback_json FROM mistake_learning_item WHERE practice_item_id IN (?,?) ORDER BY practice_item_id',tuple(row[0] for row in before))]==before
+        from home_study_agent.mistake_graph_study import independently_sourced_practice
+        proof_row=dict(c.execute('SELECT * FROM mistake_learning_item WHERE practice_item_id=?',(new['practice_items'][0]['practice_item_id'],)).fetchone())
+        assert independently_sourced_practice(proof_row)
+        assert not independently_sourced_practice(proof_row | {'child_id':'child-primary-4'})
+        assert not independently_sourced_practice(proof_row | {'source_revision':'different-source'})
+    reopened=MistakeLearningService(Database(db.path),service.gateway,graph_matcher=service.graph_matcher)
+    assert all(item['status']=='ready' for item in reopened.state(mid,child_id=CHILD,session_id=sid)['practice_items'])
+    with db.connect() as c:
+        c.execute("UPDATE mistake_learning_item SET question='被篡改的题干' WHERE practice_item_id=?",(new['practice_items'][0]['practice_item_id'],));c.commit()
+    assert reopened.state(mid,child_id=CHILD,session_id=sid)['practice_items'][0]['status']=='stale'
+
+
+@pytest.mark.parametrize('review_status',['unreviewed','approved'])
+def test_model_requests_and_native_use_only_reviewed_inferred_subject(world,review_status):
+    from home_study_agent.realtime_capability_tools import RealtimeCapabilityTools
+    from home_study_agent.realtime_native_context import load_native_context
+    from home_study_agent.mistake_learning import _tutor_route_identity
+    db,service,_,mid,sid,calls,controls,privacy=world
+    class Matcher(_AuthorizedSyntheticLabels):
+        def cache_version(self,*,connection=None):return 'subject-v1'
+        def match(self,*args,**kwargs):
+            return {'graph_version':'subject-v1','status':'matched','subject':'图谱学科哨兵',
+                    'primary':{'key':'subject-primary','title':'图谱主节点','review_status':review_status,'confidence':.99},
+                    'prerequisites':[],'alternatives':[]}
+    service.graph_matcher=Matcher()
+    privacy.update_preferences({'cloud_audio_allowed':True})
+    post(world,'focus','subject-focus')
+    analyzed=post(world,'analyze','subject-analyze').json()
+    assert analyzed['action_status']=='completed'
+    if review_status=='unreviewed':
+        from home_study_agent.mistake_learning import analysis_context_key
+        contaminated=ANALYSIS | {'summary':'旧图谱污染哨兵'}
+        with db.connect() as c:
+            c.execute('UPDATE mistake_learning_state SET analysis_json=?,analysis_context_key=? WHERE mistake_id=?',
+                (json.dumps(contaminated,ensure_ascii=False),analysis_context_key(analyzed['graph_context'],_tutor_route_identity(service.gateway)),mid))
+            c.commit()
+    practice=post(world,'practice','subject-practice',count=2).json()
+    assert practice['action_status']=='completed' and practice['practice_items']
+    answer=post(world,'answer','subject-answer',practice_item_id=practice['practice_items'][0]['practice_item_id'],utterance='我算出零。').json()
+    assert answer['action_status']=='completed'
+    coached=post(world,'coach','subject-coach',original_review=True,utterance='请给我一个提示。').json()
+    assert coached['action_status']=='completed'
+    controls['coach_response']={'phase':'independent_practice','text':'现在请独立试一道。','focus_step':'负数的平方'}
+    controls['coach_check_response']={'claim_status':'correct','facts':'负四的平方是十六。'}
+    controls['practice_response']={'candidates':[PRACTICE['candidates'][0] | {'prompt':'二次方程 x²-6x+5=0，请算判别式并判断不同实数根的个数。',
+        'expected_answer':{'keywords':['16','两个不同实数根']},'explanation':'判别式36-20=16，大于零，所以有两个不同的实数根。'}]}
+    variant=post(world,'coach','subject-variant',original_review=True,utterance='负四的平方是十六。').json()
+    assert variant['action_status']=='completed' and variant['coach_variant']
+    assert variant['coach_variant']['status']=='ready'
+    native=RealtimeCapabilityTools(db,current_graph_version=service.graph_matcher.cache_version,
+        tutor_route_identity=lambda:_tutor_route_identity(service.gateway))
+    facts=load_native_context(native,sid,authorize=lambda *args:True)['runtime_facts']['mistake_learning']
+    source_subject=service.state(mid,child_id=CHILD,session_id=sid)['source']['subject']
+    expected='图谱学科哨兵' if review_status=='approved' else '数学'
+    assert facts['subject']=='数学' and source_subject==expected
+    sent=json.dumps(calls,ensure_ascii=False)
+    if review_status=='unreviewed':
+        assert '图谱学科哨兵' not in sent
+        assert '旧图谱污染哨兵' not in sent
+    else:
+        assert '图谱学科哨兵' in sent
+        variant_id=variant['coach_variant']['practice_item_id']
+        with db.connect() as c:
+            old=tuple(c.execute('SELECT question,validation_json FROM mistake_learning_item WHERE practice_item_id=?',(variant_id,)).fetchone())
+            graph=json.loads(c.execute('SELECT graph_json FROM mistake_learning_state WHERE mistake_id=?',(mid,)).fetchone()[0])
+            graph['primary']['review_status']='unreviewed'
+            c.execute('UPDATE mistake_learning_state SET graph_json=? WHERE mistake_id=?',(json.dumps(graph,ensure_ascii=False),mid));c.commit()
+        assert service.state(mid,child_id=CHILD,session_id=sid)['coach_variant']['status']=='stale'
+        with db.connect() as c:
+            assert tuple(c.execute('SELECT question,validation_json FROM mistake_learning_item WHERE practice_item_id=?',(variant_id,)).fetchone())==old
+
+
+def test_unreviewed_match_produces_independent_analysis_without_graph_or_old_history(world):
+    db, service, client, mid, sid, calls, controls, _ = world
+    class Matcher:
+        def cache_version(self, *, connection=None): return 'unreviewed-independent-v1'
+        def match(self, *args, **kwargs):
+            return {'graph_version': 'unreviewed-independent-v1', 'status': 'matched', 'subject': '数学',
+                    'primary': {'key': 'private-key', 'title': '未审标签不得作为依据', 'review_status': 'unreviewed', 'confidence': .99},
+                    'prerequisites': [], 'alternatives': []}
+        def semantic_options(self, graph): raise AssertionError('UNREVIEWED_EXPORT_FORBIDDEN')
+    service.graph_matcher = Matcher()
+    prior = post(world, 'coach', 'prior-coach', original_review=True, utterance='旧对话不应成为本次分析依据').json()
+    assert prior['action_status'] == 'completed'
+    result = post(world, 'analyze', 'unreviewed-independent').json()
+    assert result['action_status'] == 'completed', result
+    assert result['analysis_independent'] is True and result['analysis']
+    context = json.loads(calls[-1]['messages'][1]['content'])
+    assert 'graph_targets' not in context and context['history'] == [] and context['analysis'] is None
+    assert '未审标签不得作为依据' not in json.dumps(context, ensure_ascii=False)
+    assert '旧对话不应成为本次分析依据' not in json.dumps(context, ensure_ascii=False)
+    reopened = MistakeLearningService(Database(db.path), service.gateway, graph_matcher=service.graph_matcher)
+    saved = reopened.state(mid, child_id=CHILD, session_id=sid)
+    assert saved['analysis_independent'] is True and saved['analysis'] == result['analysis']

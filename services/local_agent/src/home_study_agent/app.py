@@ -1613,6 +1613,7 @@ def _create_app_without_money_owner(
         create_router as create_native_realtime_capability_router,
     )
     from .realtime_native_context import load_native_context
+    from .mistake_learning import _tutor_route_identity
     native_realtime_capabilities = RealtimeCapabilityTools(
         database, runtime=agent_orchestrator.agent_runtime,
         authorize=authorize_native_realtime_input,
@@ -1621,6 +1622,8 @@ def _create_app_without_money_owner(
         complete_turn=agent_orchestrator.complete_turn,
         page_source_store=media_ai,
         current_graph_version=mistake_graph.cache_version if mistake_graph else (lambda **_: ''),
+        tutor_route_identity=lambda: _tutor_route_identity(gateway),
+        graph_cloud_authorizer=mistake_learning._graph_cloud_allowed,
     )
     learning_outcome_evaluator = LearningOutcomeEvaluator(database, repository, gateway, resolved_settings)
     tutor_ocr_confirmation = OcrTutorConfirmationService(database)

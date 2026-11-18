@@ -6,6 +6,7 @@ import json
 import re
 import sqlite3
 import unicodedata
+from datetime import datetime, timezone
 from collections.abc import Mapping, Sequence
 from contextlib import closing, nullcontext
 from difflib import SequenceMatcher
@@ -18,11 +19,12 @@ from .knowledge_graph.atomic_companion import (
     AtomicGraphCompanionService,
     AtomicGraphUnavailableError,
     compatible_grade_bands,
+    _effective_status,
 )
 from .knowledge_graph.catalog_bootstrap import ALIASES
 
 
-_MATCHER_VERSION = 'mistake-graph-v9'
+_MATCHER_VERSION = 'mistake-graph-v10'
 _IGNORED_TITLES = {'错题', '原题', '待识别', '待核对', '重新做', '课堂练习', '手动录入错题', '高拍仪录入错题'}
 _GENERIC_MATH_TERMS = {'解方程', '解题', '公式法', '计算方法', '运算方法'}
 _VERB = re.compile(r'^(?:说明|运用|识别|解释|认识|掌握|理解|说出|确定|判断|计算|分析|区分|比较)')
@@ -291,26 +293,42 @@ class MistakeGraphMatcher:
             return [], {}
         options, mapping = [], {}
         try:
-            with closing(self.atomic._build_connection()) as connection:
+            with closing(self.atomic._build_connection()) as connection, closing(self.atomic._app_connection()) as app_connection:
                 tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                review_table = app_connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kg_atomic_review_decision'").fetchone()
                 if not {'kg_atomic_draft_evidence', 'kg_resource', 'kg_atomic_label_cloud_right'} <= tables:
                     return [], {}
                 for index, item in enumerate(alternatives, 1):
                     if not isinstance(item, Mapping) or not isinstance(item.get('key'), str):
                         return [], {}
-                    row = connection.execute('''SELECT draft_id,title FROM kg_atomic_definition_draft
+                    row = connection.execute('''SELECT draft_id,title,review_status FROM kg_atomic_definition_draft
                         WHERE canonical_signature=?''', (item['key'],)).fetchone()
                     if not row or row['title'] != item.get('title'):
+                        return [], {}
+                    # A cloud-use right does not review the knowledge itself.
+                    # Check the current effective review decision independently.
+                    decision = (app_connection.execute('''SELECT action FROM kg_atomic_review_decision
+                        WHERE entity_type='draft' AND entity_key=?''', (item['key'],)).fetchone()
+                        if review_table else None)
+                    if _effective_status(decision['action'] if decision else None, row['review_status']) != 'approved':
                         return [], {}
                     title = str(row['title']).strip()
                     if not 3 <= len(title) <= 80 or re.search(r'[\r\n。；;：:]|例如|如图', title):
                         return [], {}
-                    right = connection.execute('''SELECT title_sha256,origin,status,basis FROM kg_atomic_label_cloud_right
+                    columns={col[1] for col in connection.execute('PRAGMA table_info(kg_atomic_label_cloud_right)')}
+                    expiry_column='expires_at' if 'expires_at' in columns else 'NULL AS expires_at'
+                    right = connection.execute('''SELECT title_sha256,origin,status,basis,''' + expiry_column + ''' FROM kg_atomic_label_cloud_right
                         WHERE draft_id=?''', (row['draft_id'],)).fetchone()
                     if (not right or right['origin'] != 'project_authored' or right['status'] != 'active'
                             or not str(right['basis'] or '').strip()
                             or right['title_sha256'] != hashlib.sha256(title.encode('utf-8')).hexdigest()):
                         return [], {}
+                    if right['expires_at'] is not None:
+                        try:
+                            expires=datetime.fromisoformat(right['expires_at'])
+                            if expires.tzinfo is None or expires <= datetime.now(timezone.utc): return [], {}
+                        except (TypeError,ValueError,OverflowError):
+                            return [], {}
                     evidence = connection.execute('''SELECT e.exact_quote FROM kg_atomic_draft_evidence e
                         JOIN kg_resource r ON r.resource_id=e.resource_id
                         WHERE e.draft_id=? AND r.review_status<>'rejected' ''', (row['draft_id'],)).fetchall()

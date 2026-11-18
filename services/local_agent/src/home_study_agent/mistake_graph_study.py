@@ -1,18 +1,35 @@
 """Graph grounding for the wrong-question study workflow."""
 
 import json
+import hashlib
 
 from .cloud_privacy import sanitize_cloud_text
+
+
+def reviewed_graph_subject(graph):
+    """Only an approved matched node may supply an inferred subject."""
+    if not isinstance(graph,dict) or graph.get('status') != 'matched':
+        return None
+    primary=graph.get('primary')
+    if not isinstance(primary,dict) or primary.get('review_status') != 'approved':
+        return None
+    subject=graph.get('subject')
+    return subject.strip() if isinstance(subject,str) and subject.strip() else None
 
 
 def study_targets(graph):
     if not graph or graph['status'] != 'matched' or not graph.get('primary'):
         return []
     primary = graph['primary']
+    # Matching is not a review decision. Unreviewed graph content remains
+    # visible as a hypothesis, but must not drive practice or review.
+    if primary.get('review_status') != 'approved':
+        return []
     seen = {primary['key']}
     targets = []
     for point in graph['prerequisites']:
-        if point['key'] in seen:
+        if (point['key'] in seen or point.get('review_status') != 'approved'
+                or point.get('relation_review_status') != 'approved'):
             continue
         seen.add(point['key'])
         targets.append({
@@ -66,7 +83,7 @@ def review_targets(c, row, graph, graph_sha, analysis):
         WHERE mistake_id=? AND source_revision=? AND feedback_json IS NOT NULL
         ORDER BY rowid''', (row['mistake_id'], row['source_revision'])):
         binding = json.loads(item['validation_json']).get('graph_target')
-        if binding and binding.get('graph_sha') == graph_sha:
+        if binding and practice_graph_target(item,graph_sha,graph):
             feedback = json.loads(item['feedback_json'])
             if feedback['judgement'] != 'uncertain':
                 results[binding['key']] = feedback['judgement'] == 'correct' and item['help_count'] == 0
@@ -75,13 +92,55 @@ def review_targets(c, row, graph, graph_sha, analysis):
     return pending, checked
 
 
-def practice_graph_target(item, graph_sha):
-    target = json.loads(item['validation_json']).get('graph_target')
-    if target and target.get('graph_sha') == graph_sha:
-        return {k: target[k] for k in ('title', 'kind')}
+def practice_graph_target(item, graph_sha, graph=None):
+    try:
+        target = json.loads(item['validation_json']).get('graph_target')
+        if not isinstance(target,dict) or not graph_sha or target.get('graph_sha') != graph_sha:
+            return None
+        for current in study_targets(graph):
+            if all(target.get(key) == current.get(key) for key in ('key','title','kind')):
+                return {key:target[key] for key in ('title','kind')}
+    except (TypeError, ValueError, KeyError, AttributeError):
+        return None
     return None
 
 
-def practice_graph_is_stale(item, graph_sha):
-    target = json.loads(item['validation_json']).get('graph_target')
-    return bool(target and (not graph_sha or target.get('graph_sha') != graph_sha))
+def independent_practice_proof(child_id, mistake_id, source_revision, question, expected, explanation):
+    """Bind a server-recorded graph-free generation to its exact source and content."""
+    value=['graph_free_practice_v1',child_id,mistake_id,source_revision,question,expected,explanation]
+    return hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+
+def independently_sourced_practice(item):
+    try:
+        value=json.loads(item['validation_json'])
+        proof=value.get('graph_free_origin') if isinstance(value,dict) else None
+        if not isinstance(proof,dict) or set(proof)!={'version','digest'} or proof['version']!='source_and_child_input_v1': return False
+        expected=independent_practice_proof(item['child_id'],item['mistake_id'],item['source_revision'],
+            item['question'],json.loads(item['expected_json']),item['explanation'])
+        return isinstance(proof['digest'],str) and proof['digest']==expected
+    except (TypeError, ValueError, KeyError, IndexError):
+        return False
+
+
+def reviewed_coach_practice(item, graph_sha, graph):
+    try:
+        proof=json.loads(item['validation_json']).get('reviewed_coach_origin')
+        if not isinstance(proof,dict) or set(proof)!={'version','graph_sha','digest'} or proof['version']!='reviewed_graph_v1': return False
+        if not graph_sha or proof['graph_sha']!=graph_sha or not study_targets(graph): return False
+        expected=independent_practice_proof(item['child_id'],item['mistake_id'],item['source_revision'],
+            item['question'],json.loads(item['expected_json']),item['explanation'])
+        return isinstance(proof['digest'],str) and proof['digest']==expected
+    except (TypeError, ValueError, KeyError, IndexError, AttributeError):
+        return False
+
+
+def practice_graph_is_stale(item, graph_sha, graph=None):
+    try:
+        value=json.loads(item['validation_json'])
+        if not isinstance(value,dict): return True
+        if 'graph_target' not in value:
+            return not (independently_sourced_practice(item) or reviewed_coach_practice(item,graph_sha,graph))
+        return practice_graph_target(item,graph_sha,graph) is None
+    except (TypeError, ValueError, KeyError, IndexError):
+        return True

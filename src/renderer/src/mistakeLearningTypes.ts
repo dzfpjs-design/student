@@ -20,10 +20,13 @@ export type MistakeLearningPracticeItem={practice_item_id:string;position:number
 export type MistakeLearningState={
  version:1;mistake_id:string;child_id:string;learning_session_id:string|null;revision:number;source_revision:string
  source:MistakeLearningSource
+ analysis_independent?:boolean
  graph_context?:MistakeGraphContext|null
  graph_review_focus?:MistakeGraphReviewFocus|null
  graph_practice_stale?:boolean
  analysis:null|{summary:string;wrong_causes:Array<{label:string;explanation:string}>;knowledge_points:Array<{label:string;description:string}>;correction_strategy:string[];prerequisite_checks?:MistakePrerequisiteCheck[]}
+ analysis_review_required?:boolean
+ tutor_route_configured?:boolean
  practice_items:MistakeLearningPracticeItem[]
  coach_variant?:MistakeLearningPracticeItem|null
  coach_phase?:'question'|'explain_step'|'independent_practice'

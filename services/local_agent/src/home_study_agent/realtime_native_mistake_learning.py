@@ -74,12 +74,12 @@ def compose(c,session,voice,capture,args,*,turn_id,current_graph_version=None):
     if operation in {'capture','review_today'}:snapshot=None
     elif operation in {'coach','answer'} or operation=='practice' and args.get('selector') is None:
         snapshot=native_focus(c,sid,current_graph_version=current_graph_version)
-    else:snapshot=native_target(c,sid,args.get('selector'),operation=operation)
+    else:snapshot=native_target(c,sid,args.get('selector'),operation=operation,current_graph_version=current_graph_version)
     if snapshot is None and operation not in {'capture','review_today'}:fail('FOCUS_REQUIRED')
     if snapshot is not None:
         if type(args.get('selector')) is str and args['selector']==snapshot.get('mistake_id'):fail('SELECTOR_MUST_BE_TITLE_OR_ORDINAL')
         if snapshot.get('child_id')!=child or snapshot.get('session_id')!=sid:fail('OWNER_CHANGED')
-        if validate_source(c,sid,snapshot,operation=operation) is not True:fail('SOURCE_CHANGED')
+        if validate_source(c,sid,snapshot,operation=operation,current_graph_version=current_graph_version) is not True:fail('SOURCE_CHANGED')
     if operation in {'coach','answer'}:
         from .realtime_native_mistake_onset import require_current
         snapshot = require_current(c,voice,snapshot,allow_original=operation=='coach',select_scope=True,current_graph_version=current_graph_version)
@@ -126,7 +126,7 @@ def validate(c,turn_id,*,require_claim=True,current_graph_version=None):
         or witness.get('action_fields_sha256')!=digest(original)
         or any(action.get(key)!=value for key,value in original.items())):fail('WITNESS_CHANGED')
     snapshot=witness['source']
-    if snapshot is not None and validate_source(c,row['session_id'],snapshot,operation=args['operation']) is not True:fail('SOURCE_CHANGED')
+    if snapshot is not None and validate_source(c,row['session_id'],snapshot,operation=args['operation'],current_graph_version=current_graph_version) is not True:fail('SOURCE_CHANGED')
     if args['operation'] in {'coach','answer'}:
         from .realtime_native_mistake_onset import require_current
         completed=_service_receipt(c,row['session_id'],turn_id+':mistake:learn')
@@ -230,11 +230,11 @@ def completion_facts(c,row,output):
     return facts
 
 
-def context_projection(c,sid,*,names=(),current_graph_version=None):
+def context_projection(c,sid,*,names=(),current_graph_version=None,route_identity=None,graph_cloud_authorizer=None):
     """Current authorized lesson content only; no IDs, practice key or answer."""
     from .mistake_learning import native_context,MistakeLearningError
     from .cloud_privacy import sanitize_cloud_text,sensitive_categories
-    try:raw=native_context(c,sid,current_graph_version=current_graph_version)
+    try:raw=native_context(c,sid,current_graph_version=current_graph_version,route_identity=route_identity,graph_cloud_authorizer=graph_cloud_authorizer)
     except MistakeLearningError as error:
         if error.code in {'MISTAKE_LEARNING_SOURCE_CHANGED','MISTAKE_LEARNING_FOCUS_CHANGED','MISTAKE_LEARNING_PRACTICE_CHANGED'}:return None
         raise
@@ -282,7 +282,7 @@ def context_projection(c,sid,*,names=(),current_graph_version=None):
     return _fit_projection('mistake_learning',public,3000) if public.get('question') else None
 
 
-def review_context_projection(c,sid,*,names=(),current_graph_version=None):
+def review_context_projection(c,sid,*,names=(),current_graph_version=None,route_identity=None):
     """Today's finite due reminder also works without opening/focusing the book."""
     import re
     from .mistake_learning import native_due_context
@@ -290,7 +290,7 @@ def review_context_projection(c,sid,*,names=(),current_graph_version=None):
     owner=c.execute('SELECT child_id FROM daily_session WHERE session_id=?',(sid,)).fetchone()
     if not owner:fail('OWNER_CHANGED')
     _owner(c,sid,owner['child_id'])
-    value=native_due_context(c,sid,current_graph_version=current_graph_version)
+    value=native_due_context(c,sid,current_graph_version=current_graph_version,route_identity=route_identity)
     if value is None:return None
     if (type(value) is not dict or type(value.get('date')) is not str or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',value['date'])
         or type(value.get('due_count')) is not int or not 0<=value['due_count']<=10000

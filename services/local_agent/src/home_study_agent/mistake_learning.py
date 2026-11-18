@@ -16,8 +16,8 @@ from time import monotonic
 
 from .cloud_privacy import sanitize_cloud_text
 from .config import validate_tutor_explanation_url, validate_tutor_explanation_model
-from .mistake_graph_study import (cloud_targets, practice_graph_is_stale, practice_graph_target,
-                                 prerequisite_checks, review_targets, study_targets)
+from .mistake_graph_study import (cloud_targets, independent_practice_proof, independently_sourced_practice, practice_graph_is_stale, practice_graph_target,
+                                 prerequisite_checks, reviewed_graph_subject, review_targets, study_targets)
 from .mistake_graph_semantic import SEMANTIC_INSTRUCTION, parse_semantic_assessments
 from .model_gateway import ModelRequest
 from .privacy_operation_receipt import generation
@@ -101,27 +101,64 @@ def analysis_context_key(graph, dedicated):
     return _hash(['graph_analysis_v1', graph, bool(dedicated)])
 
 
+def independent_analysis_context_key(route_identity):
+    # This marker is reserved for analyses generated with no graph input,
+    # prior analysis, conversation history or previous practice. Legacy
+    # unbound analyses cannot establish that provenance.
+    return _hash(['independent_analysis_v1', route_identity])
+
+
 def _tutor_route_identity(gateway):
     settings = getattr(gateway, 'settings', None)
     key = getattr(settings, 'tutor_explanation_api_key', None)
     url = validate_tutor_explanation_url(getattr(settings, 'tutor_explanation_base_url', None))
     model = validate_tutor_explanation_model(getattr(settings, 'tutor_explanation_model', None))
+    configured = getattr(gateway, 'configured_for', None)
+    if callable(configured):
+        try:
+            if configured('mistake_learning_analyze') is not True:
+                return None
+        except Exception:
+            return None
+    if hasattr(gateway, '_explanation_endpoint'):
+        endpoint = gateway._explanation_endpoint
+        if (not endpoint or getattr(endpoint,'provider',None) != 'deepseek'
+                or getattr(endpoint,'base_url',None) != url or getattr(endpoint,'model',None) != model
+                or getattr(endpoint,'api_key',None) != key or getattr(gateway,'_explanation_client',None) is None):
+            return None
     if isinstance(key, str) and re.fullmatch(r'[!-~]{16,512}', key) and url and model:
         return {'provider': 'deepseek', 'endpoint': url, 'model': model}
     return None
 
 
-def analysis_for_graph(row, graph):
-    if not row or not row['analysis_json']:
+def analysis_for_graph(row, graph, route_identity=None):
+    if not isinstance(route_identity, dict) or not row or not row['analysis_json']:
         return None
     context = row['analysis_context_key']
-    if graph and not context:
+    if not context and (graph or route_identity is not None):
         return None
-    allowed = (analysis_context_key(graph, False), analysis_context_key(graph, True),
-               analysis_context_key(None, False), analysis_context_key(None, True))
+    # A v1 or unbound cache cannot establish its model identity.
+    if graph and graph.get('status') == 'matched' and isinstance(graph.get('primary'), dict) and graph['primary'].get('review_status') != 'approved':
+        # A historical graph-bound or unbound result might have incorporated
+        # the unreviewed candidate. Only a freshly isolated analysis can be
+        # surfaced or sent to a topic/native context.
+        allowed = (independent_analysis_context_key(route_identity),)
+    else:
+        allowed = (analysis_context_key(graph, route_identity), analysis_context_key(None, route_identity))
     if context and context not in allowed:
         return None
-    return json.loads(row['analysis_json'])
+    try:
+        analysis = json.loads(row['analysis_json'])
+        targets = study_targets(graph)
+    except (TypeError, ValueError, KeyError):
+        return None
+    # Older analyses may contain prerequisite checks from unreviewed graph
+    # edges. Retain the saved analysis, but do not present or reuse those checks.
+    allowed = {target['title'] for target in targets if target['kind'] == 'prerequisite'}
+    if isinstance(analysis, dict) and isinstance(analysis.get('prerequisite_checks'), list):
+        analysis['prerequisite_checks'] = [check for check in analysis['prerequisite_checks']
+                                            if isinstance(check, dict) and check.get('title') in allowed]
+    return analysis
 
 
 def _text(v, maximum=4000, *, optional=False):
@@ -206,11 +243,19 @@ def _coach_variant(c, mid, child_id, source_revision):
         (mid, child_id, source_revision, _coach_variant_batch(mid, source_revision))).fetchone()
 
 
-def _public_learning_item(row, graph_sha):
+def _coach_origin_proof(c,child_id,mid,revision,session_id,action_id,graph_sha=None):
+    rows=[tuple(row) for row in c.execute('''SELECT role,kind,text,practice_item_id FROM mistake_learning_turn
+        WHERE child_id=? AND mistake_id=? AND source_revision=? AND session_id=? AND client_action_id=? ORDER BY rowid''',
+        (child_id,mid,revision,session_id,action_id))]
+    if not rows or not any(row[0]=='assistant' for row in rows): return None
+    return _hash(['coach_origin_v1',child_id,mid,revision,session_id,action_id,graph_sha,rows])
+
+
+def _public_learning_item(row, graph_sha, graph):
     return {k: row[k] for k in ('practice_item_id', 'position', 'question', 'stage', 'difficulty', 'attempts', 'help_count')} | {
-        'status': 'stale' if practice_graph_is_stale(row, graph_sha) else 'answered' if row['answered_at'] else 'ready',
+        'status': 'stale' if practice_graph_is_stale(row, graph_sha, graph) else 'answered' if row['answered_at'] else 'ready',
         'feedback': json.loads(row['feedback_json']) if row['feedback_json'] else None,
-        'graph_target': practice_graph_target(row, graph_sha),
+        'graph_target': practice_graph_target(row, graph_sha, graph),
     }
 
 
@@ -277,13 +322,13 @@ def native_focus(c, session_id, *, prefer_coach_variant=True, current_graph_vers
     try:
         graph = json.loads(state['graph_json']) if state['graph_json'] else None
     except (TypeError, ValueError):
-        graph = None
-    graph_sha = _hash(graph) if (isinstance(graph, dict) and isinstance(graph.get('graph_version'), str)
-                                and (current_graph_version is None or graph['graph_version'] == current_graph_version)) else None
+        graph = {'status':'unavailable'}
+    graph_sha = _hash(graph) if (isinstance(graph, dict) and current_graph_version
+                                and graph.get('graph_version') == current_graph_version) else None
     candidates = c.execute('SELECT * FROM mistake_learning_item WHERE mistake_id=? AND source_revision=? AND batch_id=? AND answered_at IS NULL ORDER BY position', (row['mistake_id'], source, state['batch_id'])) if state['practice_date']==datetime.now().astimezone().date().isoformat() else ()
-    item = next((candidate for candidate in candidates if not practice_graph_is_stale(candidate, graph_sha)), None)
+    item = next((candidate for candidate in candidates if not practice_graph_is_stale(candidate, graph_sha, graph)), None)
     variant = _coach_variant(c, row['mistake_id'], row['child_id'], source)
-    if prefer_coach_variant and variant and not variant['answered_at'] and not practice_graph_is_stale(variant, graph_sha):
+    if prefer_coach_variant and variant and not variant['answered_at'] and not practice_graph_is_stale(variant, graph_sha, graph):
         item = variant
     return {'mistake_id': row['mistake_id'], 'child_id': row['child_id'], 'session_id': session_id,
             'source_revision': source, 'focus_generation': row['focus_generation'], 'focus_created_at': row['created_at'],
@@ -295,7 +340,7 @@ def native_focus(c, session_id, *, prefer_coach_variant=True, current_graph_vers
 lookup_native_focus = native_focus
 
 
-def native_target(c, session_id, selector=None, *, operation='select'):
+def native_target(c, session_id, selector=None, *, operation='select', current_graph_version=None):
     session = c.execute('SELECT child_id FROM daily_session WHERE session_id=?', (session_id,)).fetchone()
     if not session:
         _fail('MISTAKE_LEARNING_SESSION_CHANGED')
@@ -303,12 +348,12 @@ def native_target(c, session_id, selector=None, *, operation='select'):
     _owner(c, child_id, session_id)
     rows = _ids(c, child_id)
     if selector is None:
-        focus = native_focus(c, session_id)
+        focus = native_focus(c, session_id, current_graph_version=current_graph_version)
         if focus and operation != 'review_today':
             return focus
         matches = []
         for row in rows:
-            state = MistakeLearningService._view(c, row['mistake_id'], child_id)
+            state = MistakeLearningService._view(c, row['mistake_id'], child_id,graph_version=current_graph_version or '')
             if _is_due(state):
                 matches.append(row)
         if not matches:
@@ -326,21 +371,22 @@ def native_target(c, session_id, selector=None, *, operation='select'):
         chosen = matches[0]
     source, revision = _source(c, child_id, chosen['mistake_id'])
     previous = c.execute('SELECT focus_generation FROM mistake_learning_focus WHERE session_id=?', (session_id,)).fetchone()
+    current_focus=native_focus(c,session_id,current_graph_version=current_graph_version)
     return {'mistake_id': chosen['mistake_id'], 'child_id': child_id, 'session_id': session_id,
-            'source_revision': revision, 'focus_generation': (native_focus(c, session_id)['focus_generation'] if native_focus(c, session_id) and native_focus(c, session_id)['mistake_id'] == chosen['mistake_id'] else (previous[0] if previous else 0)+1),
+            'source_revision': revision, 'focus_generation': (current_focus['focus_generation'] if current_focus and current_focus['mistake_id'] == chosen['mistake_id'] else (previous[0] if previous else 0)+1),
             'focus_created_at': None, 'learning_session_id': None, 'revision': 0,
             'practice_item_id': None, 'practice_created_at': None, 'selection': True,
             'selection_order_sha256': _hash([[r['mistake_id'], _source(c, child_id, r['mistake_id'])[1]] for r in rows])}
 
 
-def validate_source(c, session_id, snapshot, *, operation):
+def validate_source(c, session_id, snapshot, *, operation, current_graph_version=None):
     if not isinstance(snapshot, dict) or snapshot.get('session_id') != session_id:
         _fail('MISTAKE_LEARNING_FOCUS_CHANGED')
     _owner(c, snapshot['child_id'], session_id)
     _, current = _source(c, snapshot['child_id'], snapshot['mistake_id'])
     if current != snapshot.get('source_revision'):
         _fail('MISTAKE_LEARNING_SOURCE_CHANGED')
-    focus = native_focus(c, session_id)
+    focus = native_focus(c, session_id, current_graph_version=current_graph_version)
     if snapshot.get('selection'):
         if focus and focus['mistake_id'] == snapshot['mistake_id'] and focus['focus_generation'] == snapshot['focus_generation']:
             return True
@@ -365,7 +411,7 @@ def native_receipt(c, session_id, client_action_id):
     return {k: row[k] for k in ('client_action_id', 'operation', 'mistake_id', 'child_id', 'session_id', 'source_revision', 'created_at', 'updated_at')} | {'status':_action_status(row,generation(c))} | {'revision': json.loads(row['result_json']).get('revision') if row['result_json'] else None, 'learning_session_id': json.loads(row['result_json']).get('learning_session_id') if row['result_json'] else None}
 
 
-def native_context(c, session_id, *, current_graph_version=None):
+def native_context(c, session_id, *, current_graph_version=None, route_identity=None, graph_cloud_authorizer=None):
     focus = native_focus(c, session_id, current_graph_version=current_graph_version or '')
     if not focus:
         return None
@@ -381,15 +427,25 @@ def native_context(c, session_id, *, current_graph_version=None):
         not isinstance(graph, dict) or not current_graph_version or graph.get('graph_version') != current_graph_version
     ))
     if graph_stale:
-        unbound_keys = (analysis_context_key(None, False), analysis_context_key(None, True))
-        analysis = analysis_for_graph(state, None) if state['analysis_context_key'] in unbound_keys else None
+        unbound_key = analysis_context_key(None, route_identity)
+        analysis = analysis_for_graph(state, None, route_identity) if state['analysis_context_key'] == unbound_key else None
     elif graph and not state['analysis_context_key']:
         analysis = None
     else:
-        analysis = analysis_for_graph(state, graph)
-    item = c.execute('SELECT question,stage,validation_json FROM mistake_learning_item WHERE practice_item_id=?', (focus['practice_item_id'],)).fetchone()
+        analysis = analysis_for_graph(state, graph, route_identity)
+    graph_cloud_allowed=False
+    if graph and not graph_stale and callable(graph_cloud_authorizer):
+        try: graph_cloud_allowed=graph_cloud_authorizer(graph) is True
+        except Exception: graph_cloud_allowed=False
+    if (analysis and graph and state['analysis_context_key'] != independent_analysis_context_key(route_identity)
+            and not graph_cloud_allowed):
+        analysis=None
+    item = c.execute('SELECT * FROM mistake_learning_item WHERE practice_item_id=?', (focus['practice_item_id'],)).fetchone()
     graph_sha = _hash(graph) if graph and not graph_stale else None
-    if item and practice_graph_is_stale(item, graph_sha):
+    practice_graph = graph if graph else ({'status':'unavailable'} if raw_graph else None)
+    if item and practice_graph_is_stale(item, graph_sha, practice_graph):
+        item = None
+    if item and not independently_sourced_practice(item) and not graph_cloud_allowed:
         item = None
     practice = {'practice_item_id': focus['practice_item_id'], 'question': item['question'], 'stage': item['stage']} if item else None
     return {'focus': focus, 'source': source, 'analysis': analysis, 'practice': practice}
@@ -464,19 +520,85 @@ class MistakeLearningService:
     def _analysis_context_key(self, graph):
         return analysis_context_key(graph, _tutor_route_identity(self.gateway))
 
+    def _current_graph(self,c,row):
+        graph=self._graph(row)
+        version=graph_version_from_reader(getattr(self.graph_matcher,'cache_version',None),c)
+        return graph if graph and version and graph.get('graph_version') == version else None
+
+    def _current_view(self, *args, **kwargs):
+        if 'graph_version' not in kwargs:
+            kwargs['graph_version'] = graph_version_from_reader(getattr(self.graph_matcher,'cache_version',None),args[0]) or ''
+        return self._view(*args, route_identity=_tutor_route_identity(self.gateway), **kwargs)
+
+    def _replay_result(self, c, raw, mid, child_id, session_id):
+        result = json.loads(raw)
+        if isinstance(result, dict) and 'analysis' in result:
+            current = self._current_view(c, mid, child_id, session_id)
+            if result['analysis'] != current['analysis']:
+                result['analysis'] = current['analysis']
+                result['graph_review_focus'] = current['graph_review_focus']
+            result['analysis_review_required'] = current['analysis_review_required']
+            result['tutor_route_configured'] = current['tutor_route_configured']
+            # A replay is an old response: never advertise an independent
+            # analysis against a different current graph or model route.
+            result['analysis_independent'] = bool(current['analysis_independent'] and
+                result.get('graph_context') == current.get('graph_context'))
+            # An action receipt can predate a graph review change. Retain the
+            # historical question/feedback while projecting current eligibility.
+            current_items={item['practice_item_id']:item for item in current['practice_items']}
+            def project(item):
+                if not isinstance(item,dict): return item
+                latest=current_items.get(item.get('practice_item_id'))
+                if current.get('coach_variant') and item.get('practice_item_id') == current['coach_variant'].get('practice_item_id'):
+                    latest=current['coach_variant']
+                return item | {'status':latest['status'] if latest else 'stale',
+                               'graph_target':latest['graph_target'] if latest else None}
+            if isinstance(result.get('practice_items'),list):
+                result['practice_items']=[project(item) for item in result['practice_items']]
+            if result.get('coach_variant'):
+                result['coach_variant']=project(result['coach_variant'])
+            result['graph_review_focus']=current['graph_review_focus']
+            result['graph_practice_stale']=bool(current['graph_practice_stale'] or any(
+                isinstance(item,dict) and item.get('status')=='stale' for item in result.get('practice_items',[])))
+            result['focus']=current['focus']
+        return result
+
     def _authorized_cloud_targets(self, targets):
         """Keep local graph labels local unless each label has explicit cloud rights."""
         if not self.graph_matcher or not hasattr(self.graph_matcher, 'semantic_options'):
             return []
         allowed = []
         for target in targets:
-            options, _ = self.graph_matcher.semantic_options({
-                'status': 'ambiguous', 'candidates_truncated': False,
-                'alternatives': [{'key': target['key'], 'title': target['title']}],
-            })
-            if options:
+            try:
+                options, mapping = self.graph_matcher.semantic_options({
+                    'status': 'ambiguous', 'candidates_truncated': False,
+                    'alternatives': [{'key': target['key'], 'title': target['title']}],
+                })
+            except Exception:
+                return []
+            if options == [{'ref':'C1','label':target['title']}] and isinstance(mapping,dict) and mapping.get('C1') == target['key']:
                 allowed.append(target)
         return allowed if any(target['kind'] == 'primary' for target in allowed) else []
+
+    def _graph_cloud_allowed(self, graph):
+        """Every graph label a historical request could have seen needs a current right."""
+        try:
+            targets=study_targets(graph)
+            if not targets: return False
+            allowed=self._authorized_cloud_targets(targets)
+            return {(v['key'],v['title'],v['kind']) for v in targets} == {(v['key'],v['title'],v['kind']) for v in allowed}
+        except Exception:
+            return False
+
+    def _practice_cloud_allowed(self,item,graph):
+        try:
+            validation=json.loads(item['validation_json'])
+            if not isinstance(validation,dict): return False
+            if 'graph_target' in validation or 'reviewed_coach_origin' in validation:
+                return self._graph_cloud_allowed(graph)
+            return independently_sourced_practice(item)
+        except (TypeError,ValueError,KeyError,IndexError):
+            return False
 
     def _refresh_graph(self, mid, child_id, session_id=None, *, version=None):
         if self.graph_matcher is None:
@@ -508,32 +630,34 @@ class MistakeLearningService:
         return True
 
     @staticmethod
-    def _view(c, mid, child_id, session_id=None, *, graph_version=None):
+    def _view(c, mid, child_id, session_id=None, *, graph_version=None, route_identity=None):
         source, revision = _source(c, child_id, mid)
         row = c.execute('SELECT * FROM mistake_learning_state WHERE mistake_id=?', (mid,)).fetchone()
         current = row and row['source_revision'] == revision
         graph = MistakeLearningService._graph(row) if current else None
+        stored_graph = graph
         graph_untrusted = bool(current and row['graph_json'] and (
-            not graph or graph_version is not None and graph.get('graph_version') != graph_version
+            not graph or not graph_version or graph.get('graph_version') != graph_version
         ))
         if graph_untrusted:
             graph = None
         graph_sha = _hash(graph) if graph else None
+        practice_graph=graph if graph else (stored_graph or {'status':'unavailable'} if graph_untrusted else None)
         display_source = _display_source(c, child_id, mid, source)
-        if graph and graph.get('subject'):
-            display_source['subject'] = graph['subject']
+        if (subject := reviewed_graph_subject(graph)):
+            display_source['subject'] = subject
         if graph_untrusted:
-            unbound_keys = (analysis_context_key(None, False), analysis_context_key(None, True))
-            analysis = analysis_for_graph(row, None) if row['analysis_context_key'] in unbound_keys else None
+            unbound_key = analysis_context_key(None, route_identity)
+            analysis = analysis_for_graph(row, None, route_identity) if row['analysis_context_key'] == unbound_key else None
         elif graph and not row['analysis_context_key']:
             analysis = None
         else:
-            analysis = analysis_for_graph(row, graph) if current else None
+            analysis = analysis_for_graph(row, graph, route_identity) if current else None
         items = [dict(r) for r in c.execute('SELECT * FROM mistake_learning_item WHERE mistake_id=? AND source_revision=? AND batch_id=? ORDER BY position', (mid, revision, row['batch_id']))] if current else []
         variant = _coach_variant(c, mid, child_id, revision) if current else None
         coach_turn = _latest_coach_turn(c, mid, child_id, revision) if current else None
-        stale_practice = any(practice_graph_is_stale(item, graph_sha) for item in items)
-        current_items = [item for item in items if not practice_graph_is_stale(item, graph_sha)]
+        stale_practice = any(practice_graph_is_stale(item, graph_sha, practice_graph) for item in items)
+        current_items = [item for item in items if not practice_graph_is_stale(item, graph_sha, practice_graph)]
         turns = [dict(r) for r in c.execute('SELECT * FROM mistake_learning_turn WHERE mistake_id=? AND source_revision=? ORDER BY created_at,turn_id', (mid, revision))] if current else []
         date = datetime.now().astimezone().date().isoformat()
         same_day = bool(current and row['practice_date'] == date)
@@ -549,12 +673,12 @@ class MistakeLearningService:
             if targets:
                 focus_target = targets[0]
                 label = {k: focus_target[k] for k in ('title', 'kind')}
-                scheduled = any(not item['answered_at'] and practice_graph_target(item, graph_sha) == label for item in items)
+                scheduled = any(not item['answered_at'] and practice_graph_target(item, graph_sha, graph) == label for item in items)
                 review_focus = label | {'state': 'scheduled' if scheduled else 'checked' if focus_target['key'] in checked else 'due'}
         focus = None
         if session_id:
             try:
-                focus = native_focus(c, session_id)
+                focus = native_focus(c, session_id,current_graph_version=graph_version)
             except MistakeLearningError:
                 pass
             if focus and focus['mistake_id'] != mid:
@@ -564,9 +688,12 @@ class MistakeLearningService:
             'learning_session_id': row['learning_session_id'] if current else None,
             'revision': row['revision'] if row else 0, 'source_revision': revision, 'source': display_source,
             'analysis': analysis,
+            'analysis_review_required': bool(current and row['analysis_json'] and analysis is None),
+            'tutor_route_configured': isinstance(route_identity, dict) and 'endpoint' in route_identity and 'model' in route_identity,
+            'analysis_independent': bool(isinstance(route_identity, dict) and analysis is not None and current and row['analysis_context_key'] == independent_analysis_context_key(route_identity)),
             'graph_context': graph, 'graph_review_focus': review_focus, 'graph_practice_stale': stale_practice,
-            'practice_items': [_public_learning_item(r, graph_sha) for r in items],
-            'coach_variant': _public_learning_item(variant, graph_sha) if variant else None,
+            'practice_items': [_public_learning_item(r, graph_sha, practice_graph) for r in items],
+            'coach_variant': _public_learning_item(variant, graph_sha, practice_graph) if variant else None,
             'coach_turn_id': coach_turn['turn_id'] if coach_turn and coach_turn['phase'] in ('question','explain_step') else None,
             'turns': [{k: r[k] for k in ('turn_id', 'role', 'kind', 'text', 'practice_item_id', 'created_at')} for r in turns[-60:]],
             'today': {'date': date, 'target_count': target, 'completed_count': completed, 'remaining_count': max(0, target-completed), 'status': quota, 'stop_reason': 'two_failures' if needs else None},
@@ -579,7 +706,7 @@ class MistakeLearningService:
         self._refresh_graph(mistake_id, child_id, session_id, version=version)
         with self.database.connect() as c:
             _owner(c, child_id, session_id)
-            return self._view(c, mistake_id, child_id, session_id, graph_version=version)
+            return self._current_view(c, mistake_id, child_id, session_id, graph_version=version)
 
     def read_action(self, client_action_id, *, child_id, mistake_id):
         with self.database.connect() as c:
@@ -588,8 +715,8 @@ class MistakeLearningService:
             row=c.execute('SELECT * FROM mistake_learning_action WHERE client_action_id=? AND child_id=? AND mistake_id=?',(client_action_id,child_id,mistake_id)).fetchone()
             if not row: _fail('MISTAKE_LEARNING_ACTION_NOT_FOUND',404)
             if row['source_revision']!=revision: _fail('MISTAKE_LEARNING_SOURCE_CHANGED')
-            if row['result_json']: return json.loads(row['result_json'])
-            return self._view(c,mistake_id,child_id,row['session_id'])|{'operation':row['operation'],'action_status':_action_status(row,generation(c))}
+            if row['result_json']: return self._replay_result(c,row['result_json'],mistake_id,child_id,row['session_id'])
+            return self._current_view(c,mistake_id,child_id,row['session_id'])|{'operation':row['operation'],'action_status':_action_status(row,generation(c))}
 
     def invalidate_focus(self, session_id, child_id, expected_generation=None):
         with self.database.connect() as c:
@@ -620,7 +747,7 @@ class MistakeLearningService:
                         raise
         with self.database.connect() as c:
             _owner(c, child_id)
-            items = [self._view(c, r['mistake_id'], child_id, graph_version=version) for r in _ids(c, child_id)]
+            items = [self._current_view(c, r['mistake_id'], child_id, graph_version=version) for r in _ids(c, child_id)]
         due = [r for r in items if _is_due(r)]
         result = {'version': VERSION, 'child_id': child_id, 'items': items, 'today': {'date': datetime.now().astimezone().date().isoformat(), 'due_count': len(due), 'remaining_questions': sum(r['today']['remaining_count'] for r in due)}}
         if version is not None:
@@ -640,13 +767,13 @@ class MistakeLearningService:
             if existing:
                 if existing['request_sha256'] != req or existing['source_revision'] != revision:
                     _fail('MISTAKE_LEARNING_ACTION_CONFLICT')
-                return json.loads(existing['result_json'])
+                return self._replay_result(c,existing['result_json'],mistake_id,child_id,session_id)
             row = self._state_row(c, mistake_id, child_id, revision)
             self._version(row, expected_revision)
             prev = c.execute('SELECT * FROM mistake_learning_focus WHERE session_id=?', (session_id,)).fetchone()
             gen = prev['focus_generation'] if prev and prev['mistake_id'] == mistake_id and prev['source_revision'] == revision else (prev['focus_generation'] if prev else 0)+1
             c.execute('INSERT INTO mistake_learning_focus VALUES(?,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET child_id=excluded.child_id,mistake_id=excluded.mistake_id,source_revision=excluded.source_revision,focus_generation=excluded.focus_generation,created_at=excluded.created_at', (session_id, child_id, mistake_id, revision, gen, prev['created_at'] if prev and prev['focus_generation'] == gen else _now()))
-            result = self._view(c, mistake_id, child_id, session_id) | {'operation': 'focus', 'action_status': 'completed'}
+            result = self._current_view(c, mistake_id, child_id, session_id) | {'operation': 'focus', 'action_status': 'completed'}
             now = _now()
             c.execute('INSERT INTO mistake_learning_action VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (client_action_id, mistake_id, child_id, session_id, 'focus', req, revision, generation(c), 'completed', _json(result), None, None, now, now))
             _guard(c, guard)
@@ -769,13 +896,13 @@ class MistakeLearningService:
                 if prior['request_sha256'] != request_hash or prior['source_revision'] != current_revision:
                     _fail('MISTAKE_LEARNING_ACTION_CONFLICT')
                 if prior['result_json']:
-                    return json.loads(prior['result_json']), None
-                return self._view(c, mid, child_id, session_id) | {
+                    return self._replay_result(c,prior['result_json'],mid,child_id,session_id), None
+                return self._current_view(c, mid, child_id, session_id) | {
                     'operation': 'review', 'action_status': _action_status(prior, generation(c)),
                 }, None
             row = self._state_row(c, mid, child_id, current_revision)
             self._version(row, expected_revision)
-            if row['status'] == 'processing' and self._view(c, mid, child_id, session_id)['status'] == 'processing':
+            if row['status'] == 'processing' and self._current_view(c, mid, child_id, session_id)['status'] == 'processing':
                 _fail('MISTAKE_LEARNING_ACTION_BUSY')
             work = {'mid': mid, 'child_id': child_id, 'session_id': session_id, 'source_revision': current_revision,
                     'revision': row['revision'], 'generation': generation(c), 'client_action_id': client_action_id,
@@ -848,8 +975,8 @@ class MistakeLearningService:
             c.execute('UPDATE mistake_learning_state SET status="ready",error_code=NULL WHERE mistake_id=?', (mid,))
         if judgement != 'uncertain':
             row = c.execute('SELECT * FROM mistake_learning_state WHERE mistake_id=?', (mid,)).fetchone()
-            graph = self._graph(row)
-            analysis = analysis_for_graph(row, graph)
+            graph = self._current_graph(c,row)
+            analysis = analysis_for_graph(row, graph, _tutor_route_identity(self.gateway))
             targets, _ = review_targets(c, row, graph, _hash(graph) if graph else None, analysis)
             days = 1 if targets and targets[0]['kind'] == 'prerequisite' else 2
             next_review_at = (datetime.fromisoformat(now) + timedelta(days=days)).isoformat() if judgement == 'correct' else now
@@ -861,7 +988,7 @@ class MistakeLearningService:
             if hint:
                 c.execute('INSERT INTO mistake_learning_turn VALUES(?,?,?,?,?,?,?,?,?,?,?)', (str(uuid4()), mid,
                     child_id, revision, session_id, action, 'assistant', 'coach', hint, None, now))
-        response = self._view(c, mid, child_id, session_id) | {'operation': 'review', 'action_status': 'completed', 'review_result': result}
+        response = self._current_view(c, mid, child_id, session_id) | {'operation': 'review', 'action_status': 'completed', 'review_result': result}
         if metadata is None:
             c.execute('INSERT INTO mistake_learning_action VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (action, mid, child_id,
                 session_id, 'review', work['request_hash'], revision, work['generation'], 'completed', _json(response),
@@ -1001,24 +1128,33 @@ class MistakeLearningService:
                 if old['source_revision'] != source_revision:
                     _fail('MISTAKE_LEARNING_SOURCE_CHANGED')
                 if old['result_json']:
-                    return json.loads(old['result_json'])
-                return self._view(c, mid, child_id, session_id) | {'operation': operation, 'action_status': 'unknown' if old['status'] == 'processing' else old['status']}
+                    return self._replay_result(c,old['result_json'],mid,child_id,session_id)
+                return self._current_view(c, mid, child_id, session_id) | {'operation': operation, 'action_status': 'unknown' if old['status'] == 'processing' else old['status']}
             if voice_input_id:
                 guard = self._coaching_voice_guard(c, voice, mid, source_revision, client_action_id, coach_turn_id, practice_item_id)
                 _guard(c, guard)
             row = self._state_row(c, mid, child_id, source_revision)
             self._version(row, expected_revision)
             _permission(c)
-            graph = self._graph(row)
-            if graph and version is not None and graph['graph_version'] != version:
+            stored_graph = self._graph(row)
+            graph = stored_graph
+            if graph and (not version or graph['graph_version'] != version):
                 graph = None
             graph_sha = _hash(graph) if graph else None
-            analysis_key = self._analysis_context_key(graph)
-            saved_analysis = json.loads(row['analysis_json']) if row['analysis_context_key'] == analysis_key and row['analysis_json'] else None
+            practice_graph=graph if graph else (stored_graph or {'status':'unavailable'} if row['graph_json'] else None)
+            independent_analysis = bool(operation == 'analyze' and graph and graph.get('status') == 'matched'
+                and isinstance(graph.get('primary'), dict) and graph['primary'].get('review_status') != 'approved')
+            route_identity = _tutor_route_identity(self.gateway)
+            if independent_analysis and route_identity is None:
+                _fail('MODEL_MISTAKE_REASONING_CONFIG_REQUIRED', 503)
+            analysis_key = independent_analysis_context_key(route_identity) if independent_analysis else self._analysis_context_key(graph)
+            saved_analysis = analysis_for_graph(row,graph,route_identity)
+            if independent_analysis and row['analysis_context_key'] != analysis_key:
+                saved_analysis = None
             # Same-source analysis is reusable; no duplicate paid request on a UI/voice race.
             pending = next((r for r in c.execute('SELECT * FROM mistake_learning_action WHERE mistake_id=? AND source_revision=? AND storage_generation=? AND status IN ("processing","unknown") AND operation!="focus" ORDER BY created_at', (mid,source_revision,generation(c))) if _action_status(r,generation(c))=='processing' or r['request_sha256']==request_hash),None)
             if pending:
-                return self._view(c, mid, child_id, session_id) | {'operation': operation, 'action_status': _action_status(pending,generation(c)), 'pending_client_action_id': pending['client_action_id']}
+                return self._current_view(c, mid, child_id, session_id) | {'operation': operation, 'action_status': _action_status(pending,generation(c)), 'pending_client_action_id': pending['client_action_id']}
             item = None
             variant = _coach_variant(c, mid, child_id, source_revision)
             variant_id = variant['practice_item_id'] if variant else None
@@ -1028,9 +1164,11 @@ class MistakeLearningService:
                     _fail('MISTAKE_LEARNING_PRACTICE_CHANGED')
             if operation == 'coach' and not original_review and not item and row['batch_id']:
                 candidates = c.execute('SELECT * FROM mistake_learning_item WHERE mistake_id=? AND source_revision=? AND batch_id=? AND answered_at IS NULL ORDER BY position',(mid,source_revision,row['batch_id']))
-                item = next((candidate for candidate in candidates if not practice_graph_is_stale(candidate, graph_sha)), None)
-            if item and operation in ('answer', 'coach') and practice_graph_is_stale(item, graph_sha):
+                item = next((candidate for candidate in candidates if not practice_graph_is_stale(candidate, graph_sha, practice_graph)), None)
+            if item and operation in ('answer', 'coach') and practice_graph_is_stale(item, graph_sha, practice_graph):
                 _fail('MISTAKE_LEARNING_PRACTICE_CHANGED')
+            if item and operation in ('answer','coach') and not self._practice_cloud_allowed(item,graph):
+                _fail('MISTAKE_LEARNING_CLOUD_LABEL_RIGHT_REQUIRED')
             separate_check = bool(item and item['practice_item_id'] == variant_id)
             if operation == 'answer' and not separate_check and row['practice_date'] != datetime.now().astimezone().date().isoformat():
                 _fail('MISTAKE_LEARNING_PRACTICE_CHANGED')
@@ -1038,7 +1176,13 @@ class MistakeLearningService:
                 _fail('MISTAKE_LEARNING_EXPLANATION_FIRST')
             if operation == 'answer' and (not item or item['answered_at']):
                 _fail('MISTAKE_LEARNING_UNANSWERED_ITEM_REQUIRED')
-            view = self._view(c, mid, child_id, session_id, graph_version=version)
+            view = self._current_view(c, mid, child_id, session_id, graph_version=version)
+            safe_previous_questions=[]
+            if row['practice_date']==view['today']['date'] and row['batch_id']:
+                prior_items=c.execute('SELECT * FROM mistake_learning_item WHERE mistake_id=? AND child_id=? AND source_revision=? AND batch_id=? ORDER BY position',
+                                      (mid,child_id,source_revision,row['batch_id'])).fetchall()
+                if all(independently_sourced_practice(previous) for previous in prior_items):
+                    safe_previous_questions=[previous['question'] for previous in prior_items]
             if operation == 'practice' and row['needs_explanation']:
                 only_stale_items = view['graph_practice_stale'] and all(
                     item['status'] == 'stale' for item in view['practice_items']
@@ -1063,25 +1207,52 @@ class MistakeLearningService:
             except BaseException:
                 _ACTIVE_ACTIONS.discard(work_key)
                 raise
-            snapshot = {'source_revision': source_revision, 'generation': work_key[0], 'graph_sha': graph_sha,
-                        'graph_version': graph['graph_version'] if graph else None}
+            snapshot = {'source_revision': source_revision, 'generation': work_key[0], 'graph_sha': _hash(stored_graph) if stored_graph else None,
+                        'graph_version': graph['graph_version'] if graph else None,
+                        'route_identity': _tutor_route_identity(self.gateway),
+                        'practice_item_id': item['practice_item_id'] if item else None}
+            targets, _ = review_targets(c, row, graph, graph_sha, saved_analysis)
             history = [t for t in view['turns'] if t['practice_item_id']==(item['practice_item_id'] if item else None)][-8:]
             previous_phase = None
             prior_variants = []
+            safe_prior_variants=[]
+            tracked_coach = operation == 'coach' and not item
+            coach_graph_sha = graph_sha if targets else None
             if operation == 'coach':
                 previous = _latest_coach_turn(c, mid, child_id, source_revision, item['practice_item_id'] if item else None)
+                if tracked_coach:
+                    clean=[]
+                    for turn in history:
+                        action=c.execute('''SELECT a.client_action_id,a.provider_json,a.status FROM mistake_learning_turn t
+                            JOIN mistake_learning_action a ON a.client_action_id=t.client_action_id WHERE t.turn_id=?''',(turn['turn_id'],)).fetchone()
+                        try: metadata=json.loads(action['provider_json']) if action and action['status']=='completed' else {}
+                        except (TypeError,ValueError): metadata={}
+                        proof=_coach_origin_proof(c,child_id,mid,source_revision,session_id,action['client_action_id'],coach_graph_sha) if action else None
+                        if proof and metadata.get('coach_origin')==proof: clean.append(turn)
+                        else: clean=[]
+                    history=clean
+                    trusted_assistants={turn['turn_id'] for turn in history if turn['role']=='assistant'}
+                    if previous and previous['turn_id'] not in trusted_assistants: previous=None
                 previous_phase = previous['phase'] if previous else None
-                prior_variants = [v[0] for v in c.execute('''SELECT question FROM mistake_learning_item
-                    WHERE mistake_id=? AND child_id=? AND source_revision=? ORDER BY created_at DESC LIMIT 30''',
-                    (mid, child_id, source_revision))]
+                prior_rows=c.execute('''SELECT * FROM mistake_learning_item WHERE mistake_id=? AND child_id=? AND source_revision=?
+                    ORDER BY created_at DESC LIMIT 30''',(mid,child_id,source_revision)).fetchall()
+                prior_variants = [value['question'] for value in prior_rows]
+                if all(independently_sourced_practice(value) for value in prior_rows): safe_prior_variants=prior_variants
             coaching_step = 'follow_up' if previous_phase else 'opening'
             names = [r[0] for r in c.execute('SELECT nickname FROM child_profile')]
-            targets, _ = review_targets(c, row, graph, graph_sha, saved_analysis)
         targets = self._authorized_cloud_targets(targets)
+        if tracked_coach and coach_graph_sha and not self._graph_cloud_allowed(graph):
+            # Prior graph-grounded turns may quote labels whose right was later
+            # revoked. Start a fresh source-only thread instead of resending them.
+            targets=[];history=[];previous_phase=None;coaching_step='opening';coach_graph_sha=None
+        if (saved_analysis and graph and row['analysis_context_key'] != independent_analysis_context_key(_tutor_route_identity(self.gateway))
+                and not self._graph_cloud_allowed(graph)):
+            saved_analysis=None
         # No raw family media, profile identity, other cases, or formal bank rows enter this context.
         practice_plan = []
         if operation == 'practice' and targets:
             practice_plan = [targets[0]] + [targets[-1]] * (count - 1)
+        graph_free_practice = operation == 'practice' and not practice_plan
         scoped_history=[{'role':t['role'],'text':t['text']} for t in history]
         if operation=='coach':
             current_question=item['question'] if item else source['question']
@@ -1094,7 +1265,7 @@ class MistakeLearningService:
                 context['original_answer'] = source['original_answer']
                 if targets:
                     context['graph_targets'] = cloud_targets(targets, names)
-            elif item and (target := practice_graph_target(item, graph_sha)):
+            elif item and (target := practice_graph_target(item, graph_sha, graph)):
                 binding = json.loads(item['validation_json']).get('graph_target', {})
                 allowed = self._authorized_cloud_targets(study_targets(graph))
                 if any(entry['key'] == binding.get('key') and entry['title'] == target['title']
@@ -1105,13 +1276,19 @@ class MistakeLearningService:
                         'expected_answer':json.loads(item['expected_json'])},
                      'utterance':utterance,'history':scoped_history}
         else:
-            model_source = source | {'subject': graph['subject']} if graph and graph.get('subject') else source
-            context = {'source': model_source, 'analysis': saved_analysis, 'utterance': utterance, 'style': style, 'count': count,
-                       'history': scoped_history, 'previous_questions':[v['question'] for v in view['practice_items']] if row['practice_date']==view['today']['date'] else []}
-            if operation == 'analyze' and graph:
+            subject = reviewed_graph_subject(graph)
+            model_source = source | {'subject': subject} if subject and not independent_analysis and not graph_free_practice else source
+            previous_questions = [v['question'] for v in view['practice_items']] if row['practice_date']==view['today']['date'] else []
+            isolated = independent_analysis or graph_free_practice
+            context = {'source': model_source, 'analysis': None if isolated else saved_analysis, 'utterance': utterance, 'style': style, 'count': count,
+                       'history': [] if isolated else scoped_history,
+                       'previous_questions': safe_previous_questions if graph_free_practice else [] if independent_analysis else previous_questions}
+            if operation == 'analyze' and graph and not independent_analysis:
                 context['graph_targets'] = cloud_targets(self._authorized_cloud_targets(study_targets(graph)), names)
             if practice_plan:
                 context['graph_practice_plan'] = cloud_targets(practice_plan, names)
+        snapshot['graph_cloud_required']=bool(context.get('graph_targets') or context.get('graph_practice_plan')
+                                               or context.get('practice_focus') or (context.get('analysis') and graph))
         semantic_options, semantic_keys = [], {}
         if (operation in ('analyze', 'coach') and not item and graph and graph.get('status') == 'ambiguous'
                 and self.graph_matcher is not None and hasattr(self.graph_matcher, 'semantic_options')):
@@ -1120,6 +1297,7 @@ class MistakeLearningService:
                                 for item in semantic_options]
             if semantic_options:
                 context['graph_options'] = semantic_options
+                tracked_coach = False
         sent = [False]
         main_sent = [False]
         started=monotonic()
@@ -1201,16 +1379,27 @@ class MistakeLearningService:
                         semantic_repaired = semantic_repaired or repaired
                     if parsed['phase']=='independent_practice':
                         variant_context = {'source': {'question': current_question, 'subject': source['subject']},
-                            'count': 1, 'previous_questions': prior_variants, 'coach_focus': parsed['focus_step']}
+                            'count': 1, 'previous_questions': safe_prior_variants if tracked_coach else prior_variants, 'coach_focus': parsed['focus_step']}
                         parsed['variant'], metadata['answer_check'], metadata['variant_repaired'] = await self._generate_coach_variant(
-                            client_action_id,child_id,session_id,variant_context,source,names,extra_dispatch,deadline)
+                            client_action_id,child_id,session_id,variant_context,source,names,extra_dispatch,deadline,previous_questions=prior_variants)
+                        if tracked_coach:
+                            variant=parsed['variant']
+                            digest=independent_practice_proof(child_id,mid,source_revision,variant['prompt'],variant['expected_answer'],variant['explanation'])
+                            if coach_graph_sha:
+                                variant['validation']['reviewed_coach_origin']={'version':'reviewed_graph_v1','graph_sha':coach_graph_sha,'digest':digest}
+                            else:
+                                variant['validation']['graph_free_origin']={'version':'source_and_child_input_v1','digest':digest}
                         parsed['text'] = '现在请独立做下面这一道变式题。'
                 else:
-                    parsed = self._parse(operation, result.content, source, count, previous_questions=context.get('previous_questions',()),
+                    parsed = self._parse(operation, result.content, source, count, previous_questions=previous_questions if graph_free_practice else context.get('previous_questions',()),
                                          graph=graph, graph_sha=graph_sha, practice_plan=practice_plan)
                 if operation == 'practice':
                     metadata['answer_check'] = await self._verify_variants(client_action_id, child_id, session_id,
                         parsed, [t['title'] for t in practice_plan], names, extra_dispatch(), deadline)
+                    if graph_free_practice:
+                        for variant in parsed:
+                            variant['validation']['graph_free_origin']={'version':'source_and_child_input_v1',
+                                'digest':independent_practice_proof(child_id,mid,source_revision,variant['prompt'],variant['expected_answer'],variant['explanation'])}
 
                 if semantic_options and not semantic_repaired:
                     safe_question = sanitize_cloud_text(source['question'], names).text
@@ -1239,11 +1428,16 @@ class MistakeLearningService:
                         analysis_key = self._analysis_context_key(semantic_graph)
                     metadata['graph_semantic_verified'] = True
                 self._persist(c, operation, mid, child_id, session_id, client_action_id, parsed, item, count, style, original_review)
+                if tracked_coach:
+                    origin = _coach_origin_proof(c,child_id,mid,source_revision,session_id,client_action_id,coach_graph_sha)
+                    if not origin:
+                        _fail('MISTAKE_LEARNING_SOURCE_CHANGED')
+                    metadata['coach_origin']=origin
                 if operation == 'analyze':
                     c.execute('UPDATE mistake_learning_state SET analysis_context_key=? WHERE mistake_id=?', (analysis_key, mid))
                 c.execute('UPDATE mistake_learning_state SET status="ready",error_code=NULL,revision=revision+1,updated_at=? WHERE mistake_id=?', (_now(), mid))
                 c.execute('UPDATE mistake_learning_action SET status="completed",provider_json=?,updated_at=? WHERE client_action_id=?', (_json(metadata), _now(), client_action_id))
-                response = self._view(c, mid, child_id, session_id) | {'operation': operation, 'action_status': 'completed'}
+                response = self._current_view(c, mid, child_id, session_id) | {'operation': operation, 'action_status': 'completed'}
                 if operation == 'coach':
                     response['coach_phase'] = parsed['phase']
                 c.execute('UPDATE mistake_learning_action SET result_json=? WHERE client_action_id=?', (_json(response), client_action_id))
@@ -1282,8 +1476,10 @@ class MistakeLearningService:
 
         sid, child_id = voice['session_id'], voice['child_id']
         original = coach_turn_id is not None
+        reader = getattr(self.graph_matcher,'cache_version',None)
         try:
-            snapshot = require_current(c, voice, native_focus(c, sid), allow_original=original, select_scope=True)
+            version = graph_version_from_reader(reader,c) or ''
+            snapshot = require_current(c, voice, native_focus(c, sid,current_graph_version=version), allow_original=original, select_scope=True,current_graph_version=version)
         except InvalidAgentPlanError:
             _fail('MISTAKE_LEARNING_NATIVE_AUTHORITY_REQUIRED',403)
         if (snapshot['mistake_id'], snapshot['source_revision'], snapshot['practice_item_id']) != (mid, source_revision, practice_item_id):
@@ -1302,7 +1498,8 @@ class MistakeLearningService:
                 capture = _native_witness(SimpleNamespace(page_source_store=None), connection, current_voice)
                 if capture is None:
                     _fail('MISTAKE_LEARNING_NATIVE_AUTHORITY_REQUIRED',403)
-                require_current(connection, current_voice, snapshot, allow_original=original, allow_own_progress=completed)
+                version=graph_version_from_reader(reader,connection) or ''
+                require_current(connection, current_voice, snapshot, allow_original=original, allow_own_progress=completed,current_graph_version=version)
                 _onset(capture, snapshot, 'coach' if original else 'answer')
                 if original and not completed:
                     turn = _latest_coach_turn(connection, mid, child_id, source_revision)
@@ -1312,15 +1509,17 @@ class MistakeLearningService:
             except InvalidAgentPlanError:
                 _fail('MISTAKE_LEARNING_NATIVE_AUTHORITY_REQUIRED',403)
             if not original:
+                state = connection.execute('SELECT * FROM mistake_learning_state WHERE mistake_id=? AND child_id=? AND source_revision=?',
+                                           (mid, child_id, source_revision)).fetchone()
                 item = _coach_variant(connection, mid, child_id, source_revision)
                 if not item or item['practice_item_id'] != practice_item_id:
-                    state = connection.execute('SELECT * FROM mistake_learning_state WHERE mistake_id=? AND child_id=? AND source_revision=?',
-                                               (mid, child_id, source_revision)).fetchone()
                     item = connection.execute('SELECT * FROM mistake_learning_item WHERE practice_item_id=? AND mistake_id=? AND child_id=? AND source_revision=? AND batch_id=?',
                                               (practice_item_id, mid, child_id, source_revision, state['batch_id'])).fetchone() if state and state['practice_date'] == datetime.now().astimezone().date().isoformat() else None
-                    graph = self._graph(state) if state else None
-                    if item and practice_graph_is_stale(item, _hash(graph) if graph else None):
-                        item = None
+                graph = self._graph(state) if state else None
+                graph_sha = _hash(graph) if graph and version and graph.get('graph_version') == version else None
+                practice_graph=graph if graph else ({'status':'unavailable'} if state and state['graph_json'] else None)
+                if item and practice_graph_is_stale(item,graph_sha,practice_graph):
+                    item = None
                 if not item or item['answered_at'] and not completed:
                     _fail('MISTAKE_LEARNING_PRACTICE_CHANGED')
             return True
@@ -1393,7 +1592,7 @@ class MistakeLearningService:
             _fail('MISTAKE_LEARNING_MODEL_OUTPUT_INVALID')
         return revised, True
 
-    async def _generate_coach_variant(self, action, child_id, session_id, context, source, names, dispatch, deadline):
+    async def _generate_coach_variant(self, action, child_id, session_id, context, source, names, dispatch, deadline, *, previous_questions=None):
         async def generate_and_check(attempt, candidate_context):
             generated = await asyncio.wait_for(self.gateway.complete(ModelRequest(
                 request_id=attempt+':variant', child_id=child_id, session_id=session_id or 'mistake-learning',
@@ -1404,7 +1603,7 @@ class MistakeLearningService:
                           {'role':'user','content':sanitize_cloud_text(_json(candidate_context),names).text}),
                 pre_dispatch=dispatch())),timeout=max(.001,deadline-monotonic()))
             _diagnostic('mistake.learning.model_result','mistake_learning_practice','completed',result=generated)
-            variants = self._parse('practice', generated.content, source, 1, previous_questions=context['previous_questions'])
+            variants = self._parse('practice', generated.content, source, 1, previous_questions=previous_questions if previous_questions is not None else context['previous_questions'])
             checked = await self._verify_variants(attempt,child_id,session_id,variants,[context['coach_focus']],names,dispatch(),deadline)
             return variants[0], checked
 
@@ -1446,6 +1645,21 @@ class MistakeLearningService:
         _guard(c, guard)
         if generation(c) != snapshot['generation'] or _source(c, child_id, mid)[1] != snapshot['source_revision']:
             _fail('MISTAKE_LEARNING_SOURCE_CHANGED')
+        if snapshot.get('route_identity') != _tutor_route_identity(self.gateway):
+            _fail('MISTAKE_LEARNING_SOURCE_CHANGED')
+        if snapshot.get('practice_item_id'):
+            item=c.execute('''SELECT * FROM mistake_learning_item WHERE practice_item_id=? AND mistake_id=?
+                AND child_id=? AND source_revision=?''',(snapshot['practice_item_id'],mid,child_id,snapshot['source_revision'])).fetchone()
+            state=c.execute('SELECT * FROM mistake_learning_state WHERE mistake_id=? AND child_id=?',(mid,child_id)).fetchone()
+            graph=self._current_graph(c,state) if state else None
+            if not item or practice_graph_is_stale(item,_hash(graph) if graph else None,graph if graph else ({'status':'unavailable'} if state and state['graph_json'] else None)):
+                _fail('MISTAKE_LEARNING_PRACTICE_CHANGED')
+            if not self._practice_cloud_allowed(item,graph):
+                _fail('MISTAKE_LEARNING_CLOUD_LABEL_RIGHT_REQUIRED')
+        if snapshot.get('graph_cloud_required'):
+            state=c.execute('SELECT * FROM mistake_learning_state WHERE mistake_id=? AND child_id=?',(mid,child_id)).fetchone()
+            if not state or not self._graph_cloud_allowed(self._current_graph(c,state)):
+                _fail('MISTAKE_LEARNING_CLOUD_LABEL_RIGHT_REQUIRED')
         if 'graph_sha' in snapshot:
             row = c.execute('SELECT graph_json FROM mistake_learning_state WHERE mistake_id=? AND child_id=?', (mid, child_id)).fetchone()
             graph = self._graph(row)
@@ -1602,10 +1816,11 @@ class MistakeLearningService:
             date = datetime.now().astimezone().date().isoformat()
             append = row['practice_date'] == date and row['batch_id'] and not row['needs_explanation']
             if append:
-                graph = self._graph(row)
+                graph = self._current_graph(c,row)
                 graph_sha = _hash(graph) if graph else None
-                old_items = c.execute('SELECT validation_json FROM mistake_learning_item WHERE batch_id=?', (row['batch_id'],))
-                append = not any(practice_graph_is_stale(item, graph_sha) for item in old_items)
+                practice_graph=graph if graph else (self._graph(row) or {'status':'unavailable'} if row['graph_json'] else None)
+                old_items = c.execute('SELECT * FROM mistake_learning_item WHERE batch_id=?', (row['batch_id'],))
+                append = not any(practice_graph_is_stale(item, graph_sha, practice_graph) for item in old_items)
             batch = row['batch_id'] if append else str(uuid4())
             offset = c.execute('SELECT count(*) FROM mistake_learning_item WHERE batch_id=?', (batch,)).fetchone()[0]
             target = max(2, offset + count)
@@ -1633,8 +1848,8 @@ class MistakeLearningService:
                 answered=c.execute('SELECT count(*) FROM mistake_learning_item WHERE batch_id=? AND answered_at IS NOT NULL',(row['batch_id'],)).fetchone()[0]
                 index = min(4, row['interval_index']+1) if correct and not item['help_count'] and answered+1>=row['target_count'] else row['interval_index'] if correct else max(0, row['interval_index']-1)
                 c.execute('UPDATE mistake_learning_item SET attempts=attempts+1,feedback_json=?,answered_at=? WHERE practice_item_id=? AND answered_at IS NULL', (_json(value), now if value['judgement'] != 'uncertain' else None, item['practice_item_id']))
-                graph = self._graph(row)
-                analysis = analysis_for_graph(row, graph)
+                graph = self._current_graph(c,row)
+                analysis = analysis_for_graph(row, graph, _tutor_route_identity(self.gateway))
                 targets, _ = review_targets(c, row, graph, _hash(graph) if graph else None, analysis)
                 if targets and targets[0]['kind'] == 'prerequisite':
                     index = 0
@@ -1648,7 +1863,7 @@ class MistakeLearningService:
              _json(value['expected_answer']), value['explanation'], _json(value['validation']), now))
 
 
-def native_due_context(c, session_id, *, current_graph_version=None):
+def native_due_context(c, session_id, *, current_graph_version=None, route_identity=None):
     """Read-only today summary; no construction, schema work, answers or IDs."""
     row=c.execute('SELECT child_id FROM daily_session WHERE session_id=?',(session_id,)).fetchone()
     if not row: _fail('MISTAKE_LEARNING_SESSION_CHANGED')
@@ -1658,12 +1873,13 @@ def native_due_context(c, session_id, *, current_graph_version=None):
     names=[r[0] for r in c.execute('SELECT nickname FROM child_profile')]
     selected=[];due_count=0;remaining=0
     for item in _ids(c,child):
-        state=MistakeLearningService._view(c,item['mistake_id'],child,graph_version=current_graph_version)
+        state=MistakeLearningService._view(c,item['mistake_id'],child,graph_version=current_graph_version,route_identity=route_identity)
         if _is_due(state):
             due_count+=1;remaining+=state['today']['remaining_count']
             if len(selected)<3:
-                selected.append({'title':sanitize_cloud_text(state['source']['title'],names).text[:160],
-                    'subject':sanitize_cloud_text(state['source']['subject'],names).text[:40],
+                original,_=_source(c,child,item['mistake_id'])
+                selected.append({'title':sanitize_cloud_text(original['title'],names).text[:160],
+                    'subject':sanitize_cloud_text(original['subject'],names).text[:40],
                     'remaining_count':state['today']['remaining_count']})
     return {'date':datetime.now().astimezone().date().isoformat(),'due_count':due_count,
             'remaining_questions':remaining,'items':selected}

@@ -83,6 +83,39 @@ def test_dedicated_endpoint_model_changes_invalidate_analysis_identity(tmp_path)
         tutor_explanation_base_url=TRUSTED,tutor_explanation_model='deepseek-v4.2-flash')))
     assert len({MistakeLearningService._analysis_context_key(o,None) for o in (a,b,c)})==3
 
+
+def test_legacy_unidentified_dedicated_analysis_does_not_cross_routes():
+    from home_study_agent.mistake_learning import analysis_context_key, analysis_for_graph
+    graph={'graph_version':'synthetic-v1','status':'unmatched'}
+    route={'provider':'deepseek','endpoint':'https://synthetic.invalid/v1','model':'synthetic-a'}
+    row={'analysis_json':'{"summary":"synthetic"}','analysis_context_key':analysis_context_key(graph,True)}
+    assert analysis_for_graph(row,graph,route) is None
+    assert analysis_for_graph(row,graph,None) is None
+    row['analysis_context_key']=analysis_context_key(graph,False)
+    assert analysis_for_graph(row,graph,None) is None
+    assert analysis_for_graph(row,graph,route) is None
+    row['analysis_context_key']=analysis_context_key(graph,route)
+    assert analysis_for_graph(row,graph,route)=={'summary':'synthetic'}
+    assert analysis_for_graph(row,graph,route | {'model':'synthetic-b'}) is None
+    assert analysis_for_graph(row,graph,route | {'endpoint':'https://other.invalid/v1'}) is None
+
+
+def test_route_identity_requires_the_real_gateway_endpoint_not_just_settings(tmp_path):
+    from dataclasses import replace
+    from home_study_agent.mistake_learning import _tutor_route_identity
+    configured=settings(tmp_path,tutor_explanation_api_key=KEY,tutor_explanation_base_url=TRUSTED,
+                        tutor_explanation_model='deepseek-v4.1-flash')
+    gateway=ModelGateway(configured,transport=httpx.MockTransport(lambda request:httpx.Response(200,request=request)))
+    try:
+        assert gateway.configured_for('mistake_learning_analyze') is True
+        assert _tutor_route_identity(gateway)['model']=='deepseek-v4.1-flash'
+        gateway.settings=replace(configured,tutor_explanation_model='deepseek-synthetic-other')
+        assert _tutor_route_identity(gateway) is None
+        gateway.settings=replace(configured,tutor_explanation_api_key=None)
+        assert _tutor_route_identity(gateway) is None
+    finally:
+        asyncio.run(gateway.close())
+
 @pytest.mark.parametrize('kind', ['voice_agent_intent', 'paper_scoring_authority_draft', 'learning_outcome_evaluation'])
 def test_unrelated_capabilities_keep_general_primary_and_fallback(tmp_path, normal_provider_owner, kind):
     calls=[]

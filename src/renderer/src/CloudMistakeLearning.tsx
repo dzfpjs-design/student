@@ -5,6 +5,12 @@ import {MISTAKE_LEARNING_SURFACE_EVENT,MISTAKE_LEARNING_RENDERED_EVENT,type Mist
 import {MistakeQuestionCrop,OriginalReviewControls,OriginalReviewOutcome,reviewLabel,type OriginalReviewRequest} from './MistakeOriginalReview'
 import {MISTAKE_COACHING_VOICE_EVENT,type MistakeCoachingVoice} from './mistakeLearningVoice'
 
+function approvedReviewFocus(state:MistakeLearningState):boolean {
+ const graph=state.graph_context,focus=state.graph_review_focus
+ if(!focus||graph?.status!=='matched'||graph.primary?.review_status!=='approved')return false
+ return focus.kind==='primary' ? focus.title===graph.primary.title : graph.prerequisites.some(point=>point.title===focus.title&&point.review_status==='approved'&&point.relation_review_status==='approved')
+}
+
 function GraphStudyNotes({state}:{state:MistakeLearningState}):React.JSX.Element|null{
  const graph=state.graph_context
  if(!graph)return null
@@ -12,14 +18,15 @@ function GraphStudyNotes({state}:{state:MistakeLearningState}):React.JSX.Element
  if(graph.status==='no_match')return <p className="cloud-learning-notice">这题还没有匹配到知识图谱，可以先按原题分析。</p>
  if(graph.status==='ambiguous')return <p className="cloud-learning-notice">这题可能涉及{graph.alternatives.slice(0,2).map(point=>`「${point.title}」`).join('或')||'几个相近知识点'}，暂时单独分析。</p>
  if(!graph.primary)return null
- const checks=state.analysis?.prerequisite_checks??[]
+ const approvedPrerequisites=graph.primary.review_status==='approved' ? graph.prerequisites.filter(point=>point.review_status==='approved'&&point.relation_review_status==='approved') : []
+ const checks=(state.analysis?.prerequisite_checks??[]).filter(check=>approvedPrerequisites.some(point=>point.title===check.title))
  return <section className="cloud-cause" aria-label="知识图谱学习线索">
-  <h4>图谱关联 · {graph.primary.title}</h4>
+  <h4>{graph.primary.review_status==='approved'?'图谱关联':'待核对线索'} · {graph.primary.title}</h4>
   {graph.primary.review_status!=='approved'&&<p>候选知识点，结合原题核对。</p>}
   {checks.length>0?<ul>{checks.map(check=><li key={check.title}>
     <strong>先核对{check.title}</strong><p>{check.question}</p>
     {check.evidence_quote&&<small>原作答线索「{check.evidence_quote}」</small>}
-  </li>)}</ul>:graph.prerequisites.length>0&&<p>可以先检查{graph.prerequisites.slice(0,2).map(point=>`「${point.title}」`).join('、')}。</p>}
+  </li>)}</ul>:approvedPrerequisites.length>0&&<p>可以先检查{approvedPrerequisites.slice(0,2).map(point=>`「${point.title}」`).join('、')}。</p>}
  </section>
 }
 
@@ -29,6 +36,7 @@ type Props={childId:string;mistakeId:string;sessionId?:string;active:boolean;ref
 function restored(childId:string,mistakeId:string){try{return {draft:readMistakeLearningLocal<MistakeLearningDraft>('draft',childId,mistakeId),pending:readMistakeLearningLocal<MistakeLearningPending>('pending',childId,mistakeId),error:false}}catch{return {draft:null,pending:null,error:true}}}
 function userMessage(error:unknown):string{
  const code=error instanceof ApiError?error.code??'':''
+ if(code==='MISTAKE_LEARNING_CLOUD_LABEL_RIGHT_REQUIRED')return '这道旧练习的云端使用授权已变化，题目和作答仍在本机。请重新生成练习。'
  if(/REVISION|SOURCE|SCOPE/.test(code))return '题目或进度刚有更新，之前写下的话仍保留。先刷新，再继续这一步。'
  if(/PRIVACY|CONSENT|PERMISSION/.test(code))return '云端学习暂未开启，已经保存的内容仍在。请让家长检查服务设置。'
  return '这一步暂时没有完成，已经保存的内容和写下的话都还在。'
@@ -314,12 +322,13 @@ export function CloudMistakeLearning({childId,mistakeId,sessionId,active,refresh
    {detailView!=='redo'&&detailView!=='source'&&(detailView!=='practice'||!item)&&<div className="cloud-book-question-context"><span>原题</span><p ref={originalQuestion} data-mistake-learning-question="original">{state.source.question}</p></div>}
   </>:<div className="cloud-original-grid"><section><h3>原题</h3><p ref={originalQuestion} data-mistake-learning-question="original">{state.source.question}</p></section><section><h3>你当时的回答</h3><p>{state.source.original_answer||'还没有记录，可以直接告诉我。'}</p></section></div>}
   {state.error_code==='MODEL_MISTAKE_REASONING_CONFIG_REQUIRED'&&<p role="alert" className="cloud-learning-notice">学习模型还没准备好，请家长检查云端模型设置。题目和原话已保留。</p>}
+  {state.error_code==='MISTAKE_LEARNING_CLOUD_LABEL_RIGHT_REQUIRED'&&<p role="alert" className="cloud-learning-notice">这道旧练习的云端使用授权已变化，题目和作答仍在本机。请重新生成练习。</p>}
   {error&&<div role="alert" className="cloud-learning-notice">{error}</div>}{storageError&&<p role="alert" className="cloud-learning-notice">{storageError}</p>}
   {sourceChanged&&<details className="cloud-learning-notice"><summary>题目已有更新，之前写下的话已保留，不会自动发给新题。</summary><p>{draft?.answer?.text}</p>{draft?.coach_variant_answer&&<p>{draft.coach_variant_answer.text}</p>}<p>{draft?.coach}</p></details>}
   {pending&&<div className="cloud-pending-actions"><p>{pending.status==='failed'?'刚才这一步没有完成。':'原请求已保留，正在等结果确认。'}</p>{pending.status==='failed'?(!pending.body.voice_input_id&&<button className="secondary-button" disabled={busy||pending.source_revision!==state.source_revision} onClick={()=>run(pending.operation,{practice_item_id:pending.body.practice_item_id,utterance:pending.body.utterance,style:pending.body.style,count:pending.body.count,original_review:pending.body.original_review})}>重试刚才这一步</button>):<button className="secondary-button" disabled={busy} onClick={()=>void (pending.not_found?execute(pending):checkPending(pending))}>{pending.not_found?'继续发送原请求':'核对原请求结果'}</button>}<button className="secondary-button" disabled={busy} onClick={()=>void load()}>刷新已保存进度</button></div>}
-  {(!bookView||detailView==='analysis')&&<section ref={analysisPanel} className="cloud-analysis"><h3>这题的关键</h3><GraphStudyNotes state={state}/>{state.analysis?<><p>{state.analysis.summary}</p>{state.analysis.wrong_causes.map((cause,index)=><div className="cloud-cause" key={index}><strong>{cause.label}</strong><p>{cause.explanation}</p></div>)}<div className="cloud-knowledge">{state.analysis.knowledge_points.slice(0,3).map((point,index)=><section key={index}><h4>{point.label}</h4><p>{point.description}</p></section>)}</div>{state.analysis.correction_strategy.length>0&&<ol>{state.analysis.correction_strategy.map((step,index)=><li key={index}>{step}</li>)}</ol>}</>:<p>先看看卡住的那一步，再用新题把它弄明白。</p>}<div className="cloud-learning-controls"><button className="primary-button" disabled={blocked} onClick={()=>void run('analyze')}>{state.analysis?'更新错因分析':'分析这题'}</button>{!bookView&&<><button className="secondary-button" disabled={blocked} onClick={()=>run('practice',{count:2})}>练两题</button><button className="secondary-button" disabled={blocked} onClick={()=>run('practice',{count:3})}>练三题</button></>}</div></section>}
+  {(!bookView||detailView==='analysis')&&<section ref={analysisPanel} className="cloud-analysis"><h3>这题的关键</h3><GraphStudyNotes state={state}/>{state.analysis?<><p>{state.analysis.summary}</p>{state.analysis.wrong_causes.map((cause,index)=><div className="cloud-cause" key={index}><strong>{cause.label}</strong><p>{cause.explanation}</p></div>)}<div className="cloud-knowledge">{state.analysis.knowledge_points.slice(0,3).map((point,index)=><section key={index}><h4>{point.label}</h4><p>{point.description}</p></section>)}</div>{state.analysis.correction_strategy.length>0&&<ol>{state.analysis.correction_strategy.map((step,index)=><li key={index}>{step}</li>)}</ol>}</>:<p>{state.analysis_review_required?(state.tutor_route_configured===false?'原分析已保留。请先在家长中心配置讲题模型，再重新分析。':'原分析已保留，当前讲题模型需要重新分析这道题。'):'先看看卡住的那一步，再用新题把它弄明白。'}</p>}<div className="cloud-learning-controls"><button className="primary-button" disabled={blocked} onClick={()=>void run('analyze')}>{state.analysis?'更新错因分析':'分析这题'}</button>{!bookView&&<><button className="secondary-button" disabled={blocked} onClick={()=>run('practice',{count:2})}>练两题</button><button className="secondary-button" disabled={blocked} onClick={()=>run('practice',{count:3})}>练三题</button></>}</div></section>}
   {state.today.status==='needs_explanation'&&<p className="cloud-learning-notice" role="status">先不急着加题，把卡住的一步说清楚，再继续。</p>}
-  {state.graph_practice_stale&&(!bookView||detailView==='practice')&&<p className="cloud-learning-notice">知识点已更新，旧练习和反馈已保留。请重新生成本轮练习。</p>}
+  {state.graph_practice_stale&&(!bookView||detailView==='practice')&&<p className="cloud-learning-notice">知识点依据已变化或尚未核对，旧练习和反馈已保留。请重新生成本轮练习。</p>}
   {bookView&&detailView==='practice'&&!item&&<section className="cloud-practice"><h3>换一种问法</h3><p>请小知出两三道同类题，再独立做一遍。</p><div className="cloud-learning-controls"><button className="primary-button" disabled={blocked} onClick={()=>run('practice',{count:2})}>练两题</button><button className="secondary-button" disabled={blocked} onClick={()=>run('practice',{count:3})}>练三题</button></div></section>}
   {item&&(!bookView||detailView==='practice')&&<section className="cloud-practice"><div className="cloud-section-heading"><h3>{item.graph_target?.kind==='prerequisite'?'先试一道前置检查题':'试一道类似的题'}</h3><span>第 {item.position} 题</span></div>{item.graph_target&&<p>这题练习「{item.graph_target.title}」</p>}<p ref={question} data-practice-item-id={item.practice_item_id} className="cloud-practice-question" data-question-viewport="cloud-mistake">{item.question}</p><label>你的想法<textarea maxLength={4000} disabled={!active||paused.current||restore.error} value={answerText} onChange={event=>updateText('answer',event.target.value)} placeholder="直接说出你的想法，也可以写在这里。"/></label><button className="primary-button" disabled={blocked||!answerText.trim()} onClick={()=>run('answer',{practice_item_id:item.practice_item_id,utterance:answerText})}>保存回答，看看这一步</button></section>}
   {feedbacks.length>0&&(!bookView||detailView==='practice')&&<section className="cloud-feedback"><h3>刚才的练习</h3>{feedbacks.slice(-3).map(row=><article key={row.practice_item_id}><strong>第 {row.position} 题</strong><p>{row.feedback!.feedback}</p><p>{row.feedback!.explanation}</p>{row.feedback!.next_hint&&<p>{row.feedback!.next_hint}</p>}</article>)}</section>}
@@ -345,7 +354,7 @@ export function CloudMistakeLearning({childId,mistakeId,sessionId,active,refresh
       {variant.feedback&&<div className="cloud-feedback"><p>{variant.feedback.feedback}</p><p>{variant.feedback.explanation}</p></div>}
     </section>}
   </section>}
-  <footer className="cloud-review-summary">{state.today.status==='done'?<p>今天这份练习已经保存。</p>:<p>今天还安排 {state.today.remaining_count} 道，按自己的节奏来。</p>}{state.graph_review_focus&&<p>{state.graph_review_focus.state==='checked'?'已独立检查':'复习重点'}「{state.graph_review_focus.title}」</p>}{state.next_review_at&&<p>下次复习：{new Date(state.next_review_at).toLocaleString('zh-CN',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</p>}{busy&&<p role="status">正在保存并准备下一步…</p>}</footer>
+  <footer className="cloud-review-summary">{state.today.status==='done'?<p>今天这份练习已经保存。</p>:<p>今天还安排 {state.today.remaining_count} 道，按自己的节奏来。</p>}{approvedReviewFocus(state)&&state.graph_review_focus&&<p>{state.graph_review_focus.state==='checked'?'已独立检查':'复习重点'}「{state.graph_review_focus.title}」</p>}{state.next_review_at&&<p>下次复习：{new Date(state.next_review_at).toLocaleString('zh-CN',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</p>}{busy&&<p role="status">正在保存并准备下一步…</p>}</footer>
  </section>
 }
 

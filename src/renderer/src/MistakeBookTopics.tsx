@@ -36,12 +36,13 @@ function groupTopics(items: MistakeLearningState[]): Topic[] {
     const graph = item.graph_context
     const graphSubject = typeof graph?.subject === 'string' ? graph.subject.trim() : ''
     const originalSubject = item.source.subject.trim()
-    const subject = graph?.status === 'matched' ? graphSubject || originalSubject : originalSubject || graphSubject
+    const unreviewedMatch = graph?.status === 'matched' && graph.primary?.review_status !== 'approved'
+    const subject = unreviewedMatch ? originalSubject : graph?.status === 'matched' ? graphSubject || originalSubject : originalSubject || graphSubject
     if (!subject) continue
     const subjectKey = subject.normalize('NFKC').toLowerCase()
-    if (graph?.status === 'matched') {
+    if (graph?.status === 'matched' && !unreviewedMatch) {
       const primary = graph.primary
-      if (typeof primary?.key !== 'string' || !primary.key || typeof primary.title !== 'string' || !primary.title.trim()
+      if (primary?.review_status !== 'approved' || typeof primary?.key !== 'string' || !primary.key || typeof primary.title !== 'string' || !primary.title.trim()
         || typeof graph.graph_version !== 'string' || !graph.graph_version) continue
       const key = JSON.stringify([subjectKey, 'graph', primary.key])
       const group = groups.get(key)
@@ -49,6 +50,7 @@ function groupTopics(items: MistakeLearningState[]): Topic[] {
       else groups.set(key, { key, label: primary.title.trim(), subject, graphNodeKey: primary.key, items: [item] })
       continue
     }
+    if (unreviewedMatch && item.analysis_independent !== true) continue
     const points = new Set<string>()
     for (const point of item.analysis?.knowledge_points ?? []) {
       const label = point.label.trim()
@@ -89,7 +91,7 @@ export function MistakeBookTopics({ childId, sessionId, active, refreshToken, it
     if (selected) setOpenTopic({ key: selected.key, voice: { id: voiceRequest.id, sources: topicScopeKey(selected, selected.items.slice(0, 6)) } })
     else onSpeak?.('这个范围还没有两道能归入同一知识点的错题。可以扩大筛选范围，或继续添加、分析错题。', speech)
   }, [active, voiceRequest, onVoiceHandled, onSpeak, ranked, openTopic?.key])
-  if (!ranked.length) return <section className="cloud-book-empty"><h2>还没有可归类的错题</h2><p>添加错题后，本机会尝试匹配知识点，也可以通过错因分析补充标签。</p></section>
+  if (!ranked.length) return <section className="cloud-book-empty"><h2>还没有可归类的错题</h2><p>{items.some(item => item.graph_context?.status === 'matched' && item.graph_context.primary?.review_status !== 'approved') ? '部分知识点还需核对，暂不作为专题依据；你仍可以逐题复习和讲解。' : '添加错题后，本机会尝试匹配知识点，也可以通过错因分析补充标签。'}</p></section>
 
   return <section className="cloud-book-topic-list" aria-label="高频题型排行">
     <p>按当前筛选范围汇总。匹配知识图谱的题按同一知识点归组，其他题按分析标签单独归组。每组至少有两道题时，可以打开云端专题。</p>

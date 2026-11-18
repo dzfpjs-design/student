@@ -234,10 +234,17 @@ def load_native_context(service, session_id, *, authorize=None, max_turns=12):
                 current_graph_version = graph_version_reader(connection=c)
             except (OSError, sqlite3.Error, ValueError):
                 pass
-        mistake=context_projection(c,session_id,names=names,current_graph_version=current_graph_version)
+        route_reader = getattr(service, 'tutor_route_identity', None)
+        try:
+            route_identity = route_reader() if route_reader else None
+        except (OSError, ValueError, TypeError):
+            # Unknown routing must not silently qualify an older cache.
+            route_identity = {'unavailable': True}
+        mistake=context_projection(c,session_id,names=names,current_graph_version=current_graph_version,route_identity=route_identity,
+                                   graph_cloud_authorizer=getattr(service,'graph_cloud_authorizer',None))
         if mistake is not None:result['runtime_facts']['mistake_learning']=mistake
         from .realtime_native_mistake_learning import review_context_projection
-        due=review_context_projection(c,session_id,names=names,current_graph_version=current_graph_version or '')
+        due=review_context_projection(c,session_id,names=names,current_graph_version=current_graph_version or '',route_identity=route_identity)
         if due is not None:result['runtime_facts']['mistake_review_today']=due
         result['revision']=_hash(result)
         c.commit();return result
