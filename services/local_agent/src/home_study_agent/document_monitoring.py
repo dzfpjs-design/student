@@ -660,6 +660,10 @@ class DocumentMonitoringService:
             details = json.loads(artifact["details_json"] or "{}")
         except (TypeError, ValueError):
             return
+        # A candidate includes pixels from older instants. Neither normal
+        # processing nor restart/backfill may turn it into question evidence.
+        if isinstance(details, dict) and details.get('monitor_capture_kind') == 'multiframe_candidate':
+            return
         pipeline = details.get("local_pipeline") if isinstance(details, dict) else None
         blocks = pipeline.get("question_blocks") if isinstance(pipeline, dict) else None
         blocks = blocks if isinstance(blocks, list) else []

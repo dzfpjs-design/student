@@ -61,7 +61,8 @@ def create_parent_daily_visual_preview_router(database, parent_auth, local_sessi
             'FORMAL_DELIVERY_EXISTS', 'RECIPIENT_NOT_AUTHORIZED', 'RECIPIENT_ID_CHANGED',
             'OBSERVATION_STALE', 'OBSERVATION_CONFLICT', 'OBSERVATION_TOO_LARGE',
             'VISUAL_EVIDENCE_DELETION_PENDING', 'PAGE_OBSERVATION_DELETION_PENDING', 'DELETION_PENDING',
-            'PRIOR_DELIVERY_UNRESOLVED_OR_SENT', 'RESTORE_OR_HISTORY_RECONCILIATION_REQUIRED'
+            'PRIOR_DELIVERY_UNRESOLVED_OR_SENT', 'RESTORE_OR_HISTORY_RECONCILIATION_REQUIRED',
+            'REPORT_TASK_SOURCE_UNCONFIRMED', 'REPORT_TASK_SOURCE_MISSING'
         } else 'PREPARATION_UNAVAILABLE')
 
     @router.get('/{day}/delivery-preparation')
@@ -165,6 +166,8 @@ def create_parent_daily_visual_preview_router(database, parent_auth, local_sessi
             code = str(error)
             if code in {'VISUAL_EVIDENCE_DELETION_PENDING', 'PAGE_OBSERVATION_DELETION_PENDING'}:
                 raise HTTPException(409, detail='DELETION_PENDING') from None
+            if code in {'REPORT_TASK_SOURCE_UNCONFIRMED', 'REPORT_TASK_SOURCE_MISSING'}:
+                raise HTTPException(409, detail=code) from None
             if code == 'PAGE_OBSERVATION_CHILD_UNKNOWN':
                 raise HTTPException(404, detail='CHILD_UNKNOWN') from None
             raise HTTPException(422, detail='INVALID_REQUEST') from None

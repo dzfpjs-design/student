@@ -1648,6 +1648,17 @@ class StudyRepository:
             connection.commit()
             return self._get_recall(connection, recall_id)
 
+    @staticmethod
+    def _require_homework_ocr_source(connection, artifact_id: str | None, child_id: str, session_id: str) -> None:
+        if not artifact_id:
+            return
+        artifact = connection.execute(
+            'SELECT child_id,session_id,artifact_type,status FROM capture_artifact WHERE artifact_id=?', (artifact_id,)
+        ).fetchone()
+        if (not artifact or artifact['child_id'] != child_id or artifact['session_id'] != session_id
+                or artifact['artifact_type'] != 'document_ocr' or artifact['status'] not in {'completed', 'quality_warning'}):
+            raise PlanInputError('作业图片来源未确认或不属于当前孩子与会话，请重新采集或移除图片来源。')
+
     def add_homework(
         self,
         session_id: str,
@@ -1666,12 +1677,17 @@ class StudyRepository:
         homework_id = str(uuid4())
         now = utc_now()
         with self.database.connect() as connection:
+            connection.execute('BEGIN IMMEDIATE')
             existing = connection.execute(
-                "SELECT homework_id FROM homework_item WHERE client_action_id = ?",
+                "SELECT homework_id,child_id,session_id,source_artifact_id FROM homework_item WHERE client_action_id = ?",
                 (client_action_id,),
             ).fetchone()
             if existing:
+                if existing['session_id'] != session_id:
+                    raise PlanInputError('作业操作与当前学习会话不匹配。')
+                self._require_homework_ocr_source(connection, existing['source_artifact_id'], existing['child_id'], session_id)
                 return self._get_homework(connection, existing["homework_id"])
+            self._require_homework_ocr_source(connection, source_artifact_id, session['child_id'], session_id)
             connection.execute(
                 """
                 INSERT INTO homework_item(
@@ -1833,11 +1849,14 @@ class StudyRepository:
         with self.database.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
-                "SELECT homework_id FROM homework_revision WHERE client_action_id = ?",
+                "SELECT h.homework_id,h.child_id,h.session_id,h.source_artifact_id FROM homework_revision r JOIN homework_item h USING(homework_id) WHERE r.client_action_id = ?",
                 (client_action_id,),
             ).fetchone()
             if existing:
                 connection.rollback()
+                if existing['session_id'] != session_id:
+                    raise PlanInputError('作业操作与当前学习会话不匹配。')
+                self._require_homework_ocr_source(connection, existing['source_artifact_id'], existing['child_id'], session_id)
                 return self._get_homework(connection, existing["homework_id"])
             row = connection.execute(
                 "SELECT * FROM homework_item WHERE homework_id = ? AND session_id = ?",
@@ -1845,6 +1864,7 @@ class StudyRepository:
             ).fetchone()
             if not row:
                 raise PlanInputError("找不到这项作业，可能已经切换了学习会话。")
+            self._require_homework_ocr_source(connection, source_artifact_id, row['child_id'], session_id)
             before = {
                 key: row[key] for key in (
                     "subject", "task_type", "title", "range_text", "expected_minutes",
@@ -2820,9 +2840,15 @@ class StudyRepository:
             behavior_context = refreshed_daily_behavior(self.database, session['child_id'], session_id)
             behavior_fingerprint = behavior_context['behavior_source_fingerprint']
         with self.database.connect() as connection:
+            # Source qualification and task projection must use the same snapshot.
+            connection.execute('BEGIN')
             from .parent_supply_followup import report_supply_facts
             from .report_calendar import study_day
             report_day = study_day(connection, session_id)
+            # get_session is a public projection and omits ended_at; use the
+            # stored cutoff for as-of weekly and cycle evidence.
+            report_end = connection.execute('SELECT ended_at FROM daily_session WHERE session_id=? AND child_id=?',
+                                            (session_id, session['child_id'])).fetchone()[0]
             try:
                 supply_facts = report_supply_facts(connection, session['child_id'], session_id)
             except (ValueError, KeyError, TypeError) as error:
@@ -2846,6 +2872,11 @@ class StudyRepository:
                 """,
                 (session_id,),
             ).fetchall()
+            from .report_task_provenance import report_task_source_fingerprint
+            try:
+                task_source_fingerprint = report_task_source_fingerprint(connection,session['child_id'],session_id)
+            except (ValueError, sqlite3.Error) as error:
+                raise ReportNotReadyError('任务或孩子身份与未确认来源不匹配，请先核对原记录。') from error
             tasks = connection.execute(
                 """
                 SELECT pi.subject, pi.title, pi.expected_minutes, pi.actual_minutes, pi.status,
@@ -2858,10 +2889,10 @@ class StudyRepository:
                          ORDER BY pie.occurred_at DESC LIMIT 1
                        ) AS reschedule_payload_json
                 FROM plan_item pi JOIN daily_plan dp ON dp.plan_id = pi.plan_id
-                WHERE dp.session_id = ? AND pi.source_type != 'planned_break'
+                WHERE dp.session_id = ? AND dp.child_id = ? AND pi.source_type != 'planned_break'
                 ORDER BY pi.position
                 """,
-                (session_id,),
+                (session_id, session['child_id']),
             ).fetchall()
             coaching_feedback = connection.execute(
                 """
@@ -2966,7 +2997,7 @@ class StudyRepository:
                   GROUP BY wg.weekly_goal_id
                 ) ORDER BY CASE track WHEN 'pet' THEN 1 ELSE 2 END
                 """,
-                (report_day, session.get('ended_at'), session["child_id"], report_day),
+                (report_day, report_end, session["child_id"], report_day),
             ).fetchall()
             goal_cycles = []
             if connection.execute(
@@ -2995,7 +3026,7 @@ class StudyRepository:
                       AND ? BETWEEN gc.week_start AND gc.week_end
                     GROUP BY gc.cycle_id ORDER BY gp.priority DESC
                     """,
-                    (report_day, session.get('ended_at'), session["child_id"], report_day),
+                    (report_day, report_end, session["child_id"], report_day),
                 ).fetchall()
             planning_context = connection.execute(
                 """
@@ -3084,7 +3115,7 @@ class StudyRepository:
         coaching_evidence_sources = [{
             "evidence_ref": coaching_evidence_ref(session["child_id"], "session", session_id),
             "source": "本次已确认学习会话",
-            "occurred_at": session.get("ended_at") or session.get("updated_at") or session.get("created_at"),
+            "occurred_at": report_end or session.get("updated_at") or session.get("created_at"),
         }, *[{key: item[key] for key in ("evidence_ref", "source", "occurred_at") if item.get(key)} for item in selected_behavior_feedback if isinstance(item, dict)]]
         return {
             "session": session,
@@ -3093,7 +3124,8 @@ class StudyRepository:
             "recalls": [dict(row) for row in recalls],
             "tasks": [self._plan_item_result(row) for row in tasks],
             "supply_obligations_as_of": supply_facts,
-            "supply_obligations_as_of_status": 'available' if session.get('ended_at') else 'unavailable',
+            "report_task_source_fingerprint": task_source_fingerprint,
+            "supply_obligations_as_of_status": 'available' if report_end else 'unavailable',
             "coaching_feedback": previous_feedback,
             "legacy_coaching_feedback": legacy_coaching_feedback,
             "report_feedback": [dict(row) for row in snapshot_feedback],
@@ -3170,7 +3202,8 @@ class StudyRepository:
         evidence = self.report_evidence(session_id, behavior_context=report_safe_context)
         if summary.get('behavior_source_fingerprint') != evidence['behavior_source_fingerprint']:
             evidence = self.report_evidence(session_id)
-        if (summary.get("reliable_learning_fingerprint") != evidence["reliable_learning"]["evidence_fingerprint"]
+        if (summary.get('report_task_source_fingerprint') != evidence['report_task_source_fingerprint']
+                or summary.get("reliable_learning_fingerprint") != evidence["reliable_learning"]["evidence_fingerprint"]
                 or summary.get('document_revisit_practice_fingerprint') != evidence['document_revisit_practice_fingerprint']
                 or summary.get('pet_audio_practice_fingerprint') != evidence['pet_audio_practice_fingerprint']
                 or summary.get('behavior_source_fingerprint') != evidence['behavior_source_fingerprint']
@@ -3183,6 +3216,13 @@ class StudyRepository:
         now = utc_now()
         with self.database.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
+            from .report_task_provenance import report_task_source_fingerprint
+            try:
+                initial_tasks = report_task_source_fingerprint(connection,evidence['child']['child_id'],session_id)
+            except (ValueError, sqlite3.Error) as error:
+                raise ReportNotReadyError('任务或孩子身份与未确认来源不匹配，请先核对原记录。') from error
+            if initial_tasks != evidence['report_task_source_fingerprint']:
+                raise ReportNotReadyError('报告提交前任务依据已变化，已保留学习记录，请重试生成报告。')
             existing = connection.execute(
                 "SELECT report_id FROM daily_report WHERE session_id = ?", (session_id,)
             ).fetchone()
@@ -3195,6 +3235,13 @@ class StudyRepository:
                 return self.get_daily_report(existing["report_id"])
             if pre_persist:
                 pre_persist(connection)
+            from .report_task_provenance import report_task_source_fingerprint
+            try:
+                current_tasks = report_task_source_fingerprint(connection,evidence['child']['child_id'],session_id)
+            except (ValueError, sqlite3.Error) as error:
+                raise ReportNotReadyError('任务或孩子身份与未确认来源不匹配，请先核对原记录。') from error
+            if current_tasks != evidence['report_task_source_fingerprint']:
+                raise ReportNotReadyError('报告提交前任务依据已变化，已保留学习记录，请重试生成报告。')
             from .learning_feedback import report_dependencies_match, session_report_feedback
             from .specialized_program import report_reference_fingerprint
             from .daily_behavior_source import daily_behavior_fingerprint
@@ -3211,6 +3258,7 @@ class StudyRepository:
             report_id = str(uuid4())
             evidence_manifest = {
                 "session_id": session_id,
+                "report_task_source_fingerprint": evidence['report_task_source_fingerprint'],
                 "recall_count": len(evidence["recalls"]),
                 "task_count": len(evidence["tasks"]),
                 "knowledge_evidence_count": len(evidence.get("knowledge_evidence") or []),
@@ -3369,6 +3417,7 @@ class StudyRepository:
     @_guard_daily_report_source
     def get_daily_report(self, report_id: str, *, _refresh_attempts: int = 2) -> dict:
         with self.database.connect() as connection:
+            connection.execute('BEGIN')
             row = connection.execute(
                 """
                 SELECT report_id, session_id, child_id, report_date, source, evidence_json,
@@ -3379,6 +3428,17 @@ class StudyRepository:
             ).fetchone()
             if not row:
                 raise UnknownReportError(report_id)
+            manifest_for_tasks = json.loads(row['evidence_json'])
+            saved_tasks = manifest_for_tasks.get('report_task_source_fingerprint')
+            if not isinstance(saved_tasks,str) or not saved_tasks:
+                raise LegacyReportUnverifiedError('旧版日报缺少任务来源校验信息，历史内容无法核验；原报告已保留，请联系开发者核对。')
+            from .report_task_provenance import report_task_source_fingerprint
+            try:
+                current_tasks = report_task_source_fingerprint(connection,row['child_id'],row['session_id'])
+            except (ValueError, sqlite3.Error) as error:
+                raise ReportNotReadyError('任务或孩子身份与未确认来源不匹配，请先核对原记录。') from error
+            if saved_tasks != current_tasks:
+                raise ReportNotReadyError('原报告的任务依据已变化，已保留原报告，请先核对。')
             recalls = connection.execute(
                 """
                 SELECT subject, summary, confirmation_status, confidence, created_at
@@ -3404,10 +3464,10 @@ class StudyRepository:
                        ) AS reschedule_payload_json
                 FROM plan_item pi JOIN daily_plan dp ON dp.plan_id = pi.plan_id
                 LEFT JOIN capture_artifact ca ON ca.artifact_id = pi.completion_artifact_id
-                WHERE dp.session_id = ? AND pi.source_type != 'planned_break'
+                WHERE dp.session_id = ? AND dp.child_id = ? AND pi.source_type != 'planned_break'
                 ORDER BY pi.position
                 """,
-                (row["session_id"],),
+                (row["session_id"],row["child_id"]),
             ).fetchall()
             reflection = connection.execute(
                 """
@@ -3499,6 +3559,12 @@ class StudyRepository:
             with self.database.connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 checked = session_report_feedback(connection, row["session_id"])
+                try:
+                    refreshed_tasks = report_task_source_fingerprint(connection,row['child_id'],row['session_id'])
+                except (ValueError, sqlite3.Error) as error:
+                    raise ReportNotReadyError('任务或孩子身份与未确认来源不匹配，请先核对原记录。') from error
+                if refreshed_tasks != current['report_task_source_fingerprint']:
+                    raise ReportNotReadyError('原报告的任务依据已变化，已保留原报告，请先核对。')
                 if (checked["evidence_fingerprint"] == fingerprint and report_dependencies_match(
                         connection, row["child_id"], current["reliable_learning_dependencies"])
                         and daily_behavior_fingerprint(connection, row['child_id'], row['session_id']) == current['behavior_source_fingerprint']
@@ -3650,6 +3716,8 @@ class StudyRepository:
                 continue
             try:
                 report = self.get_daily_report(report_id)
+            except LegacyReportUnverifiedError:
+                recovery.record_source_issue(child_id, 'daily_report', report_id, 'REPORT_TASK_SOURCE_LEGACY_UNVERIFIED')
             except (ReportNotReadyError, UnknownReportError, UnknownSessionError):
                 recovery.record_source_issue(child_id, 'daily_report', report_id, 'REPORT_SOURCE_NOT_READY')
             except json.JSONDecodeError:
@@ -4566,6 +4634,11 @@ class StudyRepository:
             if existing_event:
                 if existing_event["plan_item_id"] != plan_item_id or existing_event["event_type"] != "completed":
                     raise PlanInputError("任务操作标识与原操作不匹配。")
+                suspect = connection.execute('''SELECT 1 FROM plan_item p JOIN capture_artifact a
+                    ON a.artifact_id=p.completion_artifact_id
+                    WHERE p.plan_item_id=? AND a.artifact_type='document_ocr_candidate' ''', (plan_item_id,)).fetchone()
+                if suspect:
+                    raise PlanInputError('原任务引用了未确认的多帧候选，请先核对该证据。')
                 return self._get_plan_item_by_id(existing_event["plan_item_id"], connection=connection)
             item = connection.execute(
                 """
@@ -4737,13 +4810,14 @@ class StudyRepository:
                     raise PlanInputError("请完成当前任务的全部核对项，或改为“已完成”记录。")
             if completion_artifact_id:
                 artifact = connection.execute(
-                    "SELECT child_id, session_id, status FROM capture_artifact WHERE artifact_id = ?",
+                    "SELECT child_id, session_id, status, artifact_type FROM capture_artifact WHERE artifact_id = ?",
                     (completion_artifact_id,),
                 ).fetchone()
                 if (
                     not artifact
                     or artifact["child_id"] != item["child_id"]
                     or artifact["session_id"] != item["session_id"]
+                    or artifact["artifact_type"] == 'document_ocr_candidate'
                     or artifact["status"] not in {"completed", "quality_warning"}
                 ):
                     raise PlanInputError("完成页证据与当前孩子或学习会话不匹配，请重新采集。")
@@ -5382,6 +5456,10 @@ class PlanItemStateError(Exception):
 
 
 class ReportNotReadyError(Exception):
+    pass
+
+
+class LegacyReportUnverifiedError(ReportNotReadyError):
     pass
 
 

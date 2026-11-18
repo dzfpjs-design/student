@@ -23,7 +23,9 @@ class LocalOcrWorkflow:
         self.adapter.bind_database(media_ai.database)
 
     def process(self, session_id: str, image_bytes: bytes, client_action_id: str, store_raw: bool,
-                monitor_generation: int | None = None) -> dict:
+                monitor_generation: int | None = None, capture_kind: str = 'single_frame') -> dict:
+        if capture_kind != 'single_frame':
+            raise ValueError('DOCUMENT_COMPOSITE_DISABLED')
         session = self.media_ai._session(session_id)
         with self.media_ai.database.connect() as c:
             existing = c.execute('SELECT child_id,session_id FROM capture_artifact WHERE client_action_id=?', (client_action_id,)).fetchone()
@@ -59,7 +61,7 @@ class LocalOcrWorkflow:
             artifact = self.media_ai.ocr(session_id, image_bytes, client_action_id, store_raw,
                                          prepared_result={**pipeline_job["result"], '_local_ocr_job_id': pipeline_job['job_id'],
                                                           '_local_pipeline': self._pipeline_details(pipeline_job, scheduled)},
-                                         monitor_generation=monitor_generation)
+                                         monitor_generation=monitor_generation, capture_kind=capture_kind)
             return self._attach_pipeline(artifact, pipeline_job, scheduled)
 
     @staticmethod

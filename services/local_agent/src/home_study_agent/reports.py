@@ -283,6 +283,7 @@ def build_daily_report(evidence: dict) -> tuple[dict, dict]:
     else:
         headline = f"完成{len(completed)}/{len(tasks)}项计划，" + ("今天复盘已跳过" if reflection_skipped else "已保存孩子愿意分享的内容")
     summary = {
+        'report_task_source_fingerprint': evidence.get('report_task_source_fingerprint'),
         'document_revisit_practice': revisit_practice,
         'document_revisit_practice_fingerprint': evidence.get('document_revisit_practice_fingerprint'),
         'pet_audio_practice': oral_practice,

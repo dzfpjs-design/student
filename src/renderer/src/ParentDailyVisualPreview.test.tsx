@@ -104,3 +104,11 @@ it('removes rendered data at the server session expiry without extending it', as
   await act(async()=>{await vi.advanceTimersByTimeAsync(12000)})
   expect(screen.queryByText('页面')).toBeNull()
 })
+
+it('explains an unconfirmed task source without exposing internal codes', async () => {
+  vi.spyOn(api, 'requestParentLocal').mockRejectedValue(new api.ApiError('REPORT_TASK_SOURCE_UNCONFIRMED',409))
+  render(<ParentDailyVisualPreview childId="child-a" />)
+  fireEvent.click(screen.getByRole('button',{name:'查看记录'}))
+  expect(await screen.findByText(/作业或完成记录的来源尚未核对/)).toBeTruthy()
+  expect(screen.queryByText(/REPORT_TASK_SOURCE_UNCONFIRMED/)).toBeNull()
+})

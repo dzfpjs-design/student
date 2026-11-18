@@ -680,7 +680,7 @@ class MistakeCaptureService:
             "SELECT * FROM capture_artifact WHERE artifact_id = ? AND child_id = ?",
             (artifact_id, child_id),
         ).fetchone()
-        if not row:
+        if not row or row['artifact_type'] == 'document_ocr_candidate':
             raise UnknownMistakeCaptureCandidateError("找不到这份作业采集记录。")
         return row
 

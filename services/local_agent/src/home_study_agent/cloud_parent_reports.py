@@ -48,6 +48,7 @@ class ParentReportGenerationAuthority:
         self.expected = _report_comparison(summary, baseline)
         self.source_version = source_version
         with repository.database.connect() as c:
+            c.execute('BEGIN')
             self.consent = self._consent(c)
             self.assert_source(c)
 
@@ -98,6 +99,7 @@ class ParentReportGenerationAuthority:
     def __call__(self):
         from .reports import build_daily_report
         with self.repository.database.connect() as c:
+            c.execute('BEGIN')
             self.assert_local_authority(c)
         try:
             current = self.current_evidence()
@@ -107,6 +109,7 @@ class ParentReportGenerationAuthority:
                 or _report_comparison(*build_daily_report(current))!=self.expected):
             raise ParentReportAuthorityChangedError()
         with self.repository.database.connect() as c:
+            c.execute('BEGIN')
             self.assert_local_authority(c)
 
 

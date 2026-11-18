@@ -1080,6 +1080,7 @@ export function ContinuousDocumentMonitor({
           ? '每半秒检查画面；页面稳定后识别，两次尝试至少相隔15秒；页面不变时约5分钟复查。'
           : !analysisActive ? '进入作业或学习阶段后才会自动识别页面。'
             : analysisBlocked ? '页面识别暂受阻，原因见上方提示。' : '设备连接并恢复页面识别后才会自动检查。'}</small>
+        <small>多帧遮挡补全暂不可用，当前使用单帧识别。</small>
         <small>{allowDiagnosticFrameCapture ? '原视频不上传；合格页内图按配置解析，识别内容仍需核对。' : '当前仅在本机识别页面，不保留原始画面或上传云端；识别内容仍需核对。'}</small>
         {revision?.extracted_text && <p>{revision.extracted_text.slice(0, 180)}</p>}
         {revision && <small>第{revision.revision_index}版 · 识别置信度 {Math.round(revision.ocr_confidence * 100)}%</small>}

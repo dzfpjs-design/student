@@ -183,7 +183,9 @@ class LocalMediaAI:
             raise ValueError("document observation was invalidated before persistence")
 
     def ocr(self, session_id: str, image_bytes: bytes, client_action_id: str, store_raw: bool, prepared_result: dict | None = None,
-            monitor_generation: int | None = None) -> dict:
+            monitor_generation: int | None = None, capture_kind: str = 'single_frame') -> dict:
+        if capture_kind != 'single_frame':
+            raise ValueError('DOCUMENT_COMPOSITE_DISABLED')
         session = self._session(session_id)
         with self.database.connect() as connection:
             self._assert_document_monitor_epoch(connection, session_id, monitor_generation)
@@ -235,7 +237,8 @@ class LocalMediaAI:
                 details['local_pipeline'] = prepared_result['_local_pipeline']
             if monitor_generation is not None:
                 from hashlib import sha256
-                details.update(monitor_generation=monitor_generation, monitor_frame_sha256=sha256(image_bytes).hexdigest())
+                details.update(monitor_generation=monitor_generation, monitor_frame_sha256=sha256(image_bytes).hexdigest(),
+                               monitor_capture_kind=capture_kind)
             with self._raw_publication(connection, session["child_id"], session_id,
                     artifact_id, ".jpg", image_bytes, store_raw) as local_path:
                 connection.execute(

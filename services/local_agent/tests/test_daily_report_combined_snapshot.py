@@ -111,19 +111,27 @@ def test_wrong_child_key_and_missing_real_approval_are_rejected(synthetic_combin
 def test_new_same_day_formal_report_invalidates_frozen_snapshot(candidate,approved):
     f,_,snapshot,_=candidate
     with f['db'].connect() as c:
-        c.execute("""INSERT INTO daily_session(session_id,child_id,status,state,started_at,last_checkpoint_at,client_action_id)
-            SELECT 'later-session',child_id,status,state,started_at,last_checkpoint_at,'later-action'
+        c.execute("""INSERT INTO daily_session(session_id,child_id,status,state,started_at,ended_at,last_checkpoint_at,client_action_id)
+            SELECT 'later-session',child_id,status,state,started_at,ended_at,last_checkpoint_at,'later-action'
             FROM daily_session WHERE session_id=?""",(f['session'],))
-        c.execute("""INSERT INTO daily_report(report_id,session_id,child_id,report_date,source,evidence_json,summary_json,parent_coaching_json,created_at)
-            SELECT 'later-report','later-session',child_id,report_date,source,evidence_json,summary_json,parent_coaching_json,created_at
-            FROM daily_report WHERE session_id=?""",(f['session'],))
         if approved:
             c.execute("""INSERT INTO daily_reflection(reflection_id,session_id,child_id,learned_text,difficult_text,feeling,next_action,skipped,created_at,client_action_id)
                 SELECT 'later-reflection','later-session',child_id,learned_text,difficult_text,feeling,next_action,skipped,created_at,'later-reflection-action'
                 FROM daily_reflection WHERE session_id=?""",(f['session'],))
+        else:
+            # An unapproved report only needs to exist; it remains untrusted.
+            c.execute("""INSERT INTO daily_report(report_id,session_id,child_id,report_date,source,evidence_json,summary_json,parent_coaching_json,created_at)
+                SELECT 'later-report','later-session',child_id,report_date,source,evidence_json,summary_json,parent_coaching_json,created_at
+                FROM daily_report WHERE session_id=?""",(f['session'],))
         c.commit()
     if approved:
-        later=f['reports'].create_from_daily(f['repo'].get_daily_report('later-report'))
+        # Build the second report from its own session so its source token
+        # cannot be copied from the first session.
+        from home_study_agent.reports import build_daily_report
+        evidence=f['repo'].report_evidence('later-session')
+        summary,coaching=build_daily_report(evidence)
+        saved=f['repo'].save_daily_report('later-session',summary,coaching)
+        later=f['reports'].create_from_daily(saved)
         f['reports'].approve(later['snapshot_id'])
     with pytest.raises(ValueError,match='COMBINED_FORMAL'):
         inspect(f['telemetry'],snapshot,SYNTHETIC_KEY)

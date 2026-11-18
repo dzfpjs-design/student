@@ -38,7 +38,7 @@ export function ParentDailyVisualPreview({ childId }: { childId: string }): Reac
     return () => { stopped = true; controller?.abort(); window.clearInterval(timer) }
   }, [childId])
   const [day, setDay] = useState(chinaToday)
-  const [state, setState] = useState<{ kind: 'idle' | 'loading' | 'error' } | { kind: 'ready'; data: Preview }>({ kind: 'idle' })
+  const [state, setState] = useState<{ kind: 'idle' | 'loading' | 'error' | 'source_error' } | { kind: 'ready'; data: Preview }>({ kind: 'idle' })
   const [invalidating, setInvalidating] = useState(parentVisualInvalidationActive)
   const [recoveryMessage, setRecoveryMessage] = useState('')
   const [recovering, setRecovering] = useState(false)
@@ -96,8 +96,11 @@ export function ParentDailyVisualPreview({ childId }: { childId: string }): Reac
       expires.current = Date.parse(session.expires_at)
       if (!Number.isFinite(expires.current) || expires.current <= Date.now()) throw new Error('PARENT_SESSION_EXPIRED')
       setState({ kind: 'ready', data })
-    } catch {
-      if (!controller.signal.aborted && current.current === controller) setState({ kind: 'error' })
+    } catch (error) {
+      if (!controller.signal.aborted && current.current === controller) {
+        const code = error instanceof ApiError ? (error.code ?? error.message) : ''
+        setState({ kind: code === 'REPORT_TASK_SOURCE_UNCONFIRMED' || code === 'REPORT_TASK_SOURCE_MISSING' ? 'source_error' : 'error' })
+      }
     }
   }
   const changeDay = (value: string): void => { sendRequest.current?.abort(); sendRequest.current = null; setSending(false); setSendMessage(''); current.current?.abort(); current.current = null; preparationRequest.current?.abort(); preparationRequest.current = null; setPreparation({kind:'idle'}); setState({ kind: 'idle' }); setDay(value) }
@@ -203,6 +206,7 @@ export function ParentDailyVisualPreview({ childId }: { childId: string }): Reac
     {recoveryMessage && <p role="status">{recoveryMessage}</p>}
     {state.kind === 'loading' && <p role="status">正在读取记录…</p>}
     {state.kind === 'error' && <p role="alert">记录暂时无法读取，可能正在删除或需要重新解锁家长中心，请稍后重试。</p>}
+    {state.kind === 'source_error' && <p role="alert">作业或完成记录的来源尚未核对，暂时无法展示记录。原记录仍然保留，请联系开发者核对后再试。</p>}
     {state.kind === 'ready' && <div>
       <p>这是读取时的记录；数据更改后请重新查看。OCR 可能有误；看到页面不代表孩子已经学习或掌握。可见时间是采样估计，不是做题、背书或专注时长。</p>
       {state.data.recorded_task_time && <section aria-label="任务记录计时">

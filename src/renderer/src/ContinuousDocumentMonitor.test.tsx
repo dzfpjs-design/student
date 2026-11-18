@@ -106,6 +106,7 @@ describe('continuous document monitor device lifecycle', () => {
       },
     })
     expect(view.getByText(/持续本地监控已开启/)).toBeTruthy()
+    expect(view.getByText('多帧遮挡补全暂不可用，当前使用单帧识别。')).toBeTruthy()
 
     view.rerender(<ContinuousDocumentMonitor sessionId="session" active={false} />)
     await waitFor(() => expect(localApi.releaseDeviceLease).toHaveBeenCalledWith('lease-document', 'document_monitor_yielded', expect.any(AbortSignal)))

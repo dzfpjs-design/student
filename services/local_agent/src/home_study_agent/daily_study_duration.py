@@ -38,7 +38,9 @@ def project_recorded_task_time(connection, child_id, learning_date):
         ORDER BY i.completed_at,i.plan_item_id''', (child_id,begin.isoformat(),end.isoformat())).fetchall()
     tasks=[]
     omitted=0
+    from .report_task_provenance import task_source_state
     for row in rows:
+        task_source_state(connection, child_id, row['plan_item_id'])
         started, completed = _instant(row['started_at']), _instant(row['completed_at'])
         active, declared = row['active_seconds'], row['actual_minutes']
         if (started is None or completed is None or not begin <= started <= completed < end

@@ -1046,6 +1046,11 @@ def test_structured_homework_can_be_corrected_idempotently_and_survives_restart(
                 "client_action_id": "homework-edit-transition-002",
             },
         )
+        with sqlite3.connect(tmp_path / 'test.db') as connection:
+            connection.execute('''INSERT INTO capture_artifact(artifact_id,child_id,session_id,artifact_type,
+                extracted_text,confidence,details_json,status,created_at,client_action_id)
+                VALUES(?,?,?,'document_ocr','合成作业',0.91,'{}','completed',datetime('now'),?)''',
+                ('artifact-homework-001', 'child-primary-4', session_id, 'artifact-homework-action-001'))
         created = client.post(
             f"/v1/sessions/{session_id}/homework",
             json={

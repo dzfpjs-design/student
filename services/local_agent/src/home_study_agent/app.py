@@ -961,6 +961,7 @@ class OcrRequest(BaseModel):
     image_base64: str = Field(min_length=32, max_length=24_000_000)
     client_action_id: str = Field(min_length=8, max_length=128)
     trial_frame_id: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    capture_kind: Literal['single_frame', 'multiframe_candidate'] = 'single_frame'
 
 
 class OcrReviewActionRequest(BaseModel):
@@ -4689,6 +4690,20 @@ def _create_app_without_money_owner(
             raise HTTPException(status_code=404, detail='找不到孩子档案。')
         return {'child_id': child_id, 'items': parent_reports.source_issues(child_id)}
 
+    @application.get("/v1/parent/children/{child_id}/legacy-daily-reports/{report_id}/original")
+    async def legacy_daily_original(child_id: str, report_id: str, request: Request) -> Response:
+        from .legacy_original_response import LegacyOriginalResponse
+        require_visual_preview_session(request)
+        parent_auth.require(request.headers.get('X-HSC-Parent'))
+        return LegacyOriginalResponse(database,parent_reports,parent_auth,request.headers.get('X-HSC-Parent'),child_id,report_id)
+
+    @application.get("/v1/parent/children/{child_id}/legacy-daily-reports/{report_id}/original/status")
+    async def legacy_daily_original_status(child_id: str, report_id: str, request: Request) -> Response:
+        from .legacy_original_response import LegacyOriginalResponse
+        require_visual_preview_session(request)
+        parent_auth.require(request.headers.get('X-HSC-Parent'))
+        return LegacyOriginalResponse(database,parent_reports,parent_auth,request.headers.get('X-HSC-Parent'),child_id,report_id,status_only=True)
+
     @application.get("/v1/parent/report-snapshots/{snapshot_id}")
     async def get_report_snapshot(snapshot_id: str, request: Request) -> dict:
         parent_auth.require(request.headers.get("X-HSC-Parent"))
@@ -6310,6 +6325,8 @@ def _create_app_without_money_owner(
 
     @application.post("/v1/sessions/{session_id}/ocr")
     async def run_ocr(session_id: str, payload: OcrRequest) -> dict:
+        if payload.capture_kind != 'single_frame':
+            raise HTTPException(status_code=409, detail='DOCUMENT_CAPTURE_KIND_UNSUPPORTED')
         try:
             image_bytes = base64.b64decode(payload.image_base64, validate=True)
         except (binascii.Error, ValueError) as error:
@@ -6338,6 +6355,10 @@ def _create_app_without_money_owner(
     @application.post("/v1/sessions/{session_id}/document-monitor/ocr")
     async def run_document_monitor_ocr(session_id: str, payload: OcrRequest) -> dict:
         nonlocal document_ocr_lock
+        # Pixel-level composition is disabled: color cannot prove what is
+        # occlusion versus a red correction. Never create a candidate artifact.
+        if payload.capture_kind != 'single_frame':
+            raise HTTPException(status_code=409, detail='DOCUMENT_COMPOSITE_DISABLED')
         if document_ocr_lock is None:
             document_ocr_lock = asyncio.Lock()
         try:
@@ -6370,13 +6391,16 @@ def _create_app_without_money_owner(
                 raise ValueError('document trial frame not authorized for this phase')
             monitor_generation = document_monitoring.status(session_id).get("generation", 0)
             frame_digest = sha256(image_bytes).hexdigest()
+            if payload.capture_kind == 'multiframe_candidate' and payload.trial_frame_id:
+                raise ValueError('composite candidate cannot be a retained original frame')
             document_trial_capture.validate_ocr_frame(session_id, payload.trial_frame_id, frame_digest)
             with database.connect() as connection:
                 existing = connection.execute("SELECT artifact_id,session_id,details_json FROM capture_artifact WHERE client_action_id=?",
                                               (payload.client_action_id,)).fetchone()
             if existing:
                 if (existing["session_id"] != session_id
-                        or json.loads(existing["details_json"] or "{}").get("monitor_frame_sha256") != frame_digest):
+                        or json.loads(existing["details_json"] or "{}").get("monitor_frame_sha256") != frame_digest
+                        or json.loads(existing["details_json"] or "{}").get("monitor_capture_kind", "single_frame") != payload.capture_kind):
                     raise HTTPException(status_code=409, detail="DOCUMENT_OCR_ACTION_CONFLICT")
                 if document_operation_receipts.read(session_id, payload.client_action_id, 'ocr')['status'] != 'saved':
                     raise HTTPException(status_code=409, detail='DOCUMENT_OCR_RESULT_UNCONFIRMED')
@@ -6394,7 +6418,7 @@ def _create_app_without_money_owner(
                 try:
                     artifact = await asyncio.to_thread(
                         ocr_workflow.process, session_id, image_bytes, payload.client_action_id, False,
-                        monitor_generation=monitor_generation,
+                        monitor_generation=monitor_generation, capture_kind=payload.capture_kind,
                     )
                 except OcrWorkflowFailedError:
                     require_live_monitor()
@@ -6403,7 +6427,7 @@ def _create_app_without_money_owner(
                             "engine": "local_ocr_failed", "lines": [],
                             "quality": {"passed": False, "issues": ["local_ocr_failed"],
                                         "messages": ["本地识别未成功，等待安全的页内解析补充。"]},
-                        }, monitor_generation=monitor_generation)
+                        }, monitor_generation=monitor_generation, capture_kind=payload.capture_kind)
                 require_live_monitor()
                 if document_monitoring.status(session_id).get("generation", 0) != monitor_generation:
                     raise ValueError("document observation was superseded")
@@ -6415,7 +6439,7 @@ def _create_app_without_money_owner(
                                    "monitor_capture_phase": capture_phase}
                 details.update(monitor_changes)
                 visual_prepared = None
-                if capture_phase == 'study':
+                if capture_phase == 'study' and payload.capture_kind == 'single_frame':
                     visual_prepared = await asyncio.to_thread(visual_capture.prepare,
                         session_id, artifact['artifact_id'], image_bytes, monitor_generation)
                 require_live_monitor()
@@ -6426,7 +6450,7 @@ def _create_app_without_money_owner(
                                 or not str(artifact.get("extracted_text") or "").strip()
                                 or (bool(review.get("required")) if isinstance(review, dict) else bool(review))
                                 or bool(re.search(r"如图|下图|图中|看图", str(artifact.get("extracted_text") or ""))))
-                if needs_vision and capture_phase == 'study':
+                if needs_vision and capture_phase == 'study' and payload.capture_kind == 'single_frame':
                     vision_request_id = "artifact:" + artifact["artifact_id"]
                     if privacy_lifecycle.preferences()["cloud_model_text_allowed"]:
                         def vision_still_allowed() -> bool:
@@ -6486,7 +6510,7 @@ def _create_app_without_money_owner(
                 await run_local(document_trial_capture.bind_ocr, session_id, payload.trial_frame_id, artifact['artifact_id'], frame_digest)
         except ValueError as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
-        if capture_phase == 'study':
+        if capture_phase == 'study' and payload.capture_kind == 'single_frame':
             behavior_integration.ocr_completed(session_id, artifact, payload.client_action_id)
         document_operation_receipts.record(session_id, payload.client_action_id, 'ocr', artifact['artifact_id'])
         return artifact

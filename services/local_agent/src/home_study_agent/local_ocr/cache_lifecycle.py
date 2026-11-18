@@ -248,7 +248,7 @@ def register_legacy_store(database, legacy_path):
                 if not owned_current:
                     c.execute('INSERT OR IGNORE INTO ocr_request_tombstone VALUES(?,?)', (request_digest(row['request_id']), 'legacy'))
             if _exists(c, 'capture_artifact'):
-                for artifact in c.execute("SELECT artifact_id,child_id,client_action_id,details_json FROM capture_artifact WHERE artifact_type='document_ocr'"):
+                for artifact in c.execute("SELECT artifact_id,child_id,client_action_id,details_json FROM capture_artifact WHERE artifact_type IN ('document_ocr','document_ocr_candidate')"):
                     try:
                         details = json.loads(artifact['details_json'] or '{}')
                         task = details.get('local_pipeline', {}).get('queue', {}).get('task_id', '')

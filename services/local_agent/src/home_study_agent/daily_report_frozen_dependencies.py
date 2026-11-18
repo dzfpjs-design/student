@@ -64,6 +64,11 @@ def _hash(c, child_id, kind, identifier):
     if len(rows) != 1:
         raise ValueError('FROZEN_SOURCE_MISSING_OR_AMBIGUOUS')
     values = list(rows[0])
+    if kind == 'task':
+        from .report_task_provenance import task_source_state
+        sources = task_source_state(c, child_id, identifier)
+        if sources:
+            values.append(sources)
     if kind in ('cloud_page', 'cloud_segment'):
         # Older snapshots hashed raw details_json; they intentionally fail
         # validation and must be frozen again under the new dependency format.

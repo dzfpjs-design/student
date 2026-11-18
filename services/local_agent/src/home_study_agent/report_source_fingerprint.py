@@ -71,10 +71,60 @@ def report_source_fingerprint(c: sqlite3.Connection, session_id: str) -> str:
         FROM daily_reflection WHERE session_id=? ORDER BY reflection_id''', (session_id,))
     rows('recall', ('classroom_recall',), '''SELECT recall_id,subject,summary,confidence,created_at FROM classroom_recall
         WHERE session_id=? AND confirmation_status='child_confirmed' ORDER BY created_at,recall_id''', (session_id,))
+    if c.execute('SELECT 1 FROM daily_plan WHERE session_id=? AND child_id!=? LIMIT 1', (session_id,child_id)).fetchone():
+        payload['foreign_plan_conflict'] = True
     rows('tasks', ('daily_plan', 'plan_item'), '''SELECT pi.plan_item_id,pi.plan_id,pi.subject,pi.title,pi.expected_minutes,
         pi.actual_minutes,pi.status,pi.position,pi.completion_evidence_type,pi.completion_note,pi.task_type,pi.completion_checklist_json
         FROM plan_item pi JOIN daily_plan dp ON dp.plan_id=pi.plan_id
         WHERE dp.session_id=? AND dp.child_id=? AND pi.source_type!='planned_break' ORDER BY pi.position,pi.plan_item_id''', (session_id, child_id))
+    # Bind the type, ownership and status of referenced artifacts; raw OCR text
+    # is not needed here. A transition to unconfirmed must invalidate a report.
+    rows('task_sources', ('daily_plan', 'plan_item', 'homework_item', 'capture_artifact'),
+         """SELECT pi.plan_item_id,pi.homework_id,pi.completion_artifact_id,pi.source_type,pi.source_ref,
+           ca.child_id,ca.session_id,ca.artifact_type,ca.status,
+           h.child_id,h.session_id,h.source_artifact_id,
+           ha.child_id,ha.session_id,ha.artifact_type,ha.status
+         FROM plan_item pi JOIN daily_plan dp ON dp.plan_id=pi.plan_id
+         LEFT JOIN homework_item h ON h.homework_id=pi.homework_id
+         LEFT JOIN capture_artifact ca ON ca.artifact_id=pi.completion_artifact_id
+         LEFT JOIN capture_artifact ha ON ha.artifact_id=h.source_artifact_id
+         WHERE dp.child_id=? AND dp.session_id=? AND pi.source_type!='planned_break'
+           AND (pi.completion_artifact_id IS NOT NULL OR pi.homework_id IS NOT NULL OR (pi.source_type='school_homework' AND pi.source_ref IS NOT NULL))
+         ORDER BY pi.plan_item_id""", (child_id,session_id))
+    # Weekly goal/cycle projections may draw completed tasks from older sessions.
+    # Bind their referenced artifacts too, so later source reclassification makes
+    # a previously generated report stale without exposing OCR text.
+    from .report_task_provenance import aggregate_task_ids
+    for item_id in aggregate_task_ids(c, child_id, report_day, report_end):
+        source = c.execute("""SELECT pi.plan_item_id,pi.homework_id,pi.completion_artifact_id,pi.source_type,pi.source_ref,
+           ca.child_id,ca.session_id,ca.artifact_type,ca.status,
+           h.child_id,h.session_id,h.source_artifact_id,
+           ha.child_id,ha.session_id,ha.artifact_type,ha.status
+         FROM plan_item pi JOIN daily_plan dp ON dp.plan_id=pi.plan_id
+         LEFT JOIN homework_item h ON h.homework_id=pi.homework_id
+         LEFT JOIN capture_artifact ca ON ca.artifact_id=pi.completion_artifact_id
+         LEFT JOIN capture_artifact ha ON ha.artifact_id=h.source_artifact_id
+         WHERE dp.child_id=? AND pi.plan_item_id=? AND dp.session_id!=?
+           AND (pi.completion_artifact_id IS NOT NULL OR pi.homework_id IS NOT NULL OR (pi.source_type='school_homework' AND pi.source_ref IS NOT NULL))""", (child_id,item_id,session_id)).fetchone()
+        if source is not None:
+            payload['task_sources'].append(tuple(source))
+    payload['task_sources'].sort(key=lambda row: row[0])
+    # Bind every upstream carryover receipt and source homework, including
+    # multi-step chains. Invalid lineages remain a stable invalid marker so a
+    # formerly valid frozen report becomes stale without exposing source text.
+    from .report_task_provenance import task_source_state
+    qualification = []
+    for row in payload['task_sources']:
+        try:
+            value = task_source_state(c, child_id, row[0])
+        except (ValueError, sqlite3.Error, TypeError):
+            value = [('source_unconfirmed',)]
+        if value:
+            qualification.append((row[0], value))
+    if qualification:
+        payload['task_source_qualification'] = qualification
+    if not payload['task_sources']:
+        del payload['task_sources']
     rows('reschedules', ('daily_plan', 'plan_item', 'plan_item_event'), '''SELECT e.event_id,e.plan_item_id,e.occurred_at,e.payload_json
         FROM plan_item_event e JOIN plan_item pi ON pi.plan_item_id=e.plan_item_id JOIN daily_plan dp ON dp.plan_id=pi.plan_id
         WHERE dp.session_id=? AND dp.child_id=? AND pi.source_type!='planned_break' AND e.event_type='rescheduled'

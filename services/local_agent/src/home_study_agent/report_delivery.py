@@ -1426,14 +1426,6 @@ class ReportDeliveryService:
               JOIN parent_report_snapshot s ON s.snapshot_id = o.snapshot_id WHERE o.delivery_id = ?""", (delivery_id,)).fetchone()
             if not row or row["status"] != "scheduled":
                 connection.rollback(); return self.get_delivery(delivery_id)
-            from .daily_report_formal_ownership import snapshot_owned
-            if snapshot_owned(connection,row['snapshot_id'],row['recipient_id']):
-                connection.rollback(); return self.get_delivery(delivery_id)
-            if connection.execute("SELECT 1 FROM deletion_job WHERE child_id=? AND status!='completed' LIMIT 1", (row['child_id'],)).fetchone():
-                later = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
-                connection.execute("UPDATE report_delivery_outbox SET scheduled_at=?,last_error_code='WAITING_DELETION',updated_at=? WHERE delivery_id=?", (later,now,delivery_id))
-                connection.commit()
-                return self.get_delivery(delivery_id)
             scope_reason = self._submission_scope_reason(row)
             if scope_reason:
                 connection.execute("""UPDATE report_delivery_outbox SET status='cancelled',
@@ -1442,6 +1434,14 @@ class ReportDeliveryService:
                 connection.execute("""INSERT INTO audit_event(audit_id,actor,action,child_id,summary_json,occurred_at)
                     VALUES (?, 'system', 'report_delivery_cancelled_before_submission', ?, ?, ?)""",
                     (str(uuid4()), row['snapshot_child_id'], json.dumps({'delivery_id': delivery_id, 'reason': scope_reason}), now))
+                connection.commit()
+                return self.get_delivery(delivery_id)
+            from .daily_report_formal_ownership import snapshot_owned
+            if snapshot_owned(connection,row['snapshot_id'],row['recipient_id']):
+                connection.rollback(); return self.get_delivery(delivery_id)
+            if connection.execute("SELECT 1 FROM deletion_job WHERE child_id=? AND status!='completed' LIMIT 1", (row['child_id'],)).fetchone():
+                later = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+                connection.execute("UPDATE report_delivery_outbox SET scheduled_at=?,last_error_code='WAITING_DELETION',updated_at=? WHERE delivery_id=?", (later,now,delivery_id))
                 connection.commit()
                 return self.get_delivery(delivery_id)
             ancestry = self._explicit_reissue_ancestry(connection,row)

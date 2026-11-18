@@ -101,12 +101,17 @@ SOURCE_ISSUE_MESSAGES = {
     'REPORT_SESSION_INCOMPLETE': '报告与已完成会话的对应关系不完整，请先核对原始记录。',
     'REPORT_SOURCE_INVALID_JSON': '这份报告的来源数据损坏，旧稿已保留，需从完整备份恢复后重新核对。',
     'REPORT_SOURCE_NOT_READY': '报告来源暂时不能通过核验，旧稿已保留，请核对后刷新。',
+    'REPORT_TASK_SOURCE_LEGACY_UNVERIFIED': '旧版日报缺少任务来源校验信息，历史内容无法核验；原报告和已发记录仍保留。',
     'REPORT_SNAPSHOT_INVALID_JSON': '这份历史快照损坏，已停止批准和发送；其他完整报告不受影响。',
 }
 
 DAILY_STRUCTURE_SELECT = """SELECT r.*, s.child_id AS session_child_id, s.status AS session_status,
     EXISTS(SELECT 1 FROM daily_reflection f WHERE f.session_id=r.session_id AND f.child_id=r.child_id) AS has_reflection
     FROM daily_report r LEFT JOIN daily_session s ON s.session_id=r.session_id"""
+
+
+class LegacyOriginalUnavailableError(ValueError):
+    pass
 
 
 class ParentReportService:
@@ -126,6 +131,60 @@ class ParentReportService:
     def daily_observation_source_status(self, child_id: str, day: str, recipient_id: str) -> dict:
         from .daily_report_observation import DailyReportObservationService
         return DailyReportObservationService(self.database).inspect_current(child_id, day, recipient_id)
+
+    def read_legacy_daily_original(self, child_id: str, report_id: str) -> dict:
+        """Return only the retained old summary/coaching; never requalify or mutate it."""
+        from .repository import UnknownReportError
+        if not all(isinstance(value,str) and 0 < len(value) <= 128 for value in (child_id,report_id)):
+            raise UnknownReportError('legacy')
+        with self.database.connect() as c:
+            c.execute('BEGIN')
+            row = c.execute("""SELECT r.report_id,r.child_id,r.report_date,r.evidence_json,r.summary_json,r.parent_coaching_json,
+                    s.child_id AS session_child
+                FROM daily_report r LEFT JOIN daily_session s ON s.session_id=r.session_id
+                WHERE r.report_id=? AND r.child_id=?""", (report_id,child_id)).fetchone()
+            if row is None:
+                raise UnknownReportError('legacy')
+            if row['session_child'] != child_id:
+                raise LegacyOriginalUnavailableError('LEGACY_ORIGINAL_OWNER_MISMATCH')
+            if c.execute("SELECT 1 FROM deletion_job WHERE child_id=? AND status!='completed' LIMIT 1", (child_id,)).fetchone():
+                raise LegacyOriginalUnavailableError('LEGACY_ORIGINAL_DELETION_PENDING')
+            try:
+                fields = [row['evidence_json'],row['summary_json'],row['parent_coaching_json']]
+                if any(not isinstance(field,str) or len(field)>2_000_000 for field in fields):
+                    raise ValueError()
+                evidence,summary,coaching = (json.loads(field) for field in fields)
+                if not all(isinstance(value,dict) for value in (evidence,summary,coaching)):
+                    raise ValueError()
+                if isinstance(evidence.get('report_task_source_fingerprint'),str) and evidence['report_task_source_fingerprint']:
+                    raise LegacyOriginalUnavailableError('LEGACY_ORIGINAL_NOT_LEGACY')
+                # Reject non-JSON finite values instead of synthesizing content.
+                json.dumps([summary,coaching],allow_nan=False)
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                if isinstance(error,LegacyOriginalUnavailableError):
+                    raise
+                raise LegacyOriginalUnavailableError('LEGACY_ORIGINAL_INVALID') from error
+            digest = hashlib.sha256(json.dumps([child_id,report_id,row['report_date'],*fields],
+                ensure_ascii=False,separators=(',',':')).encode('utf-8')).hexdigest()
+            return {'child_id':child_id,'report_id':report_id,'report_date':row['report_date'],
+                    'summary':summary,'parent_coaching':coaching,'verification':'legacy_unverified',
+                    'source_digest':digest,'can_send':False,'can_create_trusted_report':False,'local_only':True}
+
+    def legacy_privacy_marker(self, child_id: str) -> str:
+        """Capture durable privacy state, including jobs that later finish or fail."""
+        with self.database.connect() as c:
+            c.execute('BEGIN')
+            generation = c.execute('SELECT generation FROM privacy_storage_generation WHERE singleton=1').fetchone()
+            if not generation:
+                raise LegacyOriginalUnavailableError('LEGACY_PRIVACY_STATE_UNAVAILABLE')
+            jobs = [tuple(row) for row in c.execute('''SELECT deletion_id,status,updated_at FROM deletion_job
+                WHERE child_id=? ORDER BY deletion_id''',(child_id,))]
+            intents = [tuple(row) for row in c.execute('''SELECT request_id,kind,state,finalized,origin_generation,result_generation
+                FROM privacy_operation_intent WHERE child_id=? OR kind IN ('restore','portable_restore') ORDER BY request_id''',(child_id,))]
+            if any(row[1] != 'completed' for row in jobs) or any(row[2] == 'processing' for row in intents):
+                raise LegacyOriginalUnavailableError('LEGACY_ORIGINAL_DELETION_PENDING')
+            raw=json.dumps([generation[0],jobs,intents],ensure_ascii=False,separators=(',',':'))
+            return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
     @staticmethod
     def daily_source_problem(connection, child_id: str, report_id: str) -> str | None:
@@ -216,10 +275,12 @@ class ParentReportService:
                     **metadata.get(identity, {}), 'snapshot_id': snapshots.get(identity),
                     'updated_at': row['occurred_at'], 'automatic_delivery': False,
                     'message': SOURCE_ISSUE_MESSAGES.get(issue.get('error_code'), '来源已重新核对，旧快照仍保持撤销。'),
-                    'recovery_hint': '核对原始会话或恢复完整备份后刷新；不要补造反思，也不要重发旧稿。'}
+                    'recovery_hint': ('原稿和已发记录保持不变，不能根据现在的记录补签旧报告；请联系开发者核对。目前不能在此创建更正版本或重发旧稿。'
+                        if issue.get('error_code') == 'REPORT_TASK_SOURCE_LEGACY_UNVERIFIED'
+                        else '核对原始会话或恢复完整备份后刷新；不要补造反思，也不要重发旧稿。')}
         return [item for identity, item in latest.items() if include_resolved or (
             item['status'] == 'open' and (identity in metadata or identity in snapshots)
-            and (item['error_code'] == 'REPORT_SOURCE_NOT_READY'
+            and (item['error_code'] in {'REPORT_SOURCE_NOT_READY','REPORT_TASK_SOURCE_LEGACY_UNVERIFIED'}
                  or current_problems.get(identity, 'REPORT_SOURCE_MISSING') is not None))]
 
     @_guard_report_issue
@@ -251,7 +312,7 @@ class ParentReportService:
             else:
                 previous = _issue_states.get((source_kind, source_id))
             status = 'open' if error_code else 'resolved'
-            if error_code and c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='parent_report_snapshot'").fetchone():
+            if error_code and error_code != 'REPORT_TASK_SOURCE_LEGACY_UNVERIFIED' and c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='parent_report_snapshot'").fetchone():
                 if _source_snapshots is not None:
                     rows = _source_snapshots.get((source_kind, source_id), ())
                 elif source_kind == 'parent_report_snapshot':
@@ -418,6 +479,7 @@ class ParentReportService:
             "evidence_detail": evidence_detail,
         }
         with self.database.connect() as connection:
+            connection.execute('BEGIN')
             facts['source_qualification_fingerprint'] = self.source_qualification_fingerprint(connection, report['child_id'], 'daily_report', report['report_id'])
         inferences = {
             "interpretation": (report.get("summary") or {}).get("interpretation"),
@@ -900,6 +962,13 @@ class ParentReportService:
         if not row:
             return None
         evidence = json.loads(row['evidence_json'])
+        from .report_task_provenance import report_task_source_fingerprint
+        try:
+            expected_tasks = evidence.get('report_task_source_fingerprint')
+            if not expected_tasks or expected_tasks != report_task_source_fingerprint(connection,child_id,row['session_id']):
+                return None
+        except (ValueError, sqlite3.Error):
+            return None
         from .parent_supply_followup import report_supply_matches
         if not report_supply_matches(connection, child_id, row['session_id'], json.loads(row['summary_json'])):
             return None
