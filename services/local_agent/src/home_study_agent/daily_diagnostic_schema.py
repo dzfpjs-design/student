@@ -2,7 +2,7 @@
 No runtime source parsing or arbitrary field-name passthrough.
 """
 
-LOGGER_SOURCE_SHA256 = 'e115c518f310ef50614df7a72d828eebf650514fcdc07d03ea7d715e786b18b0'
+LOGGER_SOURCE_SHA256 = '39169cbc50a295755df6a75297816d30db8d7e4da04705f5fb069374a409a6c0'
 ROUTES_SOURCE_SHA256 = 'f8205342306a4fbf62f1a9d54651ef8380e023c1a76f7d61159816747313ab14'
 EVENTS = frozenset(('app_process_started',
  'app_quit_codec_disposed',
@@ -341,6 +341,12 @@ EVENTS = EVENTS.union(('structured_event', 'document.capture.frame_deferred', 'v
 REASON_CODES = REASON_CODES.union(('quiet_not_verified','source_or_close_unknown'))
 ENUMS['reason'] = ENUMS['reason'].union(('transient_occlusion',))
 EVENTS = EVENTS.union(('document.capture.frame_state', 'document.capture.ocr_pending'))
+EVENTS = EVENTS.union(('document.monitor.frame_state', 'document.monitor.frame_stalled', 'document.monitor.ocr_started', 'document.monitor.ocr_pending',
+    'document.monitor.ocr_result', 'document.monitor.ocr_discarded', 'document.monitor.ocr_retry_considered',
+    'document.monitor.revision_saved', 'document.monitor.revision_inflight_interrupted', 'document.monitor.revision_historical',
+    'document.monitor.ocr_failed', 'document.monitor.ocr_unconfirmed', 'document.monitor.revision_failed',
+    'document.monitor.revision_unconfirmed', 'document.monitor.post_revision_failed'))
+ENUMS['protected_startup_reason'] = frozenset(('storage', 'media_key_recovery', 'rotation_model_unclassified', 'tutor_recovery_marker'))
 ENUMS['frame_state'] = frozenset(('no_page', 'stabilizing', 'writing', 'occluded', 'page_changed', 'stable'))
 ENUMS['frame_motion_band'] = frozenset(('lt_2', '2_to_4_5', '4_5_to_7', '7_to_11', 'ge_11'))
 ENUMS['frame_skin_band'] = frozenset(('lt_025', '025_to_10', '10_to_22', 'ge_22'))

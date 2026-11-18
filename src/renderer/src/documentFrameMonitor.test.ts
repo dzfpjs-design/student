@@ -212,10 +212,47 @@ describe('continuous document frame monitor', () => {
     expect(monitor.observe(frame(), 20_000).captureRecommended).toBe(false)
   })
 
-  it('resets capture cooldown and saved fingerprints for a new camera lifecycle', () => {
+  it('retries an invalidated OCR promptly once per minute, but still requires fresh stable frames', () => {
+    const monitor = new DocumentFrameMonitor({ stableSamples: 2 })
+    const clear = frame()
+    monitor.observeFreshFrame(clear, 0, 1)
+    expect(monitor.observeFreshFrame(clear, 500, 2)?.captureRecommended).toBe(true)
+    monitor.markCaptureAttempt(500)
+    monitor.observeFreshFrame({ ...clear, skinRatio: .3 }, 1000, 3)
+    monitor.markStaleCaptureAttempt(1000)
+    expect(monitor.observeFreshFrame(clear, 5000, 4)?.captureRecommended).toBe(false)
+    expect(monitor.observeFreshFrame(clear, 5499, 5)?.captureRecommended).toBe(false)
+    expect(monitor.observeFreshFrame(clear, 5500, 6)?.captureRecommended).toBe(true)
+    monitor.markCaptureAttempt(5500)
+    monitor.observeFreshFrame({ ...clear, skinRatio: .3 }, 6000, 7)
+    monitor.markStaleCaptureAttempt(6000)
+    monitor.observeFreshFrame(clear, 10_500, 8)
+    expect(monitor.observeFreshFrame(clear, 10_501, 9)?.captureRecommended).toBe(false)
+    expect(monitor.observeFreshFrame(clear, 20_500, 10)?.captureRecommended).toBe(true)
+  })
+
+  it('counts the limit when an early request starts and retains it through camera reset', () => {
+    const monitor = new DocumentFrameMonitor({ stableSamples: 1 })
+    monitor.markCaptureAttempt(0)
+    monitor.markStaleCaptureAttempt(1000)
+    expect(monitor.canCaptureAt(5000)).toBe(true)
+    monitor.markCaptureAttempt(5000) // actual early request starts here
+    monitor.reset() // device release must not reset either request budget
+    expect(monitor.canCaptureAt(10_000)).toBe(false)
+    monitor.markCaptureAttempt(20_000)
+    monitor.markStaleCaptureAttempt(21_000)
+    expect(monitor.canCaptureAt(25_000)).toBe(false)
+    expect(monitor.canCaptureAt(35_000)).toBe(true)
+    monitor.markCaptureAttempt(61_000)
+    monitor.markStaleCaptureAttempt(62_000)
+    expect(monitor.canCaptureAt(66_000)).toBe(true)
+  })
+
+  it('clears saved page identity but keeps the request interval across camera lifecycle', () => {
     const monitor = new DocumentFrameMonitor({ stableSamples: 1 })
     monitor.markCaptured(frame().fingerprint, 50_000)
     monitor.reset()
-    expect(monitor.observe(frame(), 50_001).captureRecommended).toBe(true)
+    expect(monitor.observe(frame(), 50_001).captureRecommended).toBe(false)
+    expect(monitor.observe(frame(), 65_000).captureRecommended).toBe(true)
   })
 })

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { FileScan, Pause, Play, RotateCw } from 'lucide-react'
 import { ApiError, localApi } from './api'
 import { recoverDocumentOperations } from './documentOperationRecovery'
-import { DocumentFrameMonitor, extractDocumentFrameFeatures, fingerprintSignature, type DocumentFrameDecision, type DocumentFrameFeatures } from './documentFrameMonitor'
+import { DocumentFrameMonitor, documentFrameDiagnosticBands, extractDocumentFrameFeatures, fingerprintSignature, type DocumentFrameDecision, type DocumentFrameFeatures } from './documentFrameMonitor'
 import { configureDocumentCameraAutofocus, mediaDeviceFailure, mediaDeviceRegistration, openDocumentCameraStream, resolveBoundVideoDevice } from './mediaDevices'
 import type { DocumentMonitorState, DocumentMonitorStatus, DocumentPageRevision } from './types'
 import { CAMERA_DEVICE_COMMAND, CAMERA_DEVICE_STATUS, CameraFrameClock, type CameraDeviceCommand, type CameraStatusRequest, type DocumentInspectionOutput, requestCameraDevice, waitForCameraFrame } from './cameraDeviceRuntime'
@@ -16,6 +16,11 @@ import type { RefObject } from 'react'
 type RuntimeStatus = 'inactive' | 'starting' | 'active' | 'paused' | 'unavailable'
 const DOCUMENT_INSPECTION_WATCHDOG_MS = 180_000
 const DEVICE_LEASE_RELEASE_TIMEOUT_MS = 5_000
+type MonitorDiagnostic = 'frame_state' | 'frame_stalled' | 'ocr_started' | 'ocr_pending' | 'ocr_result' | 'ocr_discarded' | 'ocr_retry_considered' | 'revision_saved' | 'revision_inflight_interrupted' | 'revision_historical' | 'ocr_failed' | 'ocr_unconfirmed' | 'revision_failed' | 'revision_unconfirmed' | 'post_revision_failed'
+function monitorDiagnostic(event: MonitorDiagnostic, details: Record<string, unknown> = {}, level: 'info' | 'warn' = 'info'): void {
+  try { void window.desktop?.recordRendererDiagnostic?.({ event: `document.monitor.${event}`, level, details })?.catch(() => undefined) }
+  catch { /* Diagnostics must never interrupt the camera or OCR. */ }
+}
 type CloudPageFeedback = { blocked: boolean; message: string; text: string; pageInkUploaded: boolean }
 
 function cloudPageFeedback(value: unknown): CloudPageFeedback | null {
@@ -99,8 +104,12 @@ export function ContinuousDocumentMonitor({
   const monitorRef = useRef(new DocumentFrameMonitor())
   const processingRef = useRef(false)
   const freshnessEpochRef = useRef(0)
+  const lifecycleEpochRef = useRef(0)
+  const visualInterruptionEpochRef = useRef(0)
   const freshnessInvalidRef = useRef(false)
   const lastEventAtRef = useRef(Number.NEGATIVE_INFINITY)
+  const lastDiagnosticAtRef = useRef(Number.NEGATIVE_INFINITY)
+  const lastStallDiagnosticAtRef = useRef(Number.NEGATIVE_INFINITY)
   const lastFramingGuidanceRef = useRef({ state: '' as DocumentMonitorState | '', at: Number.NEGATIVE_INFINITY })
   const forceCaptureRef = useRef(false)
   const unconfirmedCaptureRef = useRef(false)
@@ -138,6 +147,7 @@ export function ContinuousDocumentMonitor({
   useLayoutEffect(() => {
     analysisActiveRef.current = analysisActive
     if (!analysisActive) {
+      lifecycleEpochRef.current += 1
       freshnessEpochRef.current += 1
       freshnessInvalidRef.current = true
       monitorRef.current.invalidateStability()
@@ -267,6 +277,7 @@ export function ContinuousDocumentMonitor({
   }, [])
 
   const release = useCallback((reason: string): Promise<boolean> => {
+    lifecycleEpochRef.current += 1
     freshnessEpochRef.current += 1
     freshnessInvalidRef.current = true
     visibilityRef.current?.stop()
@@ -308,6 +319,10 @@ export function ContinuousDocumentMonitor({
 
   const persistEvent = useCallback((decision: DocumentFrameDecision, features: DocumentFrameFeatures): void => {
     const now = Date.now()
+    if ((decision.changed && now - lastDiagnosticAtRef.current >= 5_000) || now - lastDiagnosticAtRef.current >= 60_000) {
+      lastDiagnosticAtRef.current = now
+      monitorDiagnostic('frame_state', { frame_state: decision.state, ...documentFrameDiagnosticBands(decision, features) })
+    }
     if (!decision.changed && now - lastEventAtRef.current < 60_000) return
     lastEventAtRef.current = now
     void localApi.recordDocumentMonitorEvent(sessionId, decision.state, decision.confidence, {
@@ -326,6 +341,8 @@ export function ContinuousDocumentMonitor({
     if (!runningRef.current || !stream || !lease || !video || video.videoWidth < 320 || processingRef.current || unconfirmedCaptureRef.current || !monitorRef.current.canCaptureAt(Date.now())) return
     const generation = generationRef.current
     const freshnessEpoch = freshnessEpochRef.current
+    const lifecycleEpoch = lifecycleEpochRef.current
+    const visualEpoch = visualInterruptionEpochRef.current
     const live = (): boolean => runningRef.current && analysisActiveRef.current && generationRef.current === generation
     releaseDocumentCapture()
     documentCaptureRef.current.page = null
@@ -338,9 +355,31 @@ export function ContinuousDocumentMonitor({
       && reviewScopeRef.current.sessionId === sessionId && reviewScopeRef.current.childId === childId
       && (!inspectionOwner || pendingInspectRef.current === inspectionOwner)
     let retryCurrentPage = false
+    let ocrStarted = false
+    let revisionStarted = false
+    let revisionCompleted = false
+    let ocrStartedAt = 0
+    let ocrPendingTimer: number | null = null
+    let discardLogged = false
     let inspectionOutput: DocumentInspectionOutput | undefined
+    const scheduleInterruptedRetry = (): void => {
+      if (ocrStarted && !revisionStarted && live() && lifecycleEpochRef.current === lifecycleEpoch
+        && visualInterruptionEpochRef.current !== visualEpoch
+        && streamRef.current === stream && leaseRef.current === lease
+        && reviewScopeRef.current.sessionId === sessionId && reviewScopeRef.current.childId === childId
+        && (!inspectionOwner || pendingInspectRef.current === inspectionOwner)) {
+        monitorRef.current.markStaleCaptureAttempt(Date.now())
+        monitorDiagnostic('ocr_retry_considered', { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)) })
+      }
+    }
     const currentOrRetry = (): boolean => {
       if (current()) return true
+      if (ocrStarted && !discardLogged) {
+        discardLogged = true
+        monitorDiagnostic(revisionStarted ? revisionCompleted ? 'revision_historical' : 'revision_inflight_interrupted' : 'ocr_discarded',
+          { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)) })
+      }
+      scheduleInterruptedRetry()
       if (live() && inspectionOwner && pendingInspectRef.current === inspectionOwner
         && freshnessEpochRef.current !== freshnessEpoch) {
         retryCurrentPage = true
@@ -375,9 +414,19 @@ export function ContinuousDocumentMonitor({
       const imageBase64 = canvas.toDataURL('image/jpeg', 0.94).split(',', 2)[1]
       const trialFrameId = await retainTrialFrame(imageBase64, 'ocr_capture')
       if (!currentOrRetry()) return
+      ocrStarted = true
+      ocrStartedAt = Date.now()
+      monitorDiagnostic('ocr_started')
+      ocrPendingTimer = window.setTimeout(() => {
+        if (live() && lifecycleEpochRef.current === lifecycleEpoch && streamRef.current === stream && leaseRef.current === lease
+          && reviewScopeRef.current.sessionId === sessionId && reviewScopeRef.current.childId === childId)
+          monitorDiagnostic('ocr_pending', { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)) }, 'warn')
+      }, 30_000)
       const artifact = trialFrameId ? await localApi.runDocumentMonitorOcr(sessionId, imageBase64, trialFrameId)
         : await localApi.runDocumentMonitorOcr(sessionId, imageBase64)
+      if (ocrPendingTimer !== null) { window.clearTimeout(ocrPendingTimer); ocrPendingTimer = null }
       if (!currentOrRetry()) return
+      monitorDiagnostic('ocr_result', { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)), count: artifact.extracted_text.trim() ? 1 : 0 })
       const currentFeatures = readLiveFeatures()
       const resultFrameToken = deviceFrameClock.current.frameToken()
       const resultFrameAge = deviceFrameClock.current.frameAgeMs() ?? Infinity
@@ -388,14 +437,19 @@ export function ContinuousDocumentMonitor({
           retryCurrentPage = true
           forceCaptureRef.current = true
         }
-        setMessage('画面更新暂未确认，请稍后重试。')
+        scheduleInterruptedRetry()
+        if (!discardLogged) { discardLogged = true; monitorDiagnostic('ocr_discarded', { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)) }) }
+        setMessage('画面更新暂未确认，画面稳定后会重新识别。')
         return
       }
       const feedback = cloudPageFeedback((artifact.details as { cloud_vision_fallback?: unknown } | undefined)?.cloud_vision_fallback)
       const textCandidate = selectOcrTextCandidate(artifact)
+      revisionStarted = true
       const saved = await localApi.recordDocumentMonitorRevision(
         sessionId, artifact.artifact_id, fingerprintSignature(snapshotFeatures.fingerprint)
       )
+      revisionCompleted = true
+      monitorDiagnostic('revision_saved', { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)) })
       if (!currentOrRetry()) return
       setCloudFeedback(feedback)
       setAnalysisBlocked(feedback?.blocked ?? false)
@@ -408,6 +462,7 @@ export function ContinuousDocumentMonitor({
       if (!now || afterSaveToken === null || captureFrameToken === null || afterSaveToken < captureFrameToken
         || (afterSaveToken === captureFrameToken && afterSaveAge > 250) || afterSaveAge >= 750
         || !monitorRef.current.matchesCapturedPage(now)) {
+        monitorDiagnostic('revision_historical', { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)) })
         // Preserve the captured page as history, never present it as the live page.
         retryCurrentPage = true
         if (explicitlyRequested) forceCaptureRef.current = true
@@ -452,6 +507,9 @@ export function ContinuousDocumentMonitor({
         ? `已在本机记录第${saved.revision_index}个页面版本。${saved.review_required ? '手写或公式需要核对，不会自动判错。' : saved.study_signal?.kind === 'progress_observed' ? '识别到的页面文字与上次不同。' : '页面文字已记录；仅凭两次识别无法判断期间是否持续停留。'}`
         : '页面已检查，但没有识别到可靠文字；请调整位置或光线。')
     } catch (cause) {
+      const unconfirmed = cause instanceof ApiError && cause.code === 'DOCUMENT_OPERATION_RESULT_UNCONFIRMED'
+      if (ocrStarted) monitorDiagnostic(revisionStarted ? revisionCompleted ? 'post_revision_failed' : unconfirmed ? 'revision_unconfirmed' : 'revision_failed' : unconfirmed ? 'ocr_unconfirmed' : 'ocr_failed',
+        { latency_ms: Math.max(0, Math.min(300_000, Date.now() - ocrStartedAt)) }, 'warn')
       if (live() && cause instanceof ApiError && cause.code === 'DOCUMENT_OPERATION_RESULT_UNCONFIRMED') {
         unconfirmedCaptureRef.current = true
         forceCaptureRef.current = false
@@ -474,6 +532,7 @@ export function ContinuousDocumentMonitor({
         raw_frame_stored: false
       }).catch(() => undefined)
     } finally {
+      if (ocrPendingTimer !== null) window.clearTimeout(ocrPendingTimer)
       // A released OCR may settle after another inspection was accepted.
       // Only the request that owned this frame can consume its receipt.
       if (!retryCurrentPage && inspectionOwner && pendingInspectRef.current === inspectionOwner) {
@@ -844,6 +903,8 @@ export function ContinuousDocumentMonitor({
         lastFrameAt = performance.now() - frameAge
       }
       if (performance.now() - lastFrameAt >= 5_000) {
+        const now = Date.now()
+        if (now - lastStallDiagnosticAtRef.current >= 30_000) { lastStallDiagnosticAtRef.current = now; monitorDiagnostic('frame_stalled', {}, 'warn') }
         release('document_monitor_frame_timeout')
         setStatus('unavailable')
         setReconnectAttempt((value) => value + 1)
@@ -866,6 +927,7 @@ export function ContinuousDocumentMonitor({
         releaseDocumentCapture()
         if ((deviceFrameClock.current.frameAgeMs() ?? Infinity) >= 1500 && !freshnessInvalidRef.current) {
           freshnessInvalidRef.current = true
+          lifecycleEpochRef.current += 1
           freshnessEpochRef.current += 1
           monitorRef.current.invalidateStability()
           setFrameState('stabilizing')
@@ -873,7 +935,10 @@ export function ContinuousDocumentMonitor({
         return
       }
       freshnessInvalidRef.current = false
-      if (decision.state !== 'stable' && processingRef.current) freshnessEpochRef.current += 1
+      if (decision.state !== 'stable' && processingRef.current) {
+        visualInterruptionEpochRef.current += 1
+        freshnessEpochRef.current += 1
+      }
       const matched = monitorRef.current.matchesCapturedPage(features)
       const page = documentCaptureRef.current.page
       const serverGeneration = monitorGenerationRef.current
@@ -1077,7 +1142,7 @@ export function ContinuousDocumentMonitor({
         </div>
         {recoveryNotice && <p>{recoveryNotice}</p>}
         <small>{analysisActive && status === 'active' && !analysisBlocked
-          ? '每半秒检查画面；页面稳定后识别，两次尝试至少相隔15秒；页面不变时约5分钟复查。'
+          ? '每半秒检查画面；稳定后识别，通常间隔至少15秒；被中断时会尽快重试，不变时约5分钟复查。'
           : !analysisActive ? '进入作业或学习阶段后才会自动识别页面。'
             : analysisBlocked ? '页面识别暂受阻，原因见上方提示。' : '设备连接并恢复页面识别后才会自动检查。'}</small>
         <small>多帧遮挡补全暂不可用，当前使用单帧识别。</small>

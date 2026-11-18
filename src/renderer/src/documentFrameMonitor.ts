@@ -45,6 +45,8 @@ export class DocumentFrameMonitor {
   private lastCapturedContent: DocumentContentFingerprint | null = null
   private lastCaptureAt: number | null = null
   private lastAttemptAt: number | null = null
+  private lastEarlyRetryAt: number | null = null
+  private earlyRetryNotBefore: number | null = null
   private stableCount = 0
   private state: DocumentFrameState = 'stabilizing'
 
@@ -169,11 +171,24 @@ export class DocumentFrameMonitor {
   }
 
   canCaptureAt(observedAt: number): boolean {
-    return this.lastAttemptAt === null || observedAt - this.lastAttemptAt >= this.options.minimumCaptureIntervalMs
+    if (this.lastAttemptAt === null || observedAt - this.lastAttemptAt >= this.options.minimumCaptureIntervalMs) return true
+    return this.earlyRetryNotBefore !== null && observedAt >= this.earlyRetryNotBefore
+      && (this.lastEarlyRetryAt === null || observedAt - this.lastEarlyRetryAt >= 60_000)
   }
 
   markCaptureAttempt(attemptedAt: number): void {
+    if (this.lastAttemptAt !== null && attemptedAt - this.lastAttemptAt < this.options.minimumCaptureIntervalMs) {
+      this.lastEarlyRetryAt = attemptedAt
+    }
     this.lastAttemptAt = attemptedAt
+    this.earlyRetryNotBefore = null
+  }
+
+  /** Allow a new stable frame after interrupted OCR; never accept the old result. */
+  markStaleCaptureAttempt(observedAt: number): void {
+    if (this.lastAttemptAt === null || !Number.isFinite(observedAt) || observedAt < this.lastAttemptAt
+      || observedAt - this.lastAttemptAt >= this.options.minimumCaptureIntervalMs) return
+    this.earlyRetryNotBefore = this.lastAttemptAt + Math.min(5_000, this.options.minimumCaptureIntervalMs)
   }
 
   reset(): void {
@@ -183,7 +198,8 @@ export class DocumentFrameMonitor {
     this.lastCapturedFingerprint = null
     this.lastCapturedContent = null
     this.lastCaptureAt = null
-    this.lastAttemptAt = null
+    // Preserve the last attempt across device resets within this component.
+    this.earlyRetryNotBefore = null
     this.stableCount = 0
     this.state = 'stabilizing'
   }

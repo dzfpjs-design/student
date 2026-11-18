@@ -667,7 +667,7 @@ describe('continuous document monitor device lifecycle', () => {
       await act(async () => { pending.resolve(artifact) })
       // The older snapshot was superseded, so it must not become a revision.
       expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
-      await advance(11500)
+      await advance(1500)
       expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
       await advance(1000)
       expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(2)
@@ -781,6 +781,202 @@ describe('continuous document monitor device lifecycle', () => {
       await advance(500)
       expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(2)
       expect(localApi.recordDocumentMonitorRevision).toHaveBeenLastCalledWith('session', artifact.artifact_id, frameMonitor.fingerprintSignature(features.fingerprint))
+    })
+
+    it('discards an OCR interrupted by the hand and retries only a new stable frame sooner', async () => {
+      const ocr = deferred<typeof artifact>()
+      const old = { ...artifact, artifact_id: 'old-stale-artifact' }
+      const current = { ...artifact, artifact_id: 'fresh-artifact' }
+      const currentSaved = { ...saved, artifact_id: current.artifact_id, revision_id: 'fresh-revision' }
+      vi.mocked(localApi.runDocumentMonitorOcr).mockReturnValueOnce(ocr.promise).mockResolvedValue(current)
+      vi.mocked(localApi.recordDocumentMonitorRevision).mockResolvedValue(currentSaved)
+      await mount()
+      await advance(2000)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
+      features = { ...features, skinRatio: .8 }
+      await advance(500)
+      await act(async () => { ocr.resolve(old) })
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+      features = { ...features, skinRatio: .01, fingerprint: new Uint8Array(48).fill(110) }
+      await advance(4500)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(2)
+      expect(localApi.recordDocumentMonitorRevision).toHaveBeenCalledExactlyOnceWith('session', current.artifact_id, frameMonitor.fingerprintSignature(features.fingerprint))
+    })
+
+    it('records bounded metadata for an interrupted OCR and fresh retry without page contents', async () => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        const ocr = deferred<typeof artifact>()
+        vi.mocked(localApi.runDocumentMonitorOcr).mockReturnValueOnce(ocr.promise).mockResolvedValue(artifact)
+        await mount(); await advance(2000)
+        features = { ...features, skinRatio: .8 }; await advance(500)
+        await act(async () => { ocr.resolve(artifact) })
+        features = { ...features, skinRatio: .01, fingerprint: new Uint8Array(48).fill(110) }
+        await advance(4500)
+        const events = record.mock.calls.map(([entry]) => entry.event)
+        expect(events.filter((event) => event === 'document.monitor.ocr_started')).toHaveLength(2)
+        expect(events).toContain('document.monitor.ocr_discarded')
+        expect(events).toContain('document.monitor.ocr_retry_considered')
+        expect(events).toContain('document.monitor.revision_saved')
+        expect(JSON.stringify(record.mock.calls)).not.toContain(artifact.extracted_text)
+        expect(JSON.stringify(record.mock.calls)).not.toContain('dGVzdA')
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it('rate limits continuous frame-state diagnostic events during rapid changes', async () => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        await mount()
+        for (let i = 0; i < 40; i++) {
+          features = { ...features, skinRatio: i % 2 ? .8 : .01 }
+          await advance(500)
+        }
+        const states = record.mock.calls.filter(([entry]) => entry.event === 'document.monitor.frame_state')
+        expect(states.length).toBeGreaterThan(0)
+        expect(states.length).toBeLessThanOrEqual(5)
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it('records one bounded pending alert for a long OCR and stops it after pause', async () => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        const ocr = deferred<typeof artifact>()
+        vi.mocked(localApi.runDocumentMonitorOcr).mockReturnValueOnce(ocr.promise)
+        const view = await mount(); await advance(2000)
+        features = { ...features, skinRatio: .8 }; await advance(31_000)
+        expect(record.mock.calls.filter(([entry]) => entry.event === 'document.monitor.ocr_pending')).toHaveLength(1)
+        await act(async () => { view.rerender(<ContinuousDocumentMonitor sessionId="session" active={false} />) })
+        await act(async () => { ocr.resolve(artifact) })
+        await advance(40_000)
+        expect(record.mock.calls.filter(([entry]) => entry.event === 'document.monitor.ocr_pending')).toHaveLength(1)
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it.each(['ocr', 'revision'] as const)('classifies a %s failure without mislabeling the other stage', async (phase) => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        if (phase === 'ocr') vi.mocked(localApi.runDocumentMonitorOcr).mockRejectedValueOnce(new Error('PRIVATE_ERROR'))
+        else vi.mocked(localApi.recordDocumentMonitorRevision).mockRejectedValueOnce(new Error('PRIVATE_ERROR'))
+        await mount(); await advance(2000)
+        const events = record.mock.calls.map(([entry]) => entry.event)
+        expect(events).toContain(`document.monitor.${phase}_failed`)
+        expect(events).not.toContain(`document.monitor.${phase === 'ocr' ? 'revision' : 'ocr'}_failed`)
+        expect(JSON.stringify(record.mock.calls)).not.toContain('PRIVATE_ERROR')
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it.each(['ocr', 'revision'] as const)('does not label an unconfirmed %s result as failed', async (phase) => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        const unknown = new ApiError('unconfirmed', undefined, 'DOCUMENT_OPERATION_RESULT_UNCONFIRMED')
+        if (phase === 'ocr') vi.mocked(localApi.runDocumentMonitorOcr).mockRejectedValueOnce(unknown)
+        else vi.mocked(localApi.recordDocumentMonitorRevision).mockRejectedValueOnce(unknown)
+        await mount(); await advance(2000)
+        const events = record.mock.calls.map(([entry]) => entry.event)
+        expect(events).toContain(`document.monitor.${phase}_unconfirmed`)
+        expect(events).not.toContain(`document.monitor.${phase}_failed`)
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it('does not let a synchronous diagnostics failure interrupt OCR', async () => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: () => { throw new Error('diagnostics offline') } } })
+      try {
+        await mount(); await advance(2000)
+        expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledOnce()
+        expect(localApi.recordDocumentMonitorRevision).toHaveBeenCalledOnce()
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it('does not accelerate when only diagnostic frame retention was interrupted before OCR', async () => {
+      const pending = deferred<{ artifact_id: string; image_available: boolean }>()
+      trialPolicy().mockImplementation(async (_session, _image, _lease, _generation, reason) =>
+        reason === 'ocr_capture' ? pending.promise : { artifact_id: 'diagnostic-frame', image_available: true } as never)
+      await mount(); await advance(2000)
+      expect(localApi.runDocumentMonitorOcr).not.toHaveBeenCalled()
+      features = { ...features, skinRatio: .8 }; await advance(500)
+      await act(async () => { pending.resolve({ artifact_id: 'retained-frame', image_available: true }) })
+      features = { ...features, skinRatio: .01 }; await advance(5000)
+      expect(localApi.runDocumentMonitorOcr).not.toHaveBeenCalled()
+      await advance(11_000)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledOnce()
+    })
+
+    it('does not accelerate another OCR if a revision was already being saved when the hand appeared', async () => {
+      const revision = deferred<typeof saved>()
+      vi.mocked(localApi.recordDocumentMonitorRevision).mockReturnValueOnce(revision.promise)
+      await mount(); await advance(2000)
+      expect(localApi.recordDocumentMonitorRevision).toHaveBeenCalledOnce()
+      features = { ...features, skinRatio: .8 }; await advance(500)
+      await act(async () => { revision.resolve(saved) })
+      features = { ...features, skinRatio: .01, fingerprint: new Uint8Array(48).fill(110) }
+      await advance(5000)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
+      expect(localApi.recordDocumentMonitorRevision).toHaveBeenCalledTimes(1)
+      await advance(11_000)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(2)
+    })
+
+    it('records a saved revision as historical when the page changes while saving', async () => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        const revision = deferred<typeof saved>()
+        vi.mocked(localApi.recordDocumentMonitorRevision).mockReturnValueOnce(revision.promise)
+        await mount(); await advance(2000)
+        features = { ...features, skinRatio: .8 }; await advance(500)
+        await act(async () => { revision.resolve(saved) })
+        const events = record.mock.calls.map(([entry]) => entry.event)
+        expect(events).toContain('document.monitor.revision_saved')
+        expect(events).toContain('document.monitor.revision_historical')
+        expect(events).not.toContain('document.monitor.ocr_discarded')
+        expect(events).not.toContain('document.monitor.ocr_retry_considered')
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it('does not accelerate an OCR after analysis was suspended and resumed', async () => {
+      const ocr = deferred<typeof artifact>()
+      vi.mocked(localApi.runDocumentMonitorOcr).mockReturnValueOnce(ocr.promise)
+      const view = await mount(); await advance(2000)
+      features = { ...features, skinRatio: .8 }; await advance(500)
+      await act(async () => { view.rerender(<ContinuousDocumentMonitor sessionId="session" active analysisActive={false} />) })
+      await act(async () => { view.rerender(<ContinuousDocumentMonitor sessionId="session" active analysisActive />) })
+      await act(async () => { ocr.resolve(artifact) })
+      features = { ...features, skinRatio: .01 }; await advance(5000)
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
     })
 
     it('does not schedule another capture from a rejected duplicate inspection', async () => {
@@ -1071,6 +1267,8 @@ describe('continuous document monitor device lifecycle', () => {
       expect(next).not.toHaveBeenCalled()
       expect(report).not.toHaveBeenCalled()
       await advance(2_000)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
+      await advance(13_000)
       expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(2)
       expect(next).toHaveBeenCalledExactlyOnceWith(true)
       expect(report).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ artifact_id: 'fresh-page', revision_id: 'fresh-revision' }))
