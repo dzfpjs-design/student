@@ -1166,6 +1166,16 @@ def test_cancelled_cloud_call_preserves_original_then_allows_distinct_new_work(w
 
 def test_practice_generation_and_verification_share_one_total_deadline(world,monkeypatch):
     import home_study_agent.mistake_learning as module
+    # Windows may return the same monotonic tick twice. Advance only the
+    # first synthetic model response, without changing asyncio's own clock.
+    real_monotonic=module.monotonic
+    offset=[0.0]
+    monkeypatch.setattr(module,'monotonic',lambda:real_monotonic()+offset[0])
+    controls=world[6]
+    def advance_first_response():
+        offset[0]+=1.0
+        controls['hook']=None
+    controls['hook']=advance_first_response
     seen=[];original=asyncio.wait_for
     async def bounded(coro,timeout):
         if getattr(getattr(coro,'cr_code',None),'co_name',None)=='complete':seen.append(timeout)
@@ -1175,6 +1185,7 @@ def test_practice_generation_and_verification_share_one_total_deadline(world,mon
     assert result.json()['action_status']=='completed'
     assert len(seen)==2
     assert 0<seen[1]<seen[0]<=115
+    assert offset[0]==1.0 and seen[0]-seen[1]>=0.9
 
 
 def test_generation_change_between_reservation_commit_and_snapshot_never_dispatches(world,monkeypatch):
