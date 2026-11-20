@@ -45,6 +45,7 @@ function Checked([string]$stage, [string]$program, [string[]]$arguments) {
     if ($exitCode -ne 0) { throw "$stage failed with exit code $exitCode" }
 }
 try {
+    Checked 'private-resources' 'node.exe' @('scripts/check-private-resources.mjs','all')
     if (-not $SkipDependencies -and -not $PackageOnly) {
         if (-not (Test-Path '.venv\Scripts\python.exe')) {
             if ((Split-Path $PythonExe -Leaf) -ieq 'py.exe') {
@@ -62,6 +63,7 @@ try {
     if (-not $PackageOnly) {
         Checked 'typecheck' 'npm.cmd' @('run','typecheck')
         Checked 'python-build' 'npm.cmd' @('run','build:agent:win')
+        Checked 'smtp-worker-build' 'npm.cmd' @('run','build:smtp-worker:win')
         Checked 'frontend-build' 'npm.cmd' @('run','build')
     }
     Checked 'release-inputs' 'node.exe' @('scripts/windows-release-readiness.mjs')
@@ -77,7 +79,8 @@ try {
             Select-Object -First 1
     }
     if (-not $electronZip) { throw 'No checksum-verified cached Windows Electron runtime; run the dependency download first.' }
-    Checked 'installer-build' 'npm.cmd' @('run','pack:win','--',("--config.electronDist=" + $electronZip.FullName))
+    Checked 'installer-build' '.\node_modules\.bin\electron-builder.cmd' @(
+        '--win','nsis','--publish','never',("--config.electronDist=" + $electronZip.FullName))
     $files = @(Get-ChildItem -LiteralPath 'release' -Filter '*.exe' -File | ForEach-Object {
         @{ name=$_.Name; bytes=$_.Length; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower() }
     })
