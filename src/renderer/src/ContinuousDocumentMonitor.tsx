@@ -4,13 +4,13 @@ import { ApiError, localApi } from './api'
 import { recoverDocumentOperations } from './documentOperationRecovery'
 import { DocumentFrameMonitor, documentFrameDiagnosticBands, extractDocumentFrameFeatures, fingerprintSignature, type DocumentFrameDecision, type DocumentFrameFeatures } from './documentFrameMonitor'
 import { configureDocumentCameraAutofocus, mediaDeviceFailure, mediaDeviceRegistration, openDocumentCameraStream, resolveBoundVideoDevice } from './mediaDevices'
-import type { DocumentMonitorState, DocumentMonitorStatus, DocumentPageRevision } from './types'
+import type { DocumentMonitorState, DocumentMonitorStatus, DocumentOcrPreviewPhase, DocumentPageRevision } from './types'
 import { CAMERA_DEVICE_COMMAND, CAMERA_DEVICE_STATUS, CameraFrameClock, type CameraDeviceCommand, type CameraStatusRequest, type DocumentInspectionOutput, requestCameraDevice, waitForCameraFrame } from './cameraDeviceRuntime'
 import { documentCameraReservedForCapture, registerDocumentMonitorHandoff } from './documentCameraHandoff'
 import { selectOcrTextCandidate } from './tutorOcrEvidence'
 import { publishVoiceDocumentCapture, releaseVoiceDocumentCapture } from './voiceCaptureContext'
 import { DocumentVisibilityChannel } from './documentVisibilityChannel'
-import { useDocumentMonitorPreviews } from './documentMonitorPreviews'
+import { isWarmLocalPreviewCandidate, useDocumentMonitorPreviews } from './documentMonitorPreviews'
 import { mistakeLearningApi } from './mistakeLearningApi'
 import type { RefObject } from 'react'
 
@@ -68,7 +68,7 @@ export function ContinuousDocumentMonitor({
   active,
   analysisActive = true,
   allowDiagnosticFrameCapture = true,
-  allowLocalOcrPreview = false,
+  localOcrPreviewPhase,
   onReviewRevision, onSavedRevision, onStatus, reviewCapture
 }: {
   sessionId: string
@@ -76,7 +76,7 @@ export function ContinuousDocumentMonitor({
   active: boolean
   analysisActive?: boolean
   allowDiagnosticFrameCapture?: boolean
-  allowLocalOcrPreview?: boolean
+  localOcrPreviewPhase?: DocumentOcrPreviewPhase
   onReviewRevision?: (revision: DocumentPageRevision) => 'mistake' | 'tutor' | void
   onSavedRevision?: (revision: DocumentPageRevision) => void
   onStatus?: (status: RuntimeStatus) => void
@@ -116,7 +116,9 @@ export function ContinuousDocumentMonitor({
   const lastFramingGuidanceRef = useRef({ state: '' as DocumentMonitorState | '', at: Number.NEGATIVE_INFINITY })
   const forceCaptureRef = useRef(false)
   const unconfirmedCaptureRef = useRef(false)
-  const pendingInspectRef = useRef<(((success: boolean, output?: DocumentInspectionOutput) => void) & { deferReview?: boolean }) | null>(null)
+  const pendingInspectRef = useRef<(((success: boolean, output?: DocumentInspectionOutput) => void) & {
+    deferReview?: boolean; inspectionTurnId?: string; partialClaimed?: boolean
+  }) | null>(null)
   const restoredSessionRef = useRef<string | null>(null)
   const monitorStartPendingRef = useRef<Promise<Awaited<ReturnType<typeof localApi.startDocumentMonitor>>> | null>(null)
   const monitorChoicePendingRef = useRef<Promise<unknown>>(Promise.resolve())
@@ -144,7 +146,18 @@ export function ContinuousDocumentMonitor({
   const shouldRun = active && !manualPaused
   const { visible: localPreviewVisible, history: localPreviewHistory, captureStatus: localPreviewStatus,
     sample: observePreview, cancelFramePreview, refresh: refreshLocalPreviews } =
-    useDocumentMonitorPreviews(sessionId, childId, allowLocalOcrPreview && shouldRun && analysisActive)
+    useDocumentMonitorPreviews(sessionId, childId, localOcrPreviewPhase, shouldRun && analysisActive)
+  const previewPhaseRef = useRef(localOcrPreviewPhase)
+  useLayoutEffect(() => {
+    if (previewPhaseRef.current === localOcrPreviewPhase) return
+    previewPhaseRef.current = localOcrPreviewPhase
+    const inspection = pendingInspectRef.current
+    if (inspection?.inspectionTurnId) {
+      pendingInspectRef.current = null
+      forceCaptureRef.current = false
+      inspection(false)
+    }
+  }, [localOcrPreviewPhase])
   const releaseDocumentCapture = useCallback((): void => {
     const own = documentCaptureRef.current
     if (own.owner && childId) releaseVoiceDocumentCapture(sessionId, childId, own.owner)
@@ -956,14 +969,30 @@ export function ContinuousDocumentMonitor({
       const matched = monitorRef.current.matchesCapturedPage(features)
       const page = documentCaptureRef.current.page
       const serverGeneration = monitorGenerationRef.current
-      if (allowLocalOcrPreview) {
+      const inspectionOwner = pendingInspectRef.current
+      if (localOcrPreviewPhase) {
         const lease = leaseRef.current, stream = streamRef.current
+        const finishInspection = (output?: DocumentInspectionOutput): void => {
+          if (!inspectionOwner || pendingInspectRef.current !== inspectionOwner) return
+          pendingInspectRef.current = null
+          forceCaptureRef.current = false
+          setMessage(output ? '已在本机读取刚才画面的一部分，请对照原卷核对。' : '没有确认本次页内检查的结果，请稍后再试。')
+          inspectionOwner(Boolean(output), output)
+        }
         if (frameToken !== null && frameAge !== null && frameAge < 1250 && lease && stream && serverGeneration !== undefined) {
+          if (inspectionOwner?.inspectionTurnId && !processingRef.current && !unconfirmedCaptureRef.current
+              && isWarmLocalPreviewCandidate(features, decision.motionScore)) {
+            inspectionOwner.partialClaimed = true
+          }
+          const inspectionTurnId = inspectionOwner?.partialClaimed ? inspectionOwner.inspectionTurnId : undefined
           observePreview({ video, features, motion: decision.motionScore, token: frameToken, generation: serverGeneration, leaseId: lease,
             cameraKey: JSON.stringify([generation, serverGeneration, lease]),
-            available: !processingRef.current && !forceCaptureRef.current && !unconfirmedCaptureRef.current,
+            available: !processingRef.current && (!forceCaptureRef.current || Boolean(inspectionTurnId)) && !unconfirmedCaptureRef.current,
+            ...(inspectionTurnId ? { inspection: { turnId: inspectionTurnId, report: finishInspection, unavailable: () => finishInspection() } } : {}),
             current: () => runningRef.current && analysisActiveRef.current && generationRef.current === generation
               && streamRef.current === stream && leaseRef.current === lease && monitorGenerationRef.current === serverGeneration
+              && previewPhaseRef.current === localOcrPreviewPhase
+              && (!inspectionTurnId || pendingInspectRef.current === inspectionOwner)
               && reviewScopeRef.current.sessionId === sessionId && reviewScopeRef.current.childId === childId })
         } else cancelFramePreview()
       }
@@ -1008,14 +1037,14 @@ export function ContinuousDocumentMonitor({
           }))
         }
       }
-      if (decision.captureRecommended || (forceCaptureRef.current && decision.state === 'stable')) {
+      if (!pendingInspectRef.current?.partialClaimed && (decision.captureRecommended || (forceCaptureRef.current && decision.state === 'stable'))) {
         void captureStablePage()
       } else if (decision.changed && !processingRef.current && !analysisBlocked) {
         setMessage(frameStateMessage(decision.state))
       }
     }, 500)
     return () => window.clearInterval(timer)
-  }, [allowLocalOcrPreview, analysisActive, analysisBlocked, cancelFramePreview, captureStablePage, childId, observePreview, persistEvent, release, releaseDocumentCapture, retainTrialFrame, sessionId, shouldRun, status])
+  }, [analysisActive, analysisBlocked, cancelFramePreview, captureStablePage, childId, localOcrPreviewPhase, observePreview, persistEvent, release, releaseDocumentCapture, retainTrialFrame, sessionId, shouldRun, status])
 
   useEffect(() => {
     if (!shouldRun || status !== 'active') return
@@ -1053,7 +1082,8 @@ export function ContinuousDocumentMonitor({
 
   useEffect(() => {
     const control = (event: Event): void => {
-      const detail = (event as CustomEvent<{ sessionId?: string; action?: 'pause' | 'resume' | 'inspect' | 'review'; deferReview?: boolean; signal?: AbortSignal; report?: (output: DocumentInspectionOutput) => void; resolve?: (handled: boolean) => void }>).detail
+      const detail = (event as CustomEvent<{ sessionId?: string; action?: 'pause' | 'resume' | 'inspect' | 'review'; deferReview?: boolean;
+        inspectionTurnId?: string; signal?: AbortSignal; report?: (output: DocumentInspectionOutput) => void; resolve?: (handled: boolean) => void }>).detail
       if (event.defaultPrevented || detail?.sessionId !== sessionId || !active) return
       if (!detail.action || !['pause', 'resume', 'inspect', 'review'].includes(detail.action)) return
       event.preventDefault()
@@ -1100,14 +1130,15 @@ export function ContinuousDocumentMonitor({
           finish(false)
           setMessage('这次页面检查尚未取得结果；你可以继续说话，稍后再请我检查。')
         }, DOCUMENT_INSPECTION_WATCHDOG_MS)
-        pendingInspectRef.current = Object.assign(finish, { deferReview: detail.deferReview === true })
+        pendingInspectRef.current = Object.assign(finish, { deferReview: detail.deferReview === true,
+          inspectionTurnId: detail.action === 'inspect' && localOcrPreviewPhase ? detail.inspectionTurnId : undefined })
         detail.signal?.addEventListener('abort', abort, { once: true })
         return
       }
     }
     window.addEventListener('hsc-document-monitor-voice-action', control)
     return () => window.removeEventListener('hsc-document-monitor-voice-action', control)
-  }, [active, cloudFeedback, onReviewRevision, readLiveFeatures, release, revision, sessionId, status])
+  }, [active, cloudFeedback, localOcrPreviewPhase, onReviewRevision, readLiveFeatures, release, revision, sessionId, status])
 
   const togglePause = (): void => {
     if (manualPaused) {

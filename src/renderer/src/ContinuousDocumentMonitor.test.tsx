@@ -6,7 +6,7 @@ import { ContinuousDocumentMonitor } from './ContinuousDocumentMonitor'
 import { DocumentCameraCapture } from './DocumentCameraCapture'
 import * as frameMonitor from './documentFrameMonitor'
 import { configureDocumentCameraAutofocus } from './mediaDevices'
-import { queryCameraDevices, requestCameraDevice } from './cameraDeviceRuntime'
+import { partialDocumentInspectionReceipt, queryCameraDevices, requestCameraDevice } from './cameraDeviceRuntime'
 import { requestOwnedVoiceEvent } from './voiceJourneyRuntime'
 import { clearVoiceCaptureContext, publishVoiceDocumentCapture, voiceCaptureReference } from './voiceCaptureContext'
 import { mistakeLearningApi } from './mistakeLearningApi'
@@ -292,7 +292,7 @@ describe('continuous document monitor device lifecycle', () => {
         byte_length: 128, media_type: 'image/png', encrypted: true, local_only: true,
         cloud_transmission_allowed: false, retention_reason: 'accepted_document_page_revision' } }) as typeof saved
 
-    const warmPreview = { preview_id: 'local-preview', created_at: '2026-11-20T10:00:00Z', text: '待核对题目文字', question_count: 2, generation: 7 }
+    const warmPreview = { preview_id: 'local-preview', created_at: '2026-11-20T10:00:00Z', text: '待核对题目文字', question_count: 2, generation: 7, phase: 'homework_capture' as const }
     const prepareWarmPreview = () => {
       features = { ...features, skinRatio: .184, paperRatio: .297 }
       vi.mocked(localApi.startDocumentMonitor).mockResolvedValue({
@@ -309,7 +309,7 @@ describe('continuous document monitor device lifecycle', () => {
         contentFingerprint: { width: 8, height: 8, pixels: new Uint8Array(64).fill(++samples % 2 ? 100 : 160) } }))
       const commit = vi.fn()
       let view!: ReturnType<typeof render>
-      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview onSavedRevision={commit}/>) })
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" onSavedRevision={commit}/>) })
       await advance(3000)
       expect(preview).toHaveBeenCalledOnce()
       expect(preview.mock.calls[0].slice(0, 6)).toEqual(['session', 'dGVzdA==', 7, expect.any(String), expect.any(AbortSignal), 'lease-document'])
@@ -333,7 +333,7 @@ describe('continuous document monitor device lifecycle', () => {
       vi.mocked(localApi.documentMonitorPreviews).mockResolvedValue({ items: [{ ...warmPreview, frame_signature: signature, generation: 6 }] })
       let view!: ReturnType<typeof render>
       try {
-        await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+        await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
         await advance(3000)
         expect(view.getByLabelText('本机待核对预览').textContent).toContain('待核对题目文字')
         expect(preview).not.toHaveBeenCalled()
@@ -347,7 +347,7 @@ describe('continuous document monitor device lifecycle', () => {
       const preview = prepareWarmPreview()
       preview.mockResolvedValueOnce(warmPreview).mockResolvedValueOnce({ ...warmPreview, preview_id: 'after-writing' })
         .mockResolvedValueOnce({ ...warmPreview, preview_id: 'turned-paper' })
-      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(3000)
       expect(preview).toHaveBeenCalledTimes(1)
       const pixels = new Uint8Array(64).fill(210)
@@ -365,7 +365,7 @@ describe('continuous document monitor device lifecycle', () => {
     it('can capture visible text after a longer stationary high-warm scene', async () => {
       const preview = prepareWarmPreview()
       features = { ...features, skinRatio: .35 }
-      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(2800)
       expect(preview).not.toHaveBeenCalled()
       await advance(1600)
@@ -376,7 +376,7 @@ describe('continuous document monitor device lifecycle', () => {
     it('recovers after occlusion with a changed frame and never retries an unconfirmed unchanged frame', async () => {
       const delayed = deferred<typeof warmPreview>()
       const preview = prepareWarmPreview().mockReturnValueOnce(delayed.promise)
-      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(3000)
       features = { ...features, skinRatio: .84 }
       await advance(800)
@@ -400,18 +400,145 @@ describe('continuous document monitor device lifecycle', () => {
       expect(preview).not.toHaveBeenCalled()
     })
 
+    it('reads a new warm frame for the owning inspect command and does not reuse historical OCR', async () => {
+      const preview = prepareWarmPreview()
+      const spoken = '刚才只读到一部分，请说出你想问的题号。'
+      preview.mockImplementationOnce(async () => warmPreview)
+        .mockImplementationOnce(async (_session, _image, _generation, actionId, _signal, _lease, _signature, inspectionTurnId) =>
+          ({ ...warmPreview, preview_id: 'fresh-current', inspection_turn_id: inspectionTurnId, inspection_response_text: spoken, client_action_id: actionId }))
+      const resolve = vi.fn(), report = vi.fn()
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(3000)
+      expect(preview).toHaveBeenCalledTimes(1)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'inspect-current', resolve, report }
+      })))
+      await advance(1000)
+      expect(report).not.toHaveBeenCalled()
+      expect(preview).toHaveBeenCalledTimes(1)
+      await advance(1500)
+      expect(preview).toHaveBeenCalledTimes(2)
+      expect(preview.mock.calls[1][7]).toBe('inspect-current')
+      expect(report).toHaveBeenCalledExactlyOnceWith({ preview_id: 'fresh-current', page_status: 'partial_local_preview', response_text: spoken })
+      const receipt = partialDocumentInspectionReceipt(report.mock.calls[0][0])
+      expect(receipt).toEqual({ output: { preview_id: 'fresh-current', page_status: 'partial_local_preview' },
+        recordedResponse: '这次已在本机试读，纸面文字仍需核对。' })
+      expect(JSON.stringify(receipt)).not.toContain(spoken)
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(true)
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+      expect(voiceCaptureReference('session', 'child').question_reference).toBeNull()
+    })
+
+    it('keeps a warm inspection exclusive when the camera then sees a formally stable clear page', async () => {
+      const decisions = vi.spyOn(frameMonitor.DocumentFrameMonitor.prototype, 'observeFreshFrame')
+      const result = deferred<typeof warmPreview & { inspection_turn_id: string; inspection_response_text: string; client_action_id: string }>()
+      const preview = prepareWarmPreview().mockReturnValueOnce(result.promise)
+      const resolve = vi.fn(), report = vi.fn()
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(700)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'inspect-warm-to-clear', resolve, report }
+      })))
+      await advance(500)
+      features = { ...features, skinRatio: .01 }
+      await advance(2100)
+      expect(decisions.mock.results.some(result => result.value?.state === 'stable' && result.value.captureRecommended)).toBe(true)
+      expect(preview).toHaveBeenCalledExactlyOnceWith('session', expect.any(String), 7, expect.any(String), expect.any(AbortSignal),
+        'lease-document', expect.any(String), 'inspect-warm-to-clear', 'homework_capture')
+      expect(localApi.runDocumentMonitorOcr).not.toHaveBeenCalled()
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+      expect(report).not.toHaveBeenCalled()
+
+      const spoken = '我从当前画面试读到这段文字：「待核对题目文字」。请和纸上的原题核对。'
+      await act(async () => { result.resolve({ ...warmPreview, inspection_turn_id: 'inspect-warm-to-clear',
+        inspection_response_text: spoken, client_action_id: preview.mock.calls[0][3] }) })
+      expect(report).toHaveBeenCalledExactlyOnceWith({ preview_id: 'local-preview', page_status: 'partial_local_preview', response_text: spoken })
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(true)
+      expect(localApi.runDocumentMonitorOcr).not.toHaveBeenCalled()
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+
+      await advance(500)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not speak a partial result for a different command or after privacy pauses', async () => {
+      const delayed = deferred<typeof warmPreview & { inspection_turn_id: string; inspection_response_text: string; client_action_id: string }>()
+      const preview = prepareWarmPreview().mockReturnValueOnce(delayed.promise)
+      const resolve = vi.fn(), report = vi.fn()
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(700)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'inspect-current', resolve, report }
+      })))
+      await advance(2400)
+      expect(preview).toHaveBeenCalledOnce()
+      act(() => window.dispatchEvent(new Event('hsc-privacy-pause')))
+      await act(async () => { delayed.resolve({ ...warmPreview, inspection_turn_id: 'inspect-other',
+        inspection_response_text: '不应播报的旧内容。', client_action_id: preview.mock.calls[0][3] }) })
+      expect(preview.mock.calls[0][4].aborted).toBe(true)
+      expect(report).not.toHaveBeenCalled()
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(false)
+    })
+
+    it.each(['plan_review', 'study'] as const)('sends the exact %s phase in new local preview ownership', async (phase) => {
+      const preview = prepareWarmPreview()
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase={phase} />) })
+      await advance(3000)
+      expect(preview).toHaveBeenCalledOnce()
+      expect(preview.mock.calls[0][8]).toBe(phase)
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+    })
+
+    it('cancels a homework inspection if the workspace advances to study during local OCR', async () => {
+      const delayed = deferred<typeof warmPreview & { inspection_turn_id: string; inspection_response_text: string; client_action_id: string }>()
+      const preview = prepareWarmPreview().mockReturnValueOnce(delayed.promise)
+      const resolve = vi.fn(), report = vi.fn()
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(700)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'inspect-homework', resolve, report }
+      })))
+      await advance(2400)
+      expect(preview).toHaveBeenCalledOnce()
+      await act(async () => {
+        view.rerender(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="study" />)
+      })
+      expect(preview.mock.calls[0][4].aborted).toBe(true)
+      await act(async () => {
+        delayed.resolve({ ...warmPreview, inspection_turn_id: 'inspect-homework', inspection_response_text: '过期的作业文字。', client_action_id: preview.mock.calls[0][3] })
+      })
+      expect(report).not.toHaveBeenCalled()
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(false)
+    })
+
+    it('rejects a partial readback with an unexpected inspection identity while active', async () => {
+      const preview = prepareWarmPreview().mockImplementationOnce(async (_session, _image, _generation, actionId) =>
+        ({ ...warmPreview, inspection_turn_id: 'inspect-other', inspection_response_text: '不应采用。', client_action_id: actionId }))
+      const resolve = vi.fn(), report = vi.fn()
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(700)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'inspect-current', resolve, report }
+      })))
+      await advance(2400)
+      expect(preview).toHaveBeenCalledOnce()
+      expect(report).not.toHaveBeenCalled()
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(false)
+    })
+
     it.each(['movement', 'occlusion', 'darkness', 'privacy', 'child switch'] as const)('ignores a late local preview after %s', async (boundary) => {
       const delayed = deferred<typeof warmPreview>()
       const preview = prepareWarmPreview().mockReturnValueOnce(delayed.promise)
       let view!: ReturnType<typeof render>
-      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(3000)
       expect(preview).toHaveBeenCalledTimes(1)
       if (boundary === 'movement') features = { ...features, fingerprint: new Uint8Array(48).fill(148) }
       else if (boundary === 'occlusion') features = { ...features, skinRatio: .245 }
       else if (boundary === 'darkness') features = { ...features, brightness: 13 }
       else if (boundary === 'privacy') await act(async () => { window.dispatchEvent(new Event('hsc-privacy-pause')) })
-      else await act(async () => { view.rerender(<ContinuousDocumentMonitor sessionId="session" childId="other" active allowLocalOcrPreview />) })
+      else await act(async () => { view.rerender(<ContinuousDocumentMonitor sessionId="session" childId="other" active localOcrPreviewPhase="homework_capture" />) })
       await advance(500)
       expect(preview.mock.calls[0][4].aborted).toBe(true)
       await act(async () => { delayed.resolve(warmPreview) })
@@ -424,7 +551,7 @@ describe('continuous document monitor device lifecycle', () => {
       let samples = 0
       vi.mocked(frameMonitor.extractDocumentFrameFeatures).mockImplementation(() =>
         ({ ...features, skinRatio: ++samples === 5 ? .245 : .184 }))
-      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(2400)
       expect(preview).not.toHaveBeenCalled()
     })
@@ -433,7 +560,7 @@ describe('continuous document monitor device lifecycle', () => {
       const preview = prepareWarmPreview()
       Object.defineProperty(HTMLVideoElement.prototype, 'getVideoPlaybackQuality', { configurable: true,
         value: () => ({ totalVideoFrames: Math.min(30, Math.floor(performance.now() / 20)), droppedVideoFrames: 0 }) })
-      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(4000)
       expect(preview).not.toHaveBeenCalled()
     })
@@ -444,7 +571,7 @@ describe('continuous document monitor device lifecycle', () => {
         throw new Error('lost response')
       })
       let view!: ReturnType<typeof render>
-      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(25_000)
       expect(preview).toHaveBeenCalledTimes(1)
       expect(localApi.documentMonitorPreviews).toHaveBeenCalledTimes(2)

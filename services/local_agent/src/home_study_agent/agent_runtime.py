@@ -10,6 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 from .database import Database, SESSION_TRANSITION_TARGETS
+from .document_monitoring import DOCUMENT_ANALYSIS_STATES
 from .child_model import ChildModelService
 from .child_state_consumption import ChildStateConsumptionService
 from .agent_continuation import ContinuationStore, RESULT_CONTINUATION_CAPABILITIES
@@ -141,6 +142,8 @@ class CapabilitySpec:
             "argument_choices": (
                 {"target": SESSION_TRANSITION_TARGETS.get(state, ())}
                 if self.name == "session.transition" and state is not None
+                else {"command": ("inspect",)} if self.name == "document.monitor_control"
+                and state in DOCUMENT_ANALYSIS_STATES and state != "study"
                 else CAPABILITY_ENUM_ARGUMENTS.get(self.name, {})
             ),
             "expected_evidence": self.expected_evidence,
@@ -177,8 +180,10 @@ class CapabilityRegistry:
         item = self._items.get(name)
         if not item:
             raise InvalidAgentPlanError(f"unknown capability: {name}")
-        stop_document = name == 'document.monitor_control' and (arguments or {}).get('command') == 'pause'
-        if not self._available_in(item, state) and not stop_document:
+        command = (arguments or {}).get('command') if name == 'document.monitor_control' else None
+        if command not in {None, 'inspect', 'pause'} and state != 'study':
+            raise InvalidAgentPlanError(f"capability {name} is unavailable in {state}")
+        if not self._available_in(item, state) and command != 'pause':
             raise InvalidAgentPlanError(f"capability {name} is unavailable in {state}")
         return item
 
@@ -633,8 +638,8 @@ DEFAULT_CAPABILITIES = (
     ),
     CapabilitySpec(
         "document.monitor_control", "1", "控制高拍仪持续监控、查看或核对当前页面。",
-        ("learning", "execution"), ("study",), "client_device_bridge", "low", ("command",),
-        ("document_monitor_state",), "control_document_monitor",
+        ("learning", "execution"), ("homework_capture", "plan_review", "study"),
+        "client_device_bridge", "low", ("command",), ("document_monitor_state",), "control_document_monitor",
     ),
     CapabilitySpec(
         "behavior.feedback", "2", "把孩子对当前待确认提醒的接受、拒绝或稍后再说真实保存，不是只发送界面通知；只能处理本孩子本会话的待反馈提醒。",
@@ -5772,8 +5777,11 @@ class AgentRuntimeStore:
             """,
             (turn_id,),
         ).fetchone()
+        from .document_ocr_preview import is_partial_inspection
+        partial_inspection = succeeded and is_partial_inspection(result)
         if succeeded:
             self.validate_device_receipt(connection, turn_id, result, error_code, page_source_store=self.page_source_store)
+        if succeeded and not partial_inspection:
             from .learning_question_help import teaching_receipt
             try:
                 teaching_receipt(connection,turn_id,result)
@@ -5856,7 +5864,7 @@ class AgentRuntimeStore:
                 ).fetchone()
                 waiting = superseded is None
         # A handled refusal completes the command, not a learning goal or prompt.
-        if business_blocked:
+        if business_blocked or partial_inspection:
             waiting = False
         step_status = "completed" if succeeded else "failed"
         if waiting and isinstance(result, dict):
@@ -5952,7 +5960,7 @@ class AgentRuntimeStore:
             "UPDATE agent_plan SET status = ?, updated_at = ? WHERE plan_id = ?",
             (plan_status, now, row["plan_id"]),
         )
-        if succeeded and not waiting and not business_blocked:
+        if succeeded and not waiting and not business_blocked and not partial_inspection:
             if row['capability_name'] in {'controlled_content.stop', 'controlled_game.stop'}:
                 from .controlled_objective_closure import apply as close_controlled_objective
                 close_controlled_objective(connection, turn_id, result, now)
@@ -5990,6 +5998,11 @@ class AgentRuntimeStore:
         name = step["capability_name"] if step else (
             action.get("capability") or DEFAULT_ACTION_CAPABILITY_MAP.get(action_type))
         spec = next((item for item in DEFAULT_CAPABILITIES if item.name == name), None)
+        from .document_ocr_preview import DocumentOcrPreviewService, is_partial_inspection
+        partial_inspection = is_partial_inspection(result)
+        if partial_inspection and (name != 'document.monitor_control'
+                or action_type != 'control_document_monitor' or action.get('command') != 'inspect'):
+            raise InvalidDeviceReceiptError('DEVICE_RECEIPT_DOCUMENT_INSPECTION_REQUIRED')
         if not ((spec and spec.execution_location == "client_device_bridge")
                 or (step and step["execution_location"] == "client_device_bridge")):
             return
@@ -6021,6 +6034,15 @@ class AgentRuntimeStore:
                 raise ValueError("timezone required")
         except (KeyError, TypeError, AttributeError, ValueError):
             raise InvalidDeviceReceiptError("DEVICE_RECEIPT_INVALID_TIMESTAMP") from None
+        if partial_inspection:
+            if (not set(result) <= {'execution_receipt', 'client_bridge_receipt'}
+                    or set(receipt) != {'capability', 'execution_location', 'action_type', 'status', 'completed_at', 'output'}):
+                raise InvalidDeviceReceiptError('DEVICE_RECEIPT_DOCUMENT_INSPECTION_REQUIRED')
+            try:
+                DocumentOcrPreviewService.validate_inspection_receipt(connection, turn, receipt['output'], completed_at)
+            except (ValueError, TypeError):
+                raise InvalidDeviceReceiptError('DEVICE_RECEIPT_DOCUMENT_INSPECTION_SOURCE_CHANGED') from None
+            return
         if action_type == 'control_document_monitor' and action.get('command') in {'inspect', 'review'}:
             from .document_monitoring import DocumentMonitoringService
             output = receipt.get('output')

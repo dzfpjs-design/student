@@ -1,7 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { localApi } from './api'
+import type { DocumentInspectionOutput } from './cameraDeviceRuntime'
 import { contentChanged, extractDocumentFrameFeatures, type DocumentFrameFeatures } from './documentFrameMonitor'
-import type { DocumentOcrPreview } from './types'
+import type { DocumentOcrPreview, DocumentOcrPreviewPhase } from './types'
 
 const sampleCount = 4
 const minimumSpan = 1_500
@@ -20,17 +21,24 @@ type PreviewSample = {
   cameraKey: string
   current: () => boolean
   available: boolean
+  inspection?: {
+    turnId: string
+    report: (result: Extract<DocumentInspectionOutput, { page_status: 'partial_local_preview' }>) => void
+    unavailable: () => void
+  }
 }
-type Warmth = 'warm' | 'high'
+type Warmth = 'clear' | 'warm' | 'high'
 type PreviewAttempt = {
   scope: string
   actionId?: string
+  inspectionTurnId?: string
   at: number
   frame: DocumentFrameFeatures
   state: 'pending' | 'saved' | 'interrupted' | 'unconfirmed'
 }
 type SampleWindow = {
   cameraKey: string
+  inspectionTurnId?: string
   warmth: Warmth
   changedSinceAttempt: boolean
   reference: PreviewAttempt | null
@@ -40,18 +48,29 @@ type SampleWindow = {
   count: number
   anchor: Uint8Array
 }
-type PendingPreview = { controller: AbortController; cameraKey: string; warmth: Warmth; anchor: Uint8Array; attempt?: PreviewAttempt }
+type PendingPreview = {
+  controller: AbortController
+  cameraKey: string
+  inspectionTurnId?: string
+  warmth: Warmth
+  frame: DocumentFrameFeatures
+  attempt?: PreviewAttempt
+}
 type PreviewHistory = { scope: string | null; items: DocumentOcrPreview[]; loaded: boolean; unavailable: boolean }
 const emptyHistory: PreviewHistory = { scope: null, items: [], loaded: false, unavailable: false }
 type CaptureStatus = 'idle' | 'reading' | 'interrupted' | 'unconfirmed'
 
-function previewWarmth(features: DocumentFrameFeatures, motion: number): Warmth | null {
-  if (features.paperRatio < .10 || features.brightness < 28 || features.contrast < 7
-      || features.skinRatio < .10 || motion > maximumMotion) return null
+function previewWarmth(features: DocumentFrameFeatures, motion: number, allowClear = false): Warmth | null {
+  if (features.paperRatio < .10 || features.brightness < 28 || features.contrast < 7 || motion > maximumMotion) return null
+  if (features.skinRatio < .10) return allowClear ? 'clear' : null
   if (features.skinRatio < .22) return 'warm'
   // Color alone cannot tell a stationary hand from a warm backdrop. Require
   // a stronger paper/contrast signal and more settled frames for a partial read.
   return features.skinRatio < .65 && features.paperRatio >= .20 && features.contrast >= 16 ? 'high' : null
+}
+
+export function isWarmLocalPreviewCandidate(features: DocumentFrameFeatures, motion: number): boolean {
+  return previewWarmth(features, motion) !== null
 }
 
 function coarseDistance(left: Uint8Array, right: Uint8Array): number {
@@ -95,13 +114,13 @@ function frozenPreviewImage(video: HTMLVideoElement, observed: DocumentFrameFeat
   if (!sampler) return
   sampler.drawImage(snapshot, 0, 0, sampled.width, sampled.height)
   const features = extractDocumentFrameFeatures(sampler.getImageData(0, 0, sampled.width, sampled.height))
-  if (previewWarmth(features, coarseDistance(features.fingerprint, observed.fingerprint)) !== warmth) return
+  if (previewWarmth(features, coarseDistance(features.fingerprint, observed.fingerprint), warmth === 'clear') !== warmth) return
   const image = snapshot.toDataURL('image/jpeg', .82).split(',', 2)[1]
   return image ? { image, features } : undefined
 }
 
-export function useDocumentMonitorPreviews(sessionId: string, childId: string | undefined, enabled: boolean) {
-  const scope = enabled && childId ? JSON.stringify([sessionId, childId]) : null
+export function useDocumentMonitorPreviews(sessionId: string, childId: string | undefined, phase: DocumentOcrPreviewPhase | undefined, enabled: boolean) {
+  const scope = enabled && childId && phase ? JSON.stringify([sessionId, childId, phase]) : null
   const ownerRef = useRef<{ scope: string } | null>(null)
   const windowRef = useRef<SampleWindow | null>(null)
   const activeRead = useRef<AbortController | null>(null)
@@ -174,62 +193,75 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     }
   }, [cancelFramePreview, refresh, scope])
 
-  const sample = useCallback(({ video, features, motion, token, generation, leaseId, cameraKey, current, available }: PreviewSample) => {
+  const sample = useCallback(({ video, features, motion, token, generation, leaseId, cameraKey, current, available, inspection }: PreviewSample) => {
     const owner = ownerRef.current
-    const warmth = previewWarmth(features, motion)
+    const warmth = previewWarmth(features, motion, Boolean(inspection))
     if (!owner || owner.scope !== scope || !current() || !warmth) {
       cancelFramePreview()
       return
     }
-    if (pending.current && (pending.current.cameraKey !== cameraKey
-        || pending.current.warmth !== warmth || coarseDistance(features.fingerprint, pending.current.anchor) > maximumMotion)) cancelFramePreview()
+    const inspectionTurnId = inspection?.turnId
+    const inProgress = pending.current
+    if (inProgress && (inProgress.cameraKey !== cameraKey || inProgress.inspectionTurnId !== inspectionTurnId
+        || inProgress.warmth !== warmth || coarseDistance(features.fingerprint, inProgress.frame.fingerprint) > maximumMotion
+        || (inspection && previewContentChanged(inProgress.frame, features)))) cancelFramePreview()
     const now = Date.now()
     const last = attempts.current?.scope === scope ? attempts.current : null
-    const changedSinceAttempt = !last || previewContentChanged(last.frame, features)
+    const changedSinceAttempt = !!inspection || !last || previewContentChanged(last.frame, features)
     const previous = windowRef.current
     if (previous?.cameraKey === cameraKey && token === previous.token) return
     if (previous?.cameraKey === cameraKey && token < previous.token) cancelFramePreview()
     const canExtend = previous?.cameraKey === cameraKey && token > previous.token && now - previous.lastAt <= maximumGap
       && previous.warmth === warmth && previous.reference === last && previous.changedSinceAttempt === changedSinceAttempt
+      && previous.inspectionTurnId === inspectionTurnId
       && coarseDistance(features.fingerprint, previous.anchor) <= maximumMotion
-    const observed = { cameraKey, warmth, changedSinceAttempt, reference: last, token,
+    const observed = { cameraKey, inspectionTurnId, warmth, changedSinceAttempt, reference: last, token,
       firstAt: canExtend ? previous.firstAt : now, lastAt: now,
       count: canExtend ? previous.count + 1 : 1, anchor: canExtend ? previous.anchor : features.fingerprint.slice() }
     windowRef.current = observed
     const highWarmth = warmth === 'high'
-    if (!available || pending.current || !history.loaded || history.scope !== scope
-        || observed.count < (highWarmth ? 7 : sampleCount) || now - observed.firstAt < (highWarmth ? 3_000 : minimumSpan)
-        || (last && now - last.at < minimumAttemptInterval) || !changedSinceAttempt) return
+    if (!available || pending.current || observed.count < (highWarmth ? 7 : sampleCount)
+        || now - observed.firstAt < (highWarmth ? 3_000 : minimumSpan)
+        || (inspection ? last?.inspectionTurnId === inspectionTurnId
+          : !history.loaded || history.scope !== scope || !!(last && now - last.at < minimumAttemptInterval) || !changedSinceAttempt)) return
     let frozen: ReturnType<typeof frozenPreviewImage>
     try { frozen = frozenPreviewImage(video, features, warmth) } catch { /* Camera frame is no longer usable. */ }
     if (!frozen || !current()) {
       cancelFramePreview()
       return
     }
-    if (last && !previewContentChanged(last.frame, frozen.features)) return
+    if (!inspection && last && !previewContentChanged(last.frame, frozen.features)) return
     const controller = new AbortController()
-    const capture: PendingPreview = { controller, cameraKey, warmth, anchor: frozen.features.fingerprint.slice() }
+    const capture: PendingPreview = { controller, cameraKey, inspectionTurnId, warmth, frame: frozen.features }
     const inScope = () => ownerRef.current === owner && pending.current === capture && current()
     pending.current = capture
     void (async () => {
       try {
         const signature = await frameSignature(frozen.image)
         if (!inScope() || controller.signal.aborted) return
-        if (!last && signature && history.items.some(item => item.frame_signature === signature)) {
+        if (!inspection && !last && signature && history.items.some(item => item.frame_signature === signature)) {
           attempts.current = { scope: owner.scope, frame: frozen.features, at: 0, state: 'saved' }
           return
         }
         const actionId = crypto.randomUUID()
-        const attempt: PreviewAttempt = { scope: owner.scope, actionId, frame: frozen.features, at: now, state: 'pending' }
+        const attempt: PreviewAttempt = { scope: owner.scope, actionId, inspectionTurnId, frame: frozen.features, at: now, state: 'pending' }
         capture.attempt = attempts.current = attempt
         setCaptureStatus('reading')
-        const result = await localApi.createDocumentMonitorPreview(sessionId, frozen.image, generation, actionId, controller.signal, leaseId, signature)
+        const result = await localApi.createDocumentMonitorPreview(sessionId, frozen.image, generation, actionId, controller.signal, leaseId, signature, inspectionTurnId, phase)
         if (!inScope() || controller.signal.aborted) return
         attempt.state = 'saved'
         setHistory(previous => previous.scope === owner.scope ? ({
           ...previous, items: [result, ...previous.items.filter(item => item.preview_id !== result.preview_id)].slice(0, 10)
         }) : previous)
         setCaptureStatus('idle')
+        if (inspection) {
+          if (result.inspection_turn_id === inspectionTurnId && result.client_action_id === actionId
+              && result.generation === generation && result.phase === phase && result.preview_id && result.inspection_response_text?.trim()) {
+            inspection.report({ preview_id: result.preview_id, page_status: 'partial_local_preview', response_text: result.inspection_response_text })
+          } else {
+            inspection.unavailable()
+          }
+        }
       } catch {
         if (capture.attempt && inScope() && !controller.signal.aborted) {
           capture.attempt.state = 'unconfirmed'
@@ -237,6 +269,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
           // The POST may have saved before the response was lost. Recover by
           // reading history instead of submitting another image.
           refresh()
+          inspection?.unavailable()
         }
       } finally {
         if (pending.current === capture) {
@@ -245,7 +278,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         }
       }
     })()
-  }, [cancelFramePreview, history, refresh, scope, sessionId])
+  }, [cancelFramePreview, history, phase, refresh, scope, sessionId])
 
   return {
     visible: scope !== null && history.scope === scope,

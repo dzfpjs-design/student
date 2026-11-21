@@ -29,6 +29,7 @@ from .agent_runtime import (
     parse_agent_plan_output,
 )
 from .child_safety import classify_child_safety, persist_safety_event
+from .document_monitoring import DOCUMENT_ANALYSIS_STATES
 from .agent_continuation import ContinuationStore, RESULT_CONTINUATION_CAPABILITIES, written_item_identities
 from .companion_dialogue import (
     POLICY_VERSION as COMPANION_POLICY_VERSION,
@@ -6045,6 +6046,9 @@ class AgentOrchestrator:
     ) -> dict:
         if tool_status not in {"completed", "failed"}:
             raise InvalidAgentTurnOutcomeError(tool_status)
+        from .document_ocr_preview import PARTIAL_INSPECTION_NOTICE, is_partial_inspection
+        if tool_status != 'completed' and is_partial_inspection(result):
+            raise InvalidAgentTurnOutcomeError('DEVICE_RECEIPT_DOCUMENT_INSPECTION_REQUIRED')
         final_response = final_response.strip()
         if not final_response:
             raise InvalidAgentTurnOutcomeError("empty_response")
@@ -6070,6 +6074,8 @@ class AgentOrchestrator:
                 elif tool_status == "completed" or server["status"] == "cancelled" or server["plan_status"] == "cancelled":
                     raise InvalidAgentTurnOutcomeError("INPUT_REVISION_SERVER_RECEIPT_REQUIRED")
             replayed = existing["tool_status"] == "completed"
+            if is_partial_inspection(result):
+                final_response = PARTIAL_INSPECTION_NOTICE
             client_control = connection.execute('''SELECT s.execution_location,p.context_manifest_json
                 FROM agent_step s JOIN agent_plan p USING(plan_id)
                 WHERE p.agent_turn_id=? AND s.step_index=0''', (turn_id,)).fetchone()
@@ -6108,11 +6114,12 @@ class AgentOrchestrator:
                 completed = self._get(connection, turn_id)
             saved_result = connection.execute("SELECT s.result_json FROM agent_step s JOIN agent_plan p USING(plan_id) WHERE p.agent_turn_id=? AND s.step_index=0",
                                               (turn_id,)).fetchone()
-            business_blocked = self.agent_runtime.execution_result_blocked(
-                json.loads(saved_result[0]) if saved_result and saved_result[0] else result)
+            persisted_result = json.loads(saved_result[0]) if saved_result and saved_result[0] else result
+            partial_inspection = is_partial_inspection(persisted_result)
+            business_blocked = self.agent_runtime.execution_result_blocked(persisted_result)
             business_blocked = business_blocked or bool(connection.execute(
                 "SELECT json_extract(action_json,'$.execution_blocked') FROM agent_turn WHERE agent_turn_id=?", (turn_id,)).fetchone()[0])
-        if local_safety:
+        if local_safety or partial_inspection:
             return completed
         if tool_status == "completed" and not business_blocked:
             local_evaluation = self.agent_runtime.finalize_diagnostic_turn(turn_id)
@@ -6322,7 +6329,7 @@ class AgentOrchestrator:
             return "pause_document_monitor", "我正在停止高拍仪采集，收到设备确认后再继续。", {"type": "control_document_monitor", "command": "pause"}
         if state == "study" and any(phrase in compact for phrase in ("恢复高拍仪", "重新连接高拍仪", "继续书写监控")):
             return "resume_document_monitor", "好，我重新连接已绑定的高拍仪，继续在本机观察页面变化。", {"type": "control_document_monitor", "command": "resume"}
-        if state == "study" and any(phrase in compact for phrase in ("检查当前页", "检查这一页", "识别当前页")):
+        if state in DOCUMENT_ANALYSIS_STATES and any(phrase in compact for phrase in ("检查当前页", "检查这一页", "识别当前页")):
             return "inspect_document_page", "好，请移开手并保持页面稳定，我会在本机检查当前页。", {"type": "control_document_monitor", "command": "inspect"}
         if state == "study" and any(phrase in compact for phrase in ("核对这一页", "核对刚才这页", "看看刚才这页")):
             return "review_document_page", "好，我把最近一次本地识别的页面交给你核对，然后继续讲解。", {"type": "control_document_monitor", "command": "review"}

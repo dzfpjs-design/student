@@ -1,8 +1,27 @@
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
+import json
 from uuid import uuid4
 
+from .document_monitoring import DOCUMENT_ANALYSIS_STATES
 from .local_ocr.cache_lifecycle import assert_current, request_digest
 from .repository import utc_now
+
+
+PARTIAL_INSPECTION_STATUS = "partial_local_preview"
+PARTIAL_INSPECTION_NOTICE = "这次已在本机试读，纸面文字仍需核对。"
+_INSPECTION_TTL = timedelta(minutes=5)
+
+
+def is_partial_inspection(result):
+    if not isinstance(result, dict):
+        return False
+    for key in ("execution_receipt", "client_bridge_receipt"):
+        receipt = result.get(key)
+        output = receipt.get("output") if isinstance(receipt, dict) else None
+        if isinstance(output, dict) and output.get("page_status") == PARTIAL_INSPECTION_STATUS:
+            return True
+    return False
 
 
 _CREATE_PREVIEWS = """CREATE TABLE IF NOT EXISTS document_ocr_preview (
@@ -14,6 +33,8 @@ _CREATE_PREVIEWS = """CREATE TABLE IF NOT EXISTS document_ocr_preview (
     frame_sha256 TEXT NOT NULL,
     frame_signature TEXT,
     client_action_id TEXT NOT NULL UNIQUE,
+    inspection_turn_id TEXT,
+    phase TEXT,
     text TEXT NOT NULL,
     question_count INTEGER NOT NULL,
     created_at TEXT NOT NULL
@@ -41,31 +62,42 @@ class DocumentOcrPreviewService:
                 connection.execute("ALTER TABLE document_ocr_preview RENAME TO document_ocr_preview_previous")
                 connection.execute(_CREATE_PREVIEWS)
                 signature_column = 'frame_signature' if 'frame_signature' in columns else 'NULL'
+                inspection_column = 'inspection_turn_id' if 'inspection_turn_id' in columns else 'NULL'
+                phase_column = 'phase' if 'phase' in columns else 'NULL'
                 connection.execute(f"""INSERT INTO document_ocr_preview
                     (preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,frame_signature,
-                     client_action_id,text,question_count,created_at)
+                     client_action_id,inspection_turn_id,phase,text,question_count,created_at)
                     SELECT preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,{signature_column},
-                           client_action_id,text,question_count,created_at FROM document_ocr_preview_previous""")
+                           client_action_id,{inspection_column},{phase_column},text,question_count,created_at FROM document_ocr_preview_previous""")
                 connection.execute("DROP TABLE document_ocr_preview_previous")
-            elif 'frame_signature' not in columns:
-                connection.execute("ALTER TABLE document_ocr_preview ADD COLUMN frame_signature TEXT")
+            else:
+                if 'frame_signature' not in columns:
+                    connection.execute("ALTER TABLE document_ocr_preview ADD COLUMN frame_signature TEXT")
+                if 'inspection_turn_id' not in columns:
+                    connection.execute("ALTER TABLE document_ocr_preview ADD COLUMN inspection_turn_id TEXT")
+                if 'phase' not in columns:
+                    connection.execute("ALTER TABLE document_ocr_preview ADD COLUMN phase TEXT")
+            connection.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_document_ocr_preview_inspection
+                ON document_ocr_preview(inspection_turn_id) WHERE inspection_turn_id IS NOT NULL""")
             connection.execute("""CREATE INDEX IF NOT EXISTS idx_document_ocr_preview_session
                 ON document_ocr_preview(session_id, created_at DESC)""")
             connection.commit()
 
     @staticmethod
-    def _child(connection, session_id):
-        row = connection.execute("""SELECT s.child_id FROM daily_session s
+    def _active_scope(connection, session_id):
+        row = connection.execute("""SELECT s.child_id,s.state FROM daily_session s
             JOIN child_profile c USING(child_id) WHERE s.session_id=? AND s.status='active'
-            AND s.state='homework_capture' AND s.ended_at IS NULL AND s.observation_status='enabled'
+            AND s.ended_at IS NULL AND s.observation_status='enabled'
             AND c.status='active'""", (session_id,)).fetchone()
-        if not row:
+        if not row or row['state'] not in DOCUMENT_ANALYSIS_STATES:
             raise ValueError('DOCUMENT_PREVIEW_NOT_AVAILABLE')
-        return row['child_id']
+        return row['child_id'], row['state']
 
     @classmethod
-    def _capture_scope(cls, connection, session_id, generation, expected_lease_id):
-        child_id = cls._child(connection, session_id)
+    def _capture_scope(cls, connection, session_id, generation, expected_lease_id, expected_phase=None):
+        child_id, phase = cls._active_scope(connection, session_id)
+        if expected_phase is not None and phase != expected_phase:
+            raise ValueError('DOCUMENT_PREVIEW_SOURCE_CHANGED')
         lease = connection.execute("""SELECT l.lease_id FROM sensor_lease l
             JOIN document_monitor_session m ON m.session_id=l.session_id
             WHERE m.session_id=? AND m.child_id=? AND m.status='active' AND m.generation=?
@@ -75,55 +107,133 @@ class DocumentOcrPreviewService:
             (session_id, child_id, generation)).fetchone()
         if not lease or lease['lease_id'] != expected_lease_id:
             raise ValueError('DOCUMENT_PREVIEW_SOURCE_CHANGED')
-        return child_id, lease['lease_id']
+        return child_id, lease['lease_id'], phase
+
+    @staticmethod
+    def _pending_inspection(connection, turn_id, session_id, child_id, phase, *, completing=False):
+        turn = connection.execute("""SELECT t.created_at,t.tool_status FROM agent_turn t
+            JOIN agent_plan p USING(agent_turn_id) JOIN agent_step s USING(plan_id)
+            WHERE t.agent_turn_id=? AND t.session_id=? AND t.child_id=?
+            AND p.session_id=t.session_id AND p.child_id=t.child_id
+            AND p.status IN ('planned','running') AND s.status=p.status AND s.step_index=0
+            AND s.capability_name='document.monitor_control' AND s.execution_location='client_device_bridge'
+            AND json_extract(t.action_json,'$.type')='control_document_monitor'
+            AND json_extract(t.action_json,'$.command')='inspect'
+            AND json_extract(s.arguments_json,'$.command')='inspect'
+            AND NOT EXISTS(SELECT 1 FROM session_transition tr
+                WHERE tr.session_id=t.session_id AND tr.to_state=? AND tr.from_state IS NOT tr.to_state
+                AND tr.occurred_at>t.created_at)""", (turn_id, session_id, child_id, phase)).fetchone()
+        allowed_statuses = {'pending', 'completed'} if completing else {'pending'}
+        if not turn or turn['tool_status'] not in allowed_statuses:
+            raise ValueError('DOCUMENT_PREVIEW_INSPECTION_NOT_PENDING')
+        started_at = datetime.fromisoformat(turn['created_at'])
+        if not timedelta(0) <= datetime.now(timezone.utc) - started_at <= _INSPECTION_TTL:
+            raise ValueError('DOCUMENT_PREVIEW_INSPECTION_EXPIRED')
+        return started_at
+
+    @classmethod
+    def validate_inspection_receipt(cls, connection, turn, output, completed_at):
+        if (set(output) != {'page_status', 'preview_id'} or not isinstance(output['preview_id'], str)
+                or not 0 < len(output['preview_id']) <= 128):
+            raise ValueError('DOCUMENT_PREVIEW_INVALID_INSPECTION_RECEIPT')
+        session_id, child_id, turn_id = turn['session_id'], turn['child_id'], turn['agent_turn_id']
+        # The preview table is initialized by the local preview service, not
+        # by the standalone agent runtime.
+        if not connection.execute("SELECT 1 FROM sqlite_master WHERE name='document_ocr_preview'").fetchone():
+            raise ValueError('DOCUMENT_PREVIEW_INSPECTION_SOURCE_CHANGED')
+        preview = connection.execute("""SELECT monitor_generation,lease_id,phase,created_at FROM document_ocr_preview
+            WHERE preview_id=? AND session_id=? AND child_id=? AND inspection_turn_id=?""",
+            (output['preview_id'], session_id, child_id, turn_id)).fetchone()
+        if not preview or preview['phase'] not in DOCUMENT_ANALYSIS_STATES:
+            raise ValueError('DOCUMENT_PREVIEW_INSPECTION_SOURCE_CHANGED')
+        cls._capture_scope(connection, session_id, preview['monitor_generation'], preview['lease_id'], preview['phase'])
+        started_at = cls._pending_inspection(connection, turn_id, session_id, child_id, preview['phase'], completing=True)
+        created_at = datetime.fromisoformat(preview['created_at'])
+        now = datetime.now(timezone.utc)
+        allow_clock_skew = timedelta(seconds=30)
+        if not started_at <= created_at <= now or not (
+                created_at - allow_clock_skew <= completed_at <= now + allow_clock_skew):
+            raise ValueError('DOCUMENT_PREVIEW_INSPECTION_SOURCE_CHANGED')
+
+    @classmethod
+    def _check_inspection_capture(cls, connection, turn_id, session_id, child_id, phase, client_action_id):
+        if turn_id is None:
+            return
+        cls._pending_inspection(connection, turn_id, session_id, child_id, phase)
+        if connection.execute("""SELECT 1 FROM document_ocr_preview
+            WHERE inspection_turn_id=? AND client_action_id<>?""", (turn_id, client_action_id)).fetchone():
+            raise ValueError('DOCUMENT_PREVIEW_INSPECTION_ALREADY_CAPTURED')
+
+    @staticmethod
+    def _inspection_response(preview, turn_id):
+        if turn_id is not None:
+            preview['inspection_turn_id'] = turn_id
+            excerpt = ' '.join(preview['text'].split())[:120]
+            preview['inspection_response_text'] = (
+                f'我从当前画面试读到这段文字：「{excerpt}」。请和纸上的原题核对。'
+                if excerpt else '我还没从当前画面读到可核对的文字，请摆正纸张后再试。')
+        return preview
 
     @staticmethod
     def _readback(row):
         return {
             **{key: row[key] for key in ('preview_id', 'client_action_id', 'created_at', 'text', 'question_count',
-                                        'frame_signature')},
+                                        'frame_signature', 'phase')},
             'generation': row['monitor_generation'],
         }
 
     def latest(self, session_id):
         with self.database.connect() as connection:
             connection.execute('BEGIN')
-            child_id = self._child(connection, session_id)
+            child_id, _ = self._active_scope(connection, session_id)
             rows = connection.execute("""SELECT preview_id,client_action_id,created_at,text,question_count,
-                monitor_generation,frame_signature
+                monitor_generation,frame_signature,phase
                 FROM document_ocr_preview WHERE session_id=? AND child_id=?
                 ORDER BY created_at DESC,preview_id DESC LIMIT 10""", (session_id, child_id))
             return {'items': [self._readback(row) for row in rows]}
 
     @staticmethod
-    def _existing(connection, client_action_id, session_id, child_id, lease_id, generation, frame_sha, frame_signature):
+    def _existing(connection, client_action_id, session_id, child_id, lease_id, generation, frame_sha, frame_signature, inspection_turn_id, phase):
         row = connection.execute("SELECT * FROM document_ocr_preview WHERE client_action_id=?",
                                  (client_action_id,)).fetchone()
-        if row and (row['session_id'], row['child_id'], row['lease_id'], row['monitor_generation'],
-                    row['frame_sha256'], row['frame_signature']) != (
-                    session_id, child_id, lease_id, generation, frame_sha, frame_signature):
-            raise ValueError('DOCUMENT_PREVIEW_ACTION_CONFLICT')
+        if row:
+            previous_scope = (row['session_id'], row['child_id'], row['lease_id'], row['monitor_generation'],
+                              row['frame_sha256'], row['frame_signature'], row['inspection_turn_id'],
+                              row['phase'] or 'homework_capture')
+            if previous_scope != (session_id, child_id, lease_id, generation, frame_sha, frame_signature,
+                                  inspection_turn_id, phase):
+                raise ValueError('DOCUMENT_PREVIEW_ACTION_CONFLICT')
         return row
 
-    def create(self, session_id, image, client_action_id, generation, expected_lease_id, frame_signature=None):
+    def create(self, session_id, image, client_action_id, generation, expected_lease_id, frame_signature=None,
+               inspection_turn_id=None, expected_phase=None):
+        if inspection_turn_id is not None and expected_phase is None:
+            raise ValueError('DOCUMENT_PREVIEW_INSPECTION_PHASE_REQUIRED')
         frame_sha = sha256(image).hexdigest()
         if frame_signature is not None:
             if frame_signature != frame_sha:
                 raise ValueError('DOCUMENT_PREVIEW_FRAME_SIGNATURE_MISMATCH')
             frame_signature = frame_sha
         request_id = f'document-preview:{client_action_id}'
+        # The in-flight OCR identity also binds the voice command, so retries
+        # cannot turn an earlier automatic frame into a command receipt.
         # Make the job visible to deletion before recognition starts. Deletion
         # can cancel it without waiting for the recognizer while the frame is in RAM.
         with self.database.external_effect_guard():
             with self.database.connect() as connection:
                 connection.execute('BEGIN')
-                child_id, lease_id = self._capture_scope(connection, session_id, generation, expected_lease_id)
+                child_id, lease_id, phase = self._capture_scope(
+                    connection, session_id, generation, expected_lease_id, expected_phase)
+                self._check_inspection_capture(connection, inspection_turn_id, session_id, child_id, phase, client_action_id)
                 saved = self._existing(connection, client_action_id, session_id, child_id, lease_id, generation,
-                                       frame_sha, frame_signature)
+                                       frame_sha, frame_signature, inspection_turn_id, phase)
                 if saved:
-                    return self._readback(saved)
+                    return self._inspection_response(self._readback(saved), inspection_turn_id)
+            preview_signature = frame_signature
+            if inspection_turn_id is not None or phase != 'homework_capture':
+                preview_signature = sha256(json.dumps([frame_signature, inspection_turn_id, phase]).encode()).hexdigest()
             scheduled = self.workflow.queue_recognition(
-                session_id, image, request_id, generation, preview_lease_id=lease_id, preview_signature=frame_signature
+                session_id, image, request_id, generation, preview_lease_id=lease_id, preview_signature=preview_signature
             )
         job = self.workflow.finish_recognition(scheduled, image)
         result = job['result']
@@ -140,10 +250,11 @@ class DocumentOcrPreviewService:
             if not current or current['status'] != 'completed' or current['publication_started']:
                 raise ValueError('DOCUMENT_PREVIEW_SOURCE_CHANGED')
             try:
-                if self._capture_scope(connection, session_id, generation, expected_lease_id) != (child_id, lease_id):
+                if self._capture_scope(connection, session_id, generation, expected_lease_id, phase) != (child_id, lease_id, phase):
                     raise ValueError('DOCUMENT_PREVIEW_SOURCE_CHANGED')
+                self._check_inspection_capture(connection, inspection_turn_id, session_id, child_id, phase, client_action_id)
                 saved = self._existing(connection, client_action_id, session_id, child_id, lease_id, generation,
-                                       frame_sha, frame_signature)
+                                       frame_sha, frame_signature, inspection_turn_id, phase)
                 assert_current(connection, current)
             except ValueError:
                 connection.execute("INSERT OR IGNORE INTO ocr_request_tombstone VALUES (?, 'deleted')",
@@ -154,14 +265,14 @@ class DocumentOcrPreviewService:
                 connection.commit()
                 raise
             if saved:
-                return self._readback(saved)
+                return self._inspection_response(self._readback(saved), inspection_turn_id)
             preview = dict(preview_id=str(uuid4()), client_action_id=client_action_id, created_at=utc_now(),
                            text=text, question_count=question_count, generation=generation,
-                           frame_signature=frame_signature)
+                           frame_signature=frame_signature, phase=phase)
             connection.execute("""INSERT INTO document_ocr_preview
                 (preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,frame_signature,client_action_id,
-                 text,question_count,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                 inspection_turn_id,phase,text,question_count,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (preview['preview_id'], child_id, session_id, lease_id, generation, frame_sha, frame_signature,
-                 client_action_id, text, question_count, preview['created_at']))
+                 client_action_id, inspection_turn_id, phase, text, question_count, preview['created_at']))
             connection.commit()
-            return preview
+            return self._inspection_response(preview, inspection_turn_id)

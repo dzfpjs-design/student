@@ -3,6 +3,8 @@ import json
 from hashlib import sha256
 from pathlib import Path
 
+import pytest
+
 from home_study_agent.document_ocr_preview import DocumentOcrPreviewService
 from home_study_agent.local_ocr.workflow import OcrWorkflowDeferredError
 from test_app import client_for
@@ -74,7 +76,7 @@ def test_preview_persists_locally_without_formal_artifact_and_obeys_erasure(tmp_
         assert response.headers['Cache-Control'] == 'no-store'
         result = response.json()
         assert result.keys() == {'preview_id', 'created_at', 'text', 'question_count', 'generation',
-                                 'client_action_id', 'frame_signature'}
+                                 'client_action_id', 'frame_signature', 'phase'}
         assert result['text'] == '1. Calculate the perimeter.'
         assert result['question_count'] == 1 and result['generation'] == generation
         assert result['client_action_id'] == body['client_action_id'] and result['frame_signature'] == body['frame_signature']
@@ -169,7 +171,7 @@ def test_legacy_unique_generation_migrates_without_losing_the_saved_action(tmp_p
         legacy = client.get(route).json()['items'][0]
         assert legacy == {
             'preview_id': 'legacy-preview', 'client_action_id': 'local-preview-synthetic-frame',
-            'generation': generation, 'frame_signature': None, 'text': '1. Legacy reading',
+            'generation': generation, 'phase': None, 'frame_signature': None, 'text': '1. Legacy reading',
             'question_count': 1, 'created_at': '2026-11-20T12:00:00+00:00',
         }
         assert client.post(route, json=image_request(generation)).json() == legacy
@@ -206,7 +208,7 @@ def test_deferred_preview_recovery_cannot_replace_the_original_frame_signature(t
         assert client.get(route).json() == {'items': [resumed.json()]}
 
 
-def test_preview_needs_current_homework_lease_and_rechecks_after_recognition(tmp_path, monkeypatch):
+def test_preview_needs_current_analysis_phase_and_lease_and_rechecks_after_recognition(tmp_path, monkeypatch):
     with client_for(tmp_path) as client:
         configure(client)
         root, db, generation = start_homework(client)
@@ -221,8 +223,10 @@ def test_preview_needs_current_homework_lease_and_rechecks_after_recognition(tmp
                 connection.execute(sql)
                 connection.commit()
 
-        update("UPDATE daily_session SET state='study'")
+        update("UPDATE daily_session SET state='check_in'")
         assert client.post(route, json=body).status_code == 409
+        update("UPDATE daily_session SET state='study'")
+        assert client.post(route, json={**body, 'expected_phase': 'homework_capture'}).status_code == 409
         update("UPDATE daily_session SET state='homework_capture', observation_status='paused'")
         assert client.post(route, json=body).status_code == 409
         assert client.get(route).status_code == 409
@@ -255,3 +259,173 @@ def test_preview_needs_current_homework_lease_and_rechecks_after_recognition(tmp
             assert connection.execute('SELECT COUNT(*) FROM ocr_request_tombstone').fetchone()[0] == 1
         update("UPDATE sensor_lease SET status='active'")
         assert client.post(route, json=body).json()['code'] == 'OCR_SOURCE_INVALIDATED'
+
+
+def inspection_turn(client, root, *, transcript='检查当前页', action_id='voice-preview-inspection'):
+    session_root = root.removesuffix('/document-monitor')
+    response = client.post(session_root + '/agent-turn', json={'transcript': transcript, 'client_action_id': action_id})
+    assert response.status_code == 200, response.text
+    turn = response.json()
+    assert turn['action']['type'] == 'control_document_monitor', turn['action']
+    return turn
+
+
+def inspection_outcome(preview_id, **extra_output):
+    from home_study_agent.repository import utc_now
+    receipt = {
+        'capability': 'document.monitor_control', 'execution_location': 'client_device_bridge',
+        'action_type': 'control_document_monitor', 'status': 'completed', 'completed_at': utc_now(),
+        'output': {'page_status': 'partial_local_preview', 'preview_id': preview_id, **extra_output},
+    }
+    return {
+        'tool_status': 'completed', 'final_response': 'Discard this side-loaded response.',
+        'result': {'execution_receipt': receipt, 'client_bridge_receipt': receipt},
+    }
+
+
+@pytest.mark.parametrize('phase', ['homework_capture', 'plan_review', 'study'])
+def test_pending_inspect_can_read_current_local_preview_without_persisting_speech(tmp_path, monkeypatch, phase):
+    from home_study_agent.document_ocr_preview import PARTIAL_INSPECTION_NOTICE
+    with client_for(tmp_path, agent_runtime_enabled=True) as client:
+        configure(client)
+        root, db, generation = start_homework(client)
+        route = root + '/previews'
+        with db.connect() as connection:
+            connection.execute("UPDATE daily_session SET state=?", (phase,))
+            connection.commit()
+        service = client.app.state.agent_orchestrator
+        memory_calls = []
+        monkeypatch.setattr(service.companion_memory, 'observe_turn', lambda *a: memory_calls.append(a))
+        turn_id = inspection_turn(client, root)['agent_turn_id']
+        payload = {**image_request(generation, signed=True), 'inspection_turn_id': turn_id, 'expected_phase': phase}
+        captured = client.post(route, json=payload)
+        assert captured.status_code == 200, captured.text
+        preview = captured.json()
+        assert preview['phase'] == phase and preview['inspection_turn_id'] == turn_id
+        assert 'Calculate the perimeter.' in preview['inspection_response_text']
+        assert '核对' in preview['inspection_response_text']
+        assert client.post(route, json=payload).json() == preview
+        unrelated_request = {**payload, 'client_action_id': 'another-inspection-capture'}
+        assert client.post(route, json=unrelated_request).json()['detail']['code'] == 'DOCUMENT_PREVIEW_INSPECTION_ALREADY_CAPTURED'
+        listed = client.get(route).json()['items']
+        assert len(listed) == 1
+        assert {'inspection_turn_id', 'inspection_response_text'}.isdisjoint(listed[0])
+        outcome = '/v1/agent-turns/' + turn_id + '/outcome'
+        injected = inspection_outcome(preview['preview_id'], response_text=preview['text'])
+        assert client.put(outcome, json=injected).status_code == 409
+        valid = inspection_outcome(preview['preview_id'])
+        valid['final_response'] = preview['inspection_response_text']
+        refused_extra = {**valid, 'result': {**valid['result'], 'speech': preview['text']}}
+        assert client.put(outcome, json=refused_extra).status_code == 409
+        response = client.put(outcome, json=valid)
+        assert response.status_code == 200, response.text
+        assert preview['text'] not in response.text and PARTIAL_INSPECTION_NOTICE in response.text
+        assert client.post(route, json=payload).status_code == 409
+        assert memory_calls == []
+        with db.connect() as connection:
+            stored = connection.execute("""SELECT t.response_text,p.status,s.result_json FROM agent_turn t
+                JOIN agent_plan p USING(agent_turn_id) JOIN agent_step s USING(plan_id)
+                WHERE t.agent_turn_id=?""", (turn_id,)).fetchone()
+            assert stored['response_text'] == PARTIAL_INSPECTION_NOTICE
+            assert stored['status'] == 'completed' and json.loads(stored['result_json']) == valid['result']
+            assert connection.execute('SELECT COUNT(*) FROM agent_continuation').fetchone()[0] == 0
+            assert connection.execute('SELECT COUNT(*) FROM capture_artifact').fetchone()[0] == 0
+            assert connection.execute('SELECT COUNT(*) FROM document_page_revision').fetchone()[0] == 0
+            assert connection.execute('SELECT COUNT(*) FROM learning_evidence').fetchone()[0] == 0
+    with client_for(tmp_path, agent_runtime_enabled=True) as restarted:
+        replay = restarted.put(outcome, json=valid)
+        assert replay.status_code == 200, replay.text
+        assert preview['text'] not in replay.text and PARTIAL_INSPECTION_NOTICE in replay.text
+
+
+def test_preview_voice_rejects_prior_frame_review_and_lost_lease(tmp_path):
+    with client_for(tmp_path, agent_runtime_enabled=True) as client:
+        configure(client)
+        root, db, generation = start_homework(client)
+        route = root + '/previews'
+        with db.connect() as connection:
+            connection.execute("UPDATE daily_session SET state='study'")
+            connection.commit()
+        body = {**image_request(generation, signed=True), 'expected_phase': 'study'}
+        auto = client.post(route, json=body)
+        assert auto.status_code == 200, auto.text
+        inspect = inspection_turn(client, root)
+        turn_id = inspect['agent_turn_id']
+        outcome = '/v1/agent-turns/' + turn_id + '/outcome'
+        assert client.put(outcome, json=inspection_outcome(auto.json()['preview_id'])).status_code == 409
+        uncertain = client.post(route, json={**body, 'inspection_turn_id': turn_id})
+        assert uncertain.json()['detail']['code'] == 'DOCUMENT_PREVIEW_ACTION_CONFLICT'
+
+        review = inspection_turn(client, root, transcript='核对这一页', action_id='voice-preview-review')
+        assert review['action']['command'] == 'review'
+        bound = {**body, 'client_action_id': 'fresh-inspection-preview'}
+        rejected = client.post(route, json={**bound, 'inspection_turn_id': review['agent_turn_id']})
+        assert rejected.json()['detail']['code'] == 'DOCUMENT_PREVIEW_INSPECTION_NOT_PENDING'
+        fresh = client.post(route, json={**bound, 'inspection_turn_id': turn_id})
+        assert fresh.status_code == 200, fresh.text
+        receipt = inspection_outcome(fresh.json()['preview_id'])
+        review_outcome = '/v1/agent-turns/' + review['agent_turn_id'] + '/outcome'
+        assert client.put(review_outcome, json=receipt).status_code == 409
+
+        preview = fresh.json()
+        with db.connect() as connection:
+            connection.execute("UPDATE document_ocr_preview SET child_id='child-junior-3' WHERE preview_id=?",
+                               (preview['preview_id'],))
+            connection.commit()
+        assert client.put(outcome, json=receipt).status_code == 409
+        with db.connect() as connection:
+            connection.execute("""UPDATE document_ocr_preview SET child_id='child-primary-4',
+                created_at='2020-01-01T00:00:00+00:00' WHERE preview_id=?""", (preview['preview_id'],))
+            connection.commit()
+        assert client.put(outcome, json=receipt).status_code == 409
+        with db.connect() as connection:
+            connection.execute("UPDATE document_ocr_preview SET created_at=? WHERE preview_id=?",
+                               (preview['created_at'], preview['preview_id']))
+            connection.execute("UPDATE sensor_lease SET expires_at=datetime('now','-1 minute') WHERE lease_id='preview-lease'")
+            connection.commit()
+        assert client.put(outcome, json=receipt).status_code == 409
+        with db.connect() as connection:
+            assert connection.execute("SELECT tool_status FROM agent_turn WHERE agent_turn_id=?", (turn_id,)).fetchone()[0] == 'pending'
+
+
+def test_phase_change_during_ocr_cannot_save_or_rebind_a_pending_inspect(tmp_path, monkeypatch):
+    with client_for(tmp_path, agent_runtime_enabled=True) as client:
+        configure(client)
+        root, db, generation = start_homework(client)
+        session_root = root.removesuffix('/document-monitor')
+        route = root + '/previews'
+        turn_id = inspection_turn(client, root)['agent_turn_id']
+        old_capture = {**image_request(generation), 'inspection_turn_id': turn_id,
+                       'expected_phase': 'homework_capture'}
+        workflow = client.app.state.ocr_workflow
+        finish = workflow.finish_recognition
+
+        def transition_phase(scheduled, image):
+            job = finish(scheduled, image)
+            from home_study_agent.repository import utc_now
+            with db.connect() as connection:
+                # Retain generation and the active lease to test the phase
+                # fence independently of sensor invalidation.
+                connection.execute("UPDATE daily_session SET state='plan_review' WHERE session_id=?",
+                                   (session_root.split('/')[-1],))
+                connection.execute("""INSERT INTO session_transition VALUES
+                    ('test-ocr-phase-transition',?,'homework_capture','plan_review','synthetic',?,NULL)""",
+                    (session_root.split('/')[-1], utc_now()))
+                connection.commit()
+            return job
+
+        with monkeypatch.context() as scoped:
+            scoped.setattr(workflow, 'finish_recognition', transition_phase)
+            rejected = client.post(route, json=old_capture)
+        assert rejected.status_code == 409 and rejected.json()['detail']['code'] == 'DOCUMENT_PREVIEW_SOURCE_CHANGED'
+        assert client.get(route).json() == {'items': []}
+        with db.connect() as connection:
+            assert connection.execute("SELECT COUNT(*) FROM ocr_job WHERE request_id LIKE 'document-preview:%'").fetchone()[0] == 0
+            assert connection.execute("SELECT COUNT(*) FROM ocr_cache").fetchone()[0] == 0
+        late_rebind = {**old_capture, 'expected_phase': 'plan_review', 'client_action_id': 'old-inspect-new-phase'}
+        response = client.post(route, json=late_rebind)
+        assert response.status_code == 409 and response.json()['detail']['code'] == 'DOCUMENT_PREVIEW_INSPECTION_NOT_PENDING'
+        new_turn_id = inspection_turn(client, root, action_id='voice-inspect-new-phase')['agent_turn_id']
+        saved = client.post(route, json={**late_rebind, 'inspection_turn_id': new_turn_id})
+        assert saved.status_code == 200, saved.text
+        assert saved.json()['phase'] == 'plan_review'

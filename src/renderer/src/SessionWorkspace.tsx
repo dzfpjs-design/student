@@ -135,7 +135,7 @@ export function hasMarkedWrongQuestion(artifact: OcrArtifact): boolean {
 import { appendLocalDiagnosticFollowUp, hasProtectedCourseContent } from './localAtomicTutorContext'
 import { assertSupportedAgentAction } from './agentActionContract'
 import { startObservationAnalysis, observationAnalysisRetryDelay, OBSERVATION_ANALYSIS_TIMEOUT, type ObservationAnalysisFlight } from './observationAnalysisFlight'
-import { CAMERA_DEVICE_COMMAND, CAMERA_DEVICE_STATUS, CameraFrameClock, queryCameraDevices, requestCameraDevice, waitForCameraFrame, type CameraDeviceCommand, type CameraStatusRequest, type DocumentInspectionOutput } from './cameraDeviceRuntime'
+import { CAMERA_DEVICE_COMMAND, CAMERA_DEVICE_STATUS, CameraFrameClock, partialDocumentInspectionReceipt, queryCameraDevices, requestCameraDevice, waitForCameraFrame, type CameraDeviceCommand, type CameraStatusRequest, type DocumentInspectionOutput } from './cameraDeviceRuntime'
 import { connectRequestedVideoDevices, deviceConnectSpeech, deviceConnectSucceeded, OBSERVATION_CAMERA_REMOVED_MESSAGE, type DeviceConnectTarget } from './deviceConnectionRuntime'
 import { agentContinuationRecoveryMessage, agentWakeResumePrompt } from './agentWakeResumePrompt'
 import { acknowledgeProfileSwitch, prepareProfileSwitch, ProfileSwitchPendingError, recordProfileSwitchDestination } from './profileSwitchHandoff'
@@ -292,12 +292,12 @@ type DocumentMonitorVoiceDetail = {
   resolve: (handled: boolean) => void
 }
 
-async function dispatchDocumentMonitorVoiceAction(sessionId: string, action: DocumentMonitorVoiceDetail['action'], signal?: AbortSignal, report?: (output: DocumentInspectionOutput) => void, deferReview = false): Promise<boolean> {
+async function dispatchDocumentMonitorVoiceAction(sessionId: string, action: DocumentMonitorVoiceDetail['action'], signal?: AbortSignal, report?: (output: DocumentInspectionOutput) => void, deferReview = false, inspectionTurnId?: string): Promise<boolean> {
   const controller = new AbortController()
   const abort = (): void => controller.abort()
   if (signal?.aborted) abort()
   signal?.addEventListener('abort', abort, { once: true })
-  try { return await requestOwnedVoiceEvent('hsc-document-monitor-voice-action', { sessionId, action, report, deferReview, signal: controller.signal }, controller.signal) }
+  try { return await requestOwnedVoiceEvent('hsc-document-monitor-voice-action', { sessionId, action, report, deferReview, inspectionTurnId, signal: controller.signal }, controller.signal) }
   finally { signal?.removeEventListener('abort', abort); controller.abort() }
 }
 
@@ -1070,7 +1070,8 @@ export function SessionWorkspace({
             active={Boolean(!privacyStopped && workspace.session.status === 'active' && workspace.session.state !== 'completed')}
             analysisActive={['homework_capture', 'plan_review', 'study'].includes(workspace.session.state)}
             allowDiagnosticFrameCapture={workspace.session.state === 'study'}
-            allowLocalOcrPreview={workspace.session.state === 'homework_capture'}
+            localOcrPreviewPhase={workspace.session.state === 'homework_capture' || workspace.session.state === 'plan_review'
+              || workspace.session.state === 'study' ? workspace.session.state : undefined}
             onStatus={setDocumentCameraStatus}
             reviewCapture={mistakeReviewCapture}
             onSavedRevision={item=>{
@@ -3342,6 +3343,8 @@ function AgentCommandPanel({ workspace, childName, childGrade, run, refreshActiv
       let shouldSpeak = !native&&turn.action.suppress_speech !== true
       let completedByRuntime = false
       let followupOwnsContinuation = false
+      let partialDocumentInspection = false
+      let documentCompletionResponse: string | undefined
       let clientToolResult: unknown = null
       const action = turn.action
       assertSupportedAgentAction(action.type)
@@ -4644,7 +4647,21 @@ function AgentCommandPanel({ workspace, childName, childGrade, run, refreshActiv
         }
         const handled = originalHandled || (command === 'pause' || command === 'resume'
           ? await runTool(() => requestCameraDevice(workspace.session.session_id, 'document_camera', command, voiceEventController.current.signal))
-          : await dispatchDocumentMonitorVoiceAction(workspace.session.session_id, command, voiceEventController.current.signal, (output) => { clientToolResult = output; response = output.response_text; speechPolicy.localOnly = true }, action.defer_document_review === true))
+          : await dispatchDocumentMonitorVoiceAction(workspace.session.session_id, command, voiceEventController.current.signal, (output) => {
+            response = output.response_text
+            speechPolicy.localOnly = true
+            const partial = partialDocumentInspectionReceipt(output)
+            if (partial) {
+              partialDocumentInspection = true
+              clientToolResult = partial.output
+              documentCompletionResponse = partial.recordedResponse
+              speechPolicy.skipPublicReplyProvider = true
+              speechPolicy.ordinaryResponseAllowed = false
+              shouldSpeak = action.suppress_speech !== true
+            } else {
+              clientToolResult = output
+            }
+          }, action.defer_document_review === true, command === 'inspect' ? turn.agent_turn_id : undefined))
         if (!handled && (command === 'pause' || command === 'resume')) return
         if (command === 'pause') response = '高拍仪已停止读取并确认释放，可以继续语音对话。'
         if (command === 'resume') response = '高拍仪已收到画面，等页面清晰稳定后再识别。'
@@ -4702,6 +4719,9 @@ function AgentCommandPanel({ workspace, childName, childGrade, run, refreshActiv
         }
       }
       if (!isCurrent()) throw new SupersededDeviceCommand()
+      // Preview words are supplied only to the local reply. The generic turn
+      // is reused by ordinary dialogue and must not carry those candidate words.
+      const recordedResponse = documentCompletionResponse ?? response
       let nativeFormalDelivery:{status:'ended'|'not_delivered'|'unconfirmed';kind:'protected_runtime_speech'}|undefined
       if(native&&completedByRuntime&&shouldSpeak&&!speechSuppressedRef.current){
         speechPolicy.localOnly=true;speechPolicy.skipPublicReplyProvider=true
@@ -4716,7 +4736,7 @@ function AgentCommandPanel({ workspace, childName, childGrade, run, refreshActiv
         shouldSpeak=false
       }
       if(native&&completedByRuntime&&((turn.runtime_execution_location??action.execution_location)==='server'||turn.runtime_capability==='learning.evaluate_response'||turn.runtime_capability==='mistake.learn')){
-        native.record({final_response:response,tool_status:'completed',result:{...(nativeFormalDelivery?{local_delivery:nativeFormalDelivery}:{}),client_bridge_receipt:{capability:turn.runtime_capability??action.capability,execution_location:'client_device_bridge',action_type:action.type,status:'completed',completed_at:new Date().toISOString(),output:boundedExecutionResult(clientToolResult)}}})
+        native.record({final_response:recordedResponse,tool_status:'completed',result:{...(nativeFormalDelivery?{local_delivery:nativeFormalDelivery}:{}),client_bridge_receipt:{capability:turn.runtime_capability??action.capability,execution_location:'client_device_bridge',action_type:action.type,status:'completed',completed_at:new Date().toISOString(),output:boundedExecutionResult(clientToolResult)}}})
       }
       if (!completedByRuntime) {
         const executionLocation = turn.runtime_execution_location ?? action.execution_location
@@ -4731,24 +4751,24 @@ function AgentCommandPanel({ workspace, childName, childGrade, run, refreshActiv
             output: boundedExecutionResult(clientToolResult),
           }
           clientCompletionSubmitted = true
-          await commandApi.completeAgentTurn(turn.agent_turn_id, response, 'completed', undefined, {
+          await commandApi.completeAgentTurn(turn.agent_turn_id, recordedResponse, 'completed', undefined, {
             execution_receipt: receipt,
             ...(executionLocation === 'client_device_bridge' ? { client_bridge_receipt: receipt } : {}),
           })
         } else {
           clientCompletionSubmitted = true
-          await commandApi.completeAgentTurn(turn.agent_turn_id, response, 'completed')
+          await commandApi.completeAgentTurn(turn.agent_turn_id, recordedResponse, 'completed')
         }
         await refreshAgentRuntime()
       }
       if (!isCurrent()) throw new SupersededDeviceCommand()
       setTutorRecovery(null)
       if (pendingUtterancesRef.current.length === 0 && voiceInputQueue.pendingCount === 0 && mountedRef.current) {
-        if (!native&&documentGoalToContinue) {
+        if (!native&&!partialDocumentInspection&&documentGoalToContinue) {
           continuationHandledRef.current.delete(documentGoalToContinue)
           afterSpeech = scheduleContinuation(documentGoalToContinue)
         }
-        if (!native&&!followupOwnsContinuation && turn.after_execution === 'replan' && !afterSpeech && !['request_capture', 'retry_capture'].includes(action.type)
+        if (!native&&!partialDocumentInspection&&!followupOwnsContinuation && turn.after_execution === 'replan' && !afterSpeech && !['request_capture', 'retry_capture'].includes(action.type)
             && !(action.type === 'control_document_monitor' && action.defer_document_review === true && ['inspect', 'review'].includes(action.command ?? ''))) {
           afterSpeech = scheduleContinuation(turn.agent_turn_id)
         }

@@ -1422,6 +1422,8 @@ export type DocumentPageRevision = {
   created_at: string
 }
 
+export type DocumentOcrPreviewPhase = 'homework_capture' | 'plan_review' | 'study'
+
 export type DocumentOcrPreview = {
   preview_id: string
   created_at: string
@@ -1430,6 +1432,9 @@ export type DocumentOcrPreview = {
   generation?: number
   frame_signature?: string | null
   client_action_id?: string
+  inspection_turn_id?: string
+  inspection_response_text?: string
+  phase?: DocumentOcrPreviewPhase | null
 }
 
 export type DocumentMonitorStatus = {

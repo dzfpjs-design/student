@@ -4,7 +4,19 @@ export type CameraDeviceOutput = {
   frame_confirmed: boolean
   lease_confirmed: true
 } & ({ observation_status: 'enabled' | 'paused' } | { persisted_status: 'active' | 'paused' })
-export type DocumentInspectionOutput = { artifact_id: string; revision_id: string; page_status: 'text_available' | 'empty' | 'blocked'; response_text: string }
+export type DocumentInspectionOutput =
+  | { artifact_id: string; revision_id: string; page_status: 'text_available' | 'empty' | 'blocked'; response_text: string }
+  | { preview_id: string; page_status: 'partial_local_preview'; response_text: string }
+
+export function partialDocumentInspectionReceipt(output: DocumentInspectionOutput) {
+  if (output.page_status !== 'partial_local_preview') return null
+  // The ordinary Runtime turn may be projected into later conversations.
+  // Keep the actual OCR excerpt in the on-device reply and preview only.
+  return {
+    output: { preview_id: output.preview_id, page_status: output.page_status },
+    recordedResponse: '这次已在本机试读，纸面文字仍需核对。',
+  }
+}
 
 export type CameraDeviceCommand = {
   sessionId: string
