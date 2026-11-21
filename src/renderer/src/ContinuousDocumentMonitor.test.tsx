@@ -512,11 +512,13 @@ describe('continuous document monitor device lifecycle', () => {
       expect(resolve).toHaveBeenCalledExactlyOnceWith(false)
     })
 
-    it('rejects a partial readback with an unexpected inspection identity while active', async () => {
+    it.each([undefined, 'inspect-other'])('rejects a partial readback with inspection identity %s while active', async (inspectionTurnId) => {
+      const unboundText = '未确认取自这次检查的文字。'
       const preview = prepareWarmPreview().mockImplementationOnce(async (_session, _image, _generation, actionId) =>
-        ({ ...warmPreview, inspection_turn_id: 'inspect-other', inspection_response_text: '不应采用。', client_action_id: actionId }))
+        ({ ...warmPreview, text: unboundText, inspection_turn_id: inspectionTurnId, inspection_response_text: '不应采用。', client_action_id: actionId }))
       const resolve = vi.fn(), report = vi.fn()
-      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
       await advance(700)
       act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
         cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'inspect-current', resolve, report }
@@ -525,6 +527,8 @@ describe('continuous document monitor device lifecycle', () => {
       expect(preview).toHaveBeenCalledOnce()
       expect(report).not.toHaveBeenCalled()
       expect(resolve).toHaveBeenCalledExactlyOnceWith(false)
+      expect(view.queryByText(unboundText)).toBeNull()
+      expect(view.getByText(/暂未确认保存/)).toBeTruthy()
     })
 
     it.each(['movement', 'occlusion', 'darkness', 'privacy', 'child switch'] as const)('ignores a late local preview after %s', async (boundary) => {

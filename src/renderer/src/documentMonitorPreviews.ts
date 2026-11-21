@@ -249,18 +249,18 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         setCaptureStatus('reading')
         const result = await localApi.createDocumentMonitorPreview(sessionId, frozen.image, generation, actionId, controller.signal, leaseId, signature, inspectionTurnId, phase)
         if (!inScope() || controller.signal.aborted) return
+        const inspectionText = inspection && result.inspection_response_text?.trim()
+        if (inspection && (result.inspection_turn_id !== inspectionTurnId || result.client_action_id !== actionId
+            || result.generation !== generation || result.phase !== phase || !result.preview_id || !inspectionText)) {
+          throw new Error('DOCUMENT_PREVIEW_INSPECTION_RESPONSE_MISMATCH')
+        }
         attempt.state = 'saved'
         setHistory(previous => previous.scope === owner.scope ? ({
           ...previous, items: [result, ...previous.items.filter(item => item.preview_id !== result.preview_id)].slice(0, 10)
         }) : previous)
         setCaptureStatus('idle')
-        if (inspection) {
-          if (result.inspection_turn_id === inspectionTurnId && result.client_action_id === actionId
-              && result.generation === generation && result.phase === phase && result.preview_id && result.inspection_response_text?.trim()) {
-            inspection.report({ preview_id: result.preview_id, page_status: 'partial_local_preview', response_text: result.inspection_response_text })
-          } else {
-            inspection.unavailable()
-          }
+        if (inspection && inspectionText) {
+          inspection.report({ preview_id: result.preview_id, page_status: 'partial_local_preview', response_text: inspectionText })
         }
       } catch {
         if (capture.attempt && inScope() && !controller.signal.aborted) {
