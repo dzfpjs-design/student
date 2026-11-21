@@ -1632,10 +1632,11 @@ export const localApi = {
     request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-monitor/previews`, {
       cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)])
     }, false, true),
-  createDocumentMonitorPreview: (sessionId: string, imageBase64: string, generation: number, actionId: string, signal: AbortSignal): Promise<DocumentOcrPreview> =>
+  createDocumentMonitorPreview: (sessionId: string, imageBase64: string, generation: number, actionId: string, signal: AbortSignal, leaseId: string, frameSignature?: string): Promise<DocumentOcrPreview> =>
     request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-monitor/previews`, {
       method: 'POST',
-      body: JSON.stringify({ image_base64: imageBase64, expected_generation: generation, client_action_id: actionId }),
+      body: JSON.stringify({ image_base64: imageBase64, expected_generation: generation, expected_lease_id: leaseId,
+        client_action_id: actionId, frame_signature: frameSignature }),
       signal: AbortSignal.any([signal, AbortSignal.timeout(180_000)])
     }, false, true),
   documentGoalReview: (sessionId: string, rootTurnId: string, signal: AbortSignal): Promise<Record<string, unknown>> =>

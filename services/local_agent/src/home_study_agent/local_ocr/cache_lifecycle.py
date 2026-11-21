@@ -76,7 +76,8 @@ def reject_deleted(c, request_id):
         raise OcrSourceInvalid(codes.get(row[0], 'OCR_QUARANTINED'))
 
 
-def resolve_owner(c, request_id, *, session_id=None, monitor_generation=None, preview_lease_id=None):
+def resolve_owner(c, request_id, *, session_id=None, monitor_generation=None, preview_lease_id=None,
+                  preview_signature=None):
     reject_deleted(c, request_id)
     epoch = c.execute('SELECT epoch FROM ocr_cache_epoch WHERE singleton=1').fetchone()[0]
     if preview_lease_id is not None and (session_id is None or not request_id.startswith('document-preview:')):
@@ -103,6 +104,8 @@ def resolve_owner(c, request_id, *, session_id=None, monitor_generation=None, pr
     else:
         raise OcrSourceInvalid('OCR_OWNER_REQUIRED')
     key_parts = {**owner, 'preview_lease_id': preview_lease_id} if preview_lease_id is not None else owner
+    if preview_signature is not None:
+        key_parts = {**key_parts, 'preview_signature': preview_signature}
     owner['owner_key'] = sha256(json.dumps(key_parts, sort_keys=True).encode()).hexdigest()
     return owner
 

@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { createHash } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, localApi } from './api'
 import { ContinuousDocumentMonitor } from './ContinuousDocumentMonitor'
@@ -310,7 +311,8 @@ describe('continuous document monitor device lifecycle', () => {
       let view!: ReturnType<typeof render>
       await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview onSavedRevision={commit}/>) })
       await advance(3000)
-      expect(preview).toHaveBeenCalledExactlyOnceWith('session', 'dGVzdA==', 7, expect.any(String), expect.any(AbortSignal))
+      expect(preview).toHaveBeenCalledOnce()
+      expect(preview.mock.calls[0].slice(0, 6)).toEqual(['session', 'dGVzdA==', 7, expect.any(String), expect.any(AbortSignal), 'lease-document'])
       expect(view.getByLabelText('本机待核对预览').textContent).toContain('待核对题目文字')
       await advance(30_000)
       expect(preview).toHaveBeenCalledTimes(1)
@@ -321,14 +323,73 @@ describe('continuous document monitor device lifecycle', () => {
       expect(voiceCaptureReference('session', 'child').question_reference).toBeNull()
     })
 
-    it('lists a saved preview on remount and does not send a new frame for its generation', async () => {
+    it('lists a saved preview on remount and skips the same frame signature', async () => {
       const preview = prepareWarmPreview()
-      vi.mocked(localApi.documentMonitorPreviews).mockResolvedValue({ items: [warmPreview] })
+      const signature = createHash('sha256').update('test').digest('hex')
+      const subtle = Object.getOwnPropertyDescriptor(crypto, 'subtle')
+      Object.defineProperty(crypto, 'subtle', { configurable: true, value: {
+        digest: async (_algorithm: string, bytes: Uint8Array) => Uint8Array.from(createHash('sha256').update(bytes).digest()).buffer
+      } })
+      vi.mocked(localApi.documentMonitorPreviews).mockResolvedValue({ items: [{ ...warmPreview, frame_signature: signature, generation: 6 }] })
       let view!: ReturnType<typeof render>
-      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      try {
+        await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+        await advance(3000)
+        expect(view.getByLabelText('本机待核对预览').textContent).toContain('待核对题目文字')
+        expect(preview).not.toHaveBeenCalled()
+      } finally {
+        if (subtle) Object.defineProperty(crypto, 'subtle', subtle)
+        else Reflect.deleteProperty(crypto, 'subtle')
+      }
+    })
+
+    it('records a changed settled paper and new handwriting in the same observation generation', async () => {
+      const preview = prepareWarmPreview()
+      preview.mockResolvedValueOnce(warmPreview).mockResolvedValueOnce({ ...warmPreview, preview_id: 'after-writing' })
+        .mockResolvedValueOnce({ ...warmPreview, preview_id: 'turned-paper' })
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
       await advance(3000)
-      expect(view.getByLabelText('本机待核对预览').textContent).toContain('待核对题目文字')
+      expect(preview).toHaveBeenCalledTimes(1)
+      const pixels = new Uint8Array(64).fill(210)
+      pixels.fill(70, 20, 40)
+      features = { ...features, contentFingerprint: { width: 8, height: 8, pixels } }
+      await advance(21_000)
+      expect(preview).toHaveBeenCalledTimes(2)
+      features = { ...features, fingerprint: new Uint8Array(48).fill(151) }
+      await advance(21_000)
+      expect(preview).toHaveBeenCalledTimes(3)
+      expect(preview.mock.calls.map(call => call[2])).toEqual([7, 7, 7])
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+    })
+
+    it('can capture visible text after a longer stationary high-warm scene', async () => {
+      const preview = prepareWarmPreview()
+      features = { ...features, skinRatio: .35 }
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await advance(2800)
       expect(preview).not.toHaveBeenCalled()
+      await advance(1600)
+      expect(preview).toHaveBeenCalledOnce()
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+    })
+
+    it('recovers after occlusion with a changed frame and never retries an unconfirmed unchanged frame', async () => {
+      const delayed = deferred<typeof warmPreview>()
+      const preview = prepareWarmPreview().mockReturnValueOnce(delayed.promise)
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
+      await advance(3000)
+      features = { ...features, skinRatio: .84 }
+      await advance(800)
+      expect(preview.mock.calls[0][4].aborted).toBe(true)
+      await act(async () => { delayed.reject(new DOMException('cancelled', 'AbortError')) })
+      features = { ...features, skinRatio: .184 }
+      await advance(20_000)
+      expect(preview).toHaveBeenCalledTimes(1)
+      features = { ...features, fingerprint: new Uint8Array(48).fill(151) }
+      await advance(4000)
+      expect(preview).toHaveBeenCalledTimes(2)
+      await advance(30_000)
+      expect(preview).toHaveBeenCalledTimes(2)
     })
 
     it('does not start a local preview outside the homework preview scope', async () => {
@@ -378,8 +439,10 @@ describe('continuous document monitor device lifecycle', () => {
     })
 
     it('reads saved local history after a lost preview response without sending the image again', async () => {
-      const preview = prepareWarmPreview().mockRejectedValueOnce(new Error('lost response'))
-      vi.mocked(localApi.documentMonitorPreviews).mockResolvedValueOnce({ items: [] }).mockResolvedValue({ items: [warmPreview] })
+      const preview = prepareWarmPreview().mockImplementationOnce(async (_sessionId, _image, _gen, actionId) => {
+        vi.mocked(localApi.documentMonitorPreviews).mockResolvedValue({ items: [{ ...warmPreview, client_action_id: actionId }] })
+        throw new Error('lost response')
+      })
       let view!: ReturnType<typeof render>
       await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active allowLocalOcrPreview />) })
       await advance(25_000)

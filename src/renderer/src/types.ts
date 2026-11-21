@@ -1428,6 +1428,8 @@ export type DocumentOcrPreview = {
   text: string
   question_count: number
   generation?: number
+  frame_signature?: string | null
+  client_action_id?: string
 }
 
 export type DocumentMonitorStatus = {

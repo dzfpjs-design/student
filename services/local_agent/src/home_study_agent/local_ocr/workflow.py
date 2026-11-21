@@ -58,8 +58,11 @@ class LocalOcrWorkflow:
             return self._attach_pipeline(artifact, pipeline_job, scheduled)
 
     def queue_recognition(self, session_id: str, image_bytes: bytes, request_id: str,
-                          monitor_generation: int | None, *, preview_lease_id: str | None = None):
+                          monitor_generation: int | None, *, preview_lease_id: str | None = None,
+                          preview_signature: str | None = None):
         lease_scope = {'preview_lease_id': preview_lease_id} if preview_lease_id is not None else {}
+        if preview_signature is not None:
+            lease_scope['preview_signature'] = preview_signature
         return self.adapter.enqueue_ocr(image_bytes, request_id=request_id,
                                         session_id=session_id, monitor_generation=monitor_generation, **lease_scope)
 

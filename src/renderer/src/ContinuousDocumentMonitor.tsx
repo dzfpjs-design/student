@@ -959,7 +959,7 @@ export function ContinuousDocumentMonitor({
       if (allowLocalOcrPreview) {
         const lease = leaseRef.current, stream = streamRef.current
         if (frameToken !== null && frameAge !== null && frameAge < 1250 && lease && stream && serverGeneration !== undefined) {
-          observePreview({ video, features, motion: decision.motionScore, token: frameToken, generation: serverGeneration,
+          observePreview({ video, features, motion: decision.motionScore, token: frameToken, generation: serverGeneration, leaseId: lease,
             cameraKey: JSON.stringify([generation, serverGeneration, lease]),
             available: !processingRef.current && !forceCaptureRef.current && !unconfirmedCaptureRef.current,
             current: () => runningRef.current && analysisActiveRef.current && generationRef.current === generation
@@ -1177,7 +1177,7 @@ export function ContinuousDocumentMonitor({
         {localPreviewVisible && (localPreviewHistory.items.length > 0 || localPreviewStatus !== 'idle' || localPreviewHistory.unavailable) &&
           <section className="document-ocr-preview-history" aria-label="本机待核对预览">
             <strong>本机待核对预览</strong>
-            <small>只读取拍到的文字。预览可能缺题或混读，须对照原卷核对。</small>
+            <small>每条只记录拍摄当时读到的文字，可能缺题或混读。请对照原卷核对。</small>
             {localPreviewStatus === 'reading' && <small role="status">正在本机读取可见文字…</small>}
             {localPreviewStatus === 'interrupted' && <small role="status">画面变化，预览已中断。可以刷新查看已保存的预览。</small>}
             {localPreviewStatus === 'unconfirmed' && <small role="status">暂未确认保存。可以刷新查看已保存的预览。</small>}

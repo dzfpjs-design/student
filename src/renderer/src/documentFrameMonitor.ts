@@ -316,7 +316,7 @@ function hasDistributedAlignmentAnchors(value: DocumentContentFingerprint): bool
   return false
 }
 
-function contentChanged(left?: DocumentContentFingerprint | null, right?: DocumentContentFingerprint | null): boolean {
+export function contentChanged(left?: DocumentContentFingerprint | null, right?: DocumentContentFingerprint | null, minimumChangedPixels = 4): boolean {
   if (!left || !right) return false
   if (left.width !== right.width || left.height !== right.height) return true
   const { width, height } = left
@@ -339,13 +339,13 @@ function contentChanged(left?: DocumentContentFingerprint | null, right?: Docume
     // discarding a fixed border would also hide real ink there at zero shift.
     const xStart = Math.max(0, -dx), xEnd = Math.min(width, width - dx)
     const yStart = Math.max(0, -dy), yEnd = Math.min(height, height - dy)
-    for (let y = yStart; y < yEnd && changedPixels < 4; y += 1) {
+    for (let y = yStart; y < yEnd && changedPixels < minimumChangedPixels; y += 1) {
       for (let x = xStart; x < xEnd; x += 1) {
         if (Math.abs(left.pixels[y * width + x] - right.pixels[(y + dy) * width + x + dx]) >= 24
-          && ++changedPixels >= 4) break
+          && ++changedPixels >= minimumChangedPixels) break
       }
     }
-    if (changedPixels < 4) return false
+    if (changedPixels < minimumChangedPixels) return false
   }
   return true
 }
