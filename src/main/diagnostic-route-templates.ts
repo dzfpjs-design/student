@@ -283,6 +283,7 @@ export const DIAGNOSTIC_ROUTE_TEMPLATES = [
   "/v1/sessions/{session_id}/document-monitor/learning-context",
   "/v1/sessions/{session_id}/document-monitor/ocr",
   "/v1/sessions/{session_id}/document-monitor/pause",
+  "/v1/sessions/{session_id}/document-monitor/previews",
   "/v1/sessions/{session_id}/document-monitor/receipts",
   "/v1/sessions/{session_id}/document-monitor/receipts/{operation}/{client_action_id}",
   "/v1/sessions/{session_id}/document-monitor/receipts/{operation}/{client_action_id}/acknowledge",

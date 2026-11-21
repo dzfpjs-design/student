@@ -1422,6 +1422,14 @@ export type DocumentPageRevision = {
   created_at: string
 }
 
+export type DocumentOcrPreview = {
+  preview_id: string
+  created_at: string
+  text: string
+  question_count: number
+  generation?: number
+}
+
 export type DocumentMonitorStatus = {
   generation?: number
   trial_capture_policy?: { enabled: boolean; interval_seconds: number; maximum_bytes: number; local_only: true }

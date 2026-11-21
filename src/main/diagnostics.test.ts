@@ -138,6 +138,14 @@ describe('voice media observation metadata', () => {
         route_template: '/v1/pilot-test-digest/{delivery_date}/submit-email' })
     expect(sanitizeDiagnosticValue({ route_template: '/v1/children/PRIVATE_CHILD/reports' })).toEqual({})
   })
+  it('registers local document preview metrics without retaining the paper contents', () => {
+    const route_template = '/v1/sessions/{session_id}/document-monitor/previews'
+    expect(sanitizeDiagnosticValue({ route_template, method: 'POST', statusCode: 200,
+      image_base64: 'PRIVATE_IMAGE', text: 'PRIVATE_PAPER', preview_id: 'PRIVATE_PREVIEW' }))
+      .toEqual({ route_template, method: 'POST', statusCode: 200 })
+    expect(sanitizeDiagnosticValue({ route_template: '/v1/sessions/PRIVATE_SESSION/document-monitor/previews' }))
+      .toEqual({})
+  })
   it('retains actionable SMTP outcomes across reopen without recording mailbox credentials or content', async () => {
     const root = await mkdtemp(join(tmpdir(), 'hsc-smtp-diagnostics-')); roots.push(root)
     const recorder = new DiagnosticRecorder(root)

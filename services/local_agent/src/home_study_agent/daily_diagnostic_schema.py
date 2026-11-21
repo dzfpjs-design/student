@@ -378,3 +378,4 @@ ERROR_CODES = ERROR_CODES.union(("MODEL_TUTOR_EXPLANATION_CONFIG_REQUIRED",))
 
 # The legacy original route logs only its template, never report/child identifiers.
 ENUMS['route_template'] = ENUMS['route_template'].union(('/v1/parent/children/{child_id}/legacy-daily-reports/{report_id}/original', '/v1/parent/children/{child_id}/legacy-daily-reports/{report_id}/original/status'))
+ENUMS['route_template'] = ENUMS['route_template'].union(('/v1/sessions/{session_id}/document-monitor/previews',))

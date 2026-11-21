@@ -1070,6 +1070,7 @@ export function SessionWorkspace({
             active={Boolean(!privacyStopped && workspace.session.status === 'active' && workspace.session.state !== 'completed')}
             analysisActive={['homework_capture', 'plan_review', 'study'].includes(workspace.session.state)}
             allowDiagnosticFrameCapture={workspace.session.state === 'study'}
+            allowLocalOcrPreview={workspace.session.state === 'homework_capture'}
             onStatus={setDocumentCameraStatus}
             reviewCapture={mistakeReviewCapture}
             onSavedRevision={item=>{

@@ -43,7 +43,7 @@ import type {
   , VariantCandidate, SpecializedSupplyCandidate, SpecializedSupplyGap, ExamBlueprintReadiness
   , ChildModelCorrection, ChildModelCorrectionTarget, GoalProgramCycle, LongitudinalChildModel, SpecializedRoadmap
   , BehaviorReplay, BehaviorBaseline, BehaviorPersonalization, HabitExperimentList, HabitExperiment, PendingBehaviorInterventionResponse, KnowledgeGraphLearningPath
-  , DocumentMonitorStatus, DocumentMonitorState, DocumentPageRevision, AgentRuntimeStatus
+  , DocumentMonitorStatus, DocumentMonitorState, DocumentPageRevision, DocumentOcrPreview, AgentRuntimeStatus
   , ControlledContentCandidate, ControlledContentPlayback, ControlledContentRule
   , ControlledGameApproval, ControlledGameRule, ControlledGameSession
   , PetVocabularyCard, PetVocabularyReview, PetVocabularySummary
@@ -1628,6 +1628,16 @@ export const localApi = {
     }, 180_000),
   documentMonitorStatus: (sessionId: string): Promise<DocumentMonitorStatus> =>
     request(`/v1/sessions/${sessionId}/document-monitor`),
+  documentMonitorPreviews: (sessionId: string, signal: AbortSignal): Promise<{ items: DocumentOcrPreview[] }> =>
+    request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-monitor/previews`, {
+      cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)])
+    }, false, true),
+  createDocumentMonitorPreview: (sessionId: string, imageBase64: string, generation: number, actionId: string, signal: AbortSignal): Promise<DocumentOcrPreview> =>
+    request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-monitor/previews`, {
+      method: 'POST',
+      body: JSON.stringify({ image_base64: imageBase64, expected_generation: generation, client_action_id: actionId }),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(180_000)])
+    }, false, true),
   documentGoalReview: (sessionId: string, rootTurnId: string, signal: AbortSignal): Promise<Record<string, unknown>> =>
     request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-goals/${encodeURIComponent(rootTurnId)}/review`, {
       method: 'GET', cache: 'no-store', signal,

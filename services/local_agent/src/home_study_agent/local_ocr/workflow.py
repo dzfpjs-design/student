@@ -33,17 +33,10 @@ class LocalOcrWorkflow:
             if existing and (existing['child_id'] != session['child_id'] or existing['session_id'] != session_id
                              or not prior or not (prior['artifact_id'] or prior['publication_started'])):
                 raise OcrActionConflict('OCR_ARTIFACT_ACTION_CONFLICT')
-        scheduled = self.adapter.enqueue_ocr(image_bytes, request_id=f"pipeline:{client_action_id}",
-                                             session_id=session_id, monitor_generation=monitor_generation)
-        claim = self.adapter.claim_ocr(scheduled, ResourceSnapshot(cpu_percent=0, memory_mb=0))
-        if not claim or claim["task_id"] != scheduled["task"]["task_id"]:
-            raise OcrWorkflowDeferredError("OCR is queued behind a protected local task; retry without recapturing the page.")
-        try:
-            pipeline_job = self.adapter.run_ocr_claim(claim, image_bytes)
-        except OcrJobBusy as error:
-            raise OcrWorkflowDeferredError('OCR is still running; retry the same capture.') from error
-        if pipeline_job["status"] != "completed" or not pipeline_job["result"]:
-            raise OcrWorkflowFailedError(pipeline_job.get("error_code") or "LOCAL_OCR_PIPELINE_FAILED")
+        scheduled = self.queue_recognition(
+            session_id, image_bytes, f"pipeline:{client_action_id}", monitor_generation
+        )
+        pipeline_job = self.finish_recognition(scheduled, image_bytes)
         # This is intentionally the one existing persistence call: raw storage
         # consent, encryption, backups, artifact deletion, and mistake capture
         # continue to use the established application system of record.
@@ -63,6 +56,24 @@ class LocalOcrWorkflow:
                                                           '_local_pipeline': self._pipeline_details(pipeline_job, scheduled)},
                                          monitor_generation=monitor_generation, capture_kind=capture_kind)
             return self._attach_pipeline(artifact, pipeline_job, scheduled)
+
+    def queue_recognition(self, session_id: str, image_bytes: bytes, request_id: str,
+                          monitor_generation: int | None, *, preview_lease_id: str | None = None):
+        lease_scope = {'preview_lease_id': preview_lease_id} if preview_lease_id is not None else {}
+        return self.adapter.enqueue_ocr(image_bytes, request_id=request_id,
+                                        session_id=session_id, monitor_generation=monitor_generation, **lease_scope)
+
+    def finish_recognition(self, scheduled: dict, image_bytes: bytes):
+        claim = self.adapter.claim_ocr(scheduled, ResourceSnapshot(cpu_percent=0, memory_mb=0))
+        if not claim or claim["task_id"] != scheduled["task"]["task_id"]:
+            raise OcrWorkflowDeferredError("OCR is queued behind a protected local task; retry without recapturing the page.")
+        try:
+            pipeline_job = self.adapter.run_ocr_claim(claim, image_bytes)
+        except OcrJobBusy as error:
+            raise OcrWorkflowDeferredError('OCR is still running; retry the same capture.') from error
+        if pipeline_job["status"] != "completed" or not pipeline_job["result"]:
+            raise OcrWorkflowFailedError(pipeline_job.get("error_code") or "LOCAL_OCR_PIPELINE_FAILED")
+        return pipeline_job
 
     @staticmethod
     def _pipeline_details(pipeline_job, scheduled):

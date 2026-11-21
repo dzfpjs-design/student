@@ -434,6 +434,7 @@ class PrivacyLifecycleService:
                 "document_monitor_requests": self._optional_rows(connection, "document_monitor_request", child_id),
                 "document_operation_receipts": self._optional_rows(connection, "document_operation_receipt", child_id),
                 "document_operation_deliveries": self._optional_rows(connection, "document_operation_delivery", child_id),
+                "document_ocr_previews": self._optional_rows(connection, "document_ocr_preview", child_id),
                 "document_page_revisions": self._optional_rows(connection, "document_page_revision", child_id),
                 "observed_questions": self._optional_rows(connection, "observed_question", child_id),
                 "observed_question_occurrences": self._optional_rows(connection, "observed_question_occurrence", child_id),
@@ -637,6 +638,10 @@ class PrivacyLifecycleService:
                 "document_monitor_request": self._optional_count(connection, "document_monitor_request", child_id),
                 "document_operation_receipt": self._optional_count(connection, "document_operation_receipt", child_id),
                 "document_operation_delivery": self._optional_count(connection, "document_operation_delivery", child_id),
+                "document_ocr_previews": self._optional_count(connection, "document_ocr_preview", child_id),
+                "document_ocr_preview_jobs": connection.execute("""SELECT COUNT(*) FROM ocr_job
+                    WHERE child_id=? AND request_id LIKE 'document-preview:%'""", (child_id,)).fetchone()[0]
+                    if self._table_exists(connection, "ocr_job") else 0,
                 "learning_session_closure": self._optional_count(connection, "learning_session_closure", child_id),
                 "agent_proactive_prompts": self._optional_count(connection, "agent_proactive_prompt", child_id),
                 "safety_events": self._count(connection, "child_safety_event", child_id),
@@ -1133,6 +1138,10 @@ class PrivacyLifecycleService:
                 counts.update(delete_review_scope(connection, child_id))
                 from .local_ocr.cache_lifecycle import delete_scope as delete_ocr_cache_scope
                 counts.update(delete_ocr_cache_scope(connection, child_id))
+                if self._table_exists(connection, 'document_ocr_preview'):
+                    counts['document_ocr_preview'] = self._delete(
+                        connection, 'DELETE FROM document_ocr_preview WHERE child_id=?', child_id
+                    )
                 if self._table_exists(connection, 'voice_capture_binding'):
                     capture_columns = {column[1] for column in connection.execute('PRAGMA table_info(voice_capture_binding)')}
                     reference_reset = ''.join(column + '=NULL,' for column in
@@ -1955,7 +1964,8 @@ class PrivacyLifecycleService:
             "all_history": tuple(preview.keys()),
         }[job["scope"]]
         if job["scope"] in {"learning", "media"}:
-            keys += ("companion_activity_outcomes", "learning_input_revisions", "ocr_reviews")
+            keys += ("companion_activity_outcomes", "learning_input_revisions", "ocr_reviews",
+                     "document_ocr_previews", "document_ocr_preview_jobs")
         if job["scope"] in {"learning", "media", "reports"}:
             keys += ("daily_observation_report_sources",)
         if job['scope'] == 'reports':

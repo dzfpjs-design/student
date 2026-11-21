@@ -24,13 +24,15 @@ class CpuScheduledMediaAdapter:
         self.database = database
         self.ocr.bind_database(database)
 
-    def enqueue_ocr(self, image_bytes: bytes, request_id: str | None = None, *, session_id=None, monitor_generation=None) -> dict:
+    def enqueue_ocr(self, image_bytes: bytes, request_id: str | None = None, *, session_id=None,
+                    monitor_generation=None, preview_lease_id=None) -> dict:
         owner = None
         if self.database is not None:
             if not request_id:
                 raise OcrSourceInvalid('OCR_ACTION_REQUIRED')
             with self.database.connect() as c:
-                owner = resolve_owner(c, request_id, session_id=session_id, monitor_generation=monitor_generation)
+                owner = resolve_owner(c, request_id, session_id=session_id, monitor_generation=monitor_generation,
+                                      preview_lease_id=preview_lease_id)
         job = self.ocr.enqueue(image_bytes, request_id=request_id, preferred_route="cpu", **({'owner': owner} if owner else {}))
         task = self.queue.enqueue("ocr", {"ocr_job_id": job["job_id"], "image_hash": sha256(image_bytes).hexdigest()}, task_id=f"ocr:{job['job_id']}")
         return {"job": job, "task": task, "behavior_fps_cap": self.queue.behavior_fps_cap()}

@@ -10,6 +10,7 @@ import { documentCameraReservedForCapture, registerDocumentMonitorHandoff } from
 import { selectOcrTextCandidate } from './tutorOcrEvidence'
 import { publishVoiceDocumentCapture, releaseVoiceDocumentCapture } from './voiceCaptureContext'
 import { DocumentVisibilityChannel } from './documentVisibilityChannel'
+import { useDocumentMonitorPreviews } from './documentMonitorPreviews'
 import { mistakeLearningApi } from './mistakeLearningApi'
 import type { RefObject } from 'react'
 
@@ -67,6 +68,7 @@ export function ContinuousDocumentMonitor({
   active,
   analysisActive = true,
   allowDiagnosticFrameCapture = true,
+  allowLocalOcrPreview = false,
   onReviewRevision, onSavedRevision, onStatus, reviewCapture
 }: {
   sessionId: string
@@ -74,6 +76,7 @@ export function ContinuousDocumentMonitor({
   active: boolean
   analysisActive?: boolean
   allowDiagnosticFrameCapture?: boolean
+  allowLocalOcrPreview?: boolean
   onReviewRevision?: (revision: DocumentPageRevision) => 'mistake' | 'tutor' | void
   onSavedRevision?: (revision: DocumentPageRevision) => void
   onStatus?: (status: RuntimeStatus) => void
@@ -139,6 +142,9 @@ export function ContinuousDocumentMonitor({
   const reviewScopeRef = useRef({ sessionId, childId })
   useLayoutEffect(() => { reviewScopeRef.current = { sessionId, childId } }, [sessionId, childId])
   const shouldRun = active && !manualPaused
+  const { visible: localPreviewVisible, history: localPreviewHistory, captureStatus: localPreviewStatus,
+    sample: observePreview, cancelFramePreview, refresh: refreshLocalPreviews } =
+    useDocumentMonitorPreviews(sessionId, childId, allowLocalOcrPreview && shouldRun && analysisActive)
   const releaseDocumentCapture = useCallback((): void => {
     const own = documentCaptureRef.current
     if (own.owner && childId) releaseVoiceDocumentCapture(sessionId, childId, own.owner)
@@ -277,6 +283,7 @@ export function ContinuousDocumentMonitor({
   }, [])
 
   const release = useCallback((reason: string): Promise<boolean> => {
+    cancelFramePreview()
     lifecycleEpochRef.current += 1
     freshnessEpochRef.current += 1
     freshnessInvalidRef.current = true
@@ -315,7 +322,7 @@ export function ContinuousDocumentMonitor({
     pendingInspectRef.current?.(false)
     pendingInspectRef.current = null
     return releasePendingRef.current
-  }, [releaseDocumentCapture, releaseLeases])
+  }, [cancelFramePreview, releaseDocumentCapture, releaseLeases])
 
   const persistEvent = useCallback((decision: DocumentFrameDecision, features: DocumentFrameFeatures): void => {
     const now = Date.now()
@@ -911,20 +918,27 @@ export function ContinuousDocumentMonitor({
         setMessage('高拍仪没有持续返回画面，正在自动重新连接。')
         return
       }
-      if (!usable || !frame.frame_confirmed || !analysisActive) { visibilityRef.current?.pause(); releaseDocumentCapture(); return }
+      if (!usable || !frame.frame_confirmed || !analysisActive) {
+        cancelFramePreview()
+        visibilityRef.current?.pause()
+        releaseDocumentCapture()
+        return
+      }
       const canvas = document.createElement('canvas')
       canvas.width = 320
       canvas.height = Math.max(180, Math.round(video.videoHeight / video.videoWidth * canvas.width))
       const context = canvas.getContext('2d', { willReadFrequently: true })
-      if (!context) { visibilityRef.current?.pause(); return }
+      if (!context) { cancelFramePreview(); visibilityRef.current?.pause(); return }
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
       const features = extractDocumentFrameFeatures(context.getImageData(0, 0, canvas.width, canvas.height))
-      const decision = monitorRef.current.observeFreshFrame(features, Date.now(), deviceFrameClock.current.frameToken())
+      const frameToken = deviceFrameClock.current.frameToken()
+      const decision = monitorRef.current.observeFreshFrame(features, Date.now(), frameToken)
       if (!decision) {
         // Until a new decoded frame arrives, neither stability nor the
         // authority to use a previous page can advance.
         visibilityRef.current?.pause()
         releaseDocumentCapture()
+        if ((deviceFrameClock.current.frameAgeMs() ?? Infinity) >= 1250) cancelFramePreview()
         if ((deviceFrameClock.current.frameAgeMs() ?? Infinity) >= 1500 && !freshnessInvalidRef.current) {
           freshnessInvalidRef.current = true
           lifecycleEpochRef.current += 1
@@ -942,6 +956,17 @@ export function ContinuousDocumentMonitor({
       const matched = monitorRef.current.matchesCapturedPage(features)
       const page = documentCaptureRef.current.page
       const serverGeneration = monitorGenerationRef.current
+      if (allowLocalOcrPreview) {
+        const lease = leaseRef.current, stream = streamRef.current
+        if (frameToken !== null && frameAge !== null && frameAge < 1250 && lease && stream && serverGeneration !== undefined) {
+          observePreview({ video, features, motion: decision.motionScore, token: frameToken, generation: serverGeneration,
+            cameraKey: JSON.stringify([generation, serverGeneration, lease]),
+            available: !processingRef.current && !forceCaptureRef.current && !unconfirmedCaptureRef.current,
+            current: () => runningRef.current && analysisActiveRef.current && generationRef.current === generation
+              && streamRef.current === stream && leaseRef.current === lease && monitorGenerationRef.current === serverGeneration
+              && reviewScopeRef.current.sessionId === sessionId && reviewScopeRef.current.childId === childId })
+        } else cancelFramePreview()
+      }
       let frameCount: number | undefined
       try { frameCount = video.getVideoPlaybackQuality?.().totalVideoFrames } catch { /* no trustworthy frame counter */ }
       if (page && childId && page.child_id === childId && page.session_id === sessionId
@@ -990,7 +1015,7 @@ export function ContinuousDocumentMonitor({
       }
     }, 500)
     return () => window.clearInterval(timer)
-  }, [analysisActive, analysisBlocked, captureStablePage, childId, persistEvent, release, releaseDocumentCapture, retainTrialFrame, sessionId, shouldRun, status])
+  }, [allowLocalOcrPreview, analysisActive, analysisBlocked, cancelFramePreview, captureStablePage, childId, observePreview, persistEvent, release, releaseDocumentCapture, retainTrialFrame, sessionId, shouldRun, status])
 
   useEffect(() => {
     if (!shouldRun || status !== 'active') return
@@ -1149,6 +1174,21 @@ export function ContinuousDocumentMonitor({
         <small>{allowDiagnosticFrameCapture ? '原视频不上传；合格页内图按配置解析，识别内容仍需核对。' : '当前仅在本机识别页面，不保留原始画面或上传云端；识别内容仍需核对。'}</small>
         {revision?.extracted_text && <p>{revision.extracted_text.slice(0, 180)}</p>}
         {revision && <small>第{revision.revision_index}版 · 识别置信度 {Math.round(revision.ocr_confidence * 100)}%</small>}
+        {localPreviewVisible && (localPreviewHistory.items.length > 0 || localPreviewStatus !== 'idle' || localPreviewHistory.unavailable) &&
+          <section className="document-ocr-preview-history" aria-label="本机待核对预览">
+            <strong>本机待核对预览</strong>
+            <small>只读取拍到的文字。预览可能缺题或混读，须对照原卷核对。</small>
+            {localPreviewStatus === 'reading' && <small role="status">正在本机读取可见文字…</small>}
+            {localPreviewStatus === 'interrupted' && <small role="status">画面变化，预览已中断。可以刷新查看已保存的预览。</small>}
+            {localPreviewStatus === 'unconfirmed' && <small role="status">暂未确认保存。可以刷新查看已保存的预览。</small>}
+            {localPreviewHistory.unavailable && <small role="status">暂时读不到已保存的预览。</small>}
+            {(localPreviewHistory.unavailable || localPreviewStatus === 'unconfirmed' || localPreviewStatus === 'interrupted') &&
+              <button className="secondary-button" onClick={refreshLocalPreviews}>刷新预览记录</button>}
+            {localPreviewHistory.items.map(item => <details key={item.preview_id}>
+              <summary><time dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time> · {item.question_count} 个题目候选</summary>
+              <div className="document-ocr-preview-text">{item.text || '这次未读出可核对的文字。'}</div>
+            </details>)}
+          </section>}
         {cloudFeedback && <div aria-label="云端页面解析">
           <strong>{cloudFeedback.blocked ? '云端解析受阻' : '云端文字待核对'}</strong>
           <p>{cloudFeedback.message}</p>

@@ -527,6 +527,10 @@ select:focus, input:focus, textarea:focus { border-color: #397aa5; box-shadow: 0
 .continuous-document-body b { font-size: 12px; }
 .continuous-document-body p { max-height: 46px; overflow: hidden; margin: 0; color: #45515e; font-size: 11px; line-height: 1.45; }
 .continuous-document-body small { color: #68717d; font-size: 10px; }
+.document-ocr-preview-history { display: grid; gap: 6px; margin: 4px 0; min-width: 0; }
+.document-ocr-preview-history summary { cursor: pointer; font-size: 12px; }
+.document-ocr-preview-history button { justify-self: start; }
+.document-ocr-preview-text { max-height: 200px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
 .continuous-document-actions { display: flex !important; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .continuous-document-monitor.is-paused video, .continuous-document-monitor.is-inactive video, .continuous-document-monitor.is-unavailable video { opacity: .45; }
 .device-live-video-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #20242a; }

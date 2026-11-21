@@ -163,7 +163,8 @@ from .knowledge_graph.service import KnowledgeGraphService
 from .knowledge_graph.catalog_bootstrap import CatalogGraphBootstrapper
 from .local_media_ai import InvalidMediaInputError, LocalCapabilityNotReadyError, LocalMediaAI, TranscriptionActionConflictError
 from .local_ocr import CpuResourceQueue, CpuScheduledMediaAdapter, InvalidOcrReviewValueError, OcrReviewActionConflictError, LocalOcrService, LocalOcrWorkflow, OcrReviewQueue, build_local_formula_provider
-from .local_ocr.workflow import OcrWorkflowFailedError
+from .local_ocr.workflow import OcrWorkflowDeferredError, OcrWorkflowFailedError
+from .document_ocr_preview import DocumentOcrPreviewService
 from .behavior_model import BehaviorAppIntegration, BehaviorModelService
 from .tutor_ocr_confirmation import OcrTutorConfirmationError, OcrTutorConfirmationService
 from .tutor_request_reservation import (
@@ -964,6 +965,12 @@ class OcrRequest(BaseModel):
     capture_kind: Literal['single_frame', 'multiframe_candidate'] = 'single_frame'
 
 
+class DocumentOcrPreviewRequest(BaseModel):
+    image_base64: str = Field(min_length=32, max_length=24_000_000)
+    client_action_id: str = Field(min_length=8, max_length=128)
+    expected_generation: int = Field(strict=True, ge=0)
+
+
 class OcrReviewActionRequest(BaseModel):
     child_id: str = Field(min_length=3, max_length=120)
     client_action_id: str = Field(min_length=8, max_length=128)
@@ -1544,6 +1551,7 @@ def _create_app_without_money_owner(
     observation_engine = ObservationEngine(database)
     observation_calibration = ObservationCalibrationService(database, observation_engine)
     document_monitoring = DocumentMonitoringService(database)
+    document_ocr_preview = DocumentOcrPreviewService(database, ocr_workflow)
     from .document_trial_capture import DocumentTrialCaptureService, install_trial_capture_routes
     document_trial_capture = DocumentTrialCaptureService(database, media_ai, document_monitoring, resolved_settings)
     answer_attempt_ledger = AnswerAttemptLedger(database)
@@ -6355,6 +6363,37 @@ def _create_app_without_money_owner(
         behavior_integration.ocr_completed(session_id, artifact, payload.client_action_id)
         return artifact
 
+    @application.get("/v1/sessions/{session_id}/document-monitor/previews")
+    async def list_document_ocr_previews(session_id: str) -> dict:
+        try:
+            return await run_local(document_ocr_preview.latest, session_id)
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail={'code': str(error)}) from error
+
+    @application.post("/v1/sessions/{session_id}/document-monitor/previews")
+    async def preview_document_ocr(session_id: str, payload: DocumentOcrPreviewRequest) -> dict:
+        nonlocal document_ocr_lock
+        if document_ocr_lock is None:
+            document_ocr_lock = asyncio.Lock()
+        if document_ocr_lock.locked():
+            raise HTTPException(status_code=409, detail={'code': 'DOCUMENT_OCR_BUSY'})
+        try:
+            image = base64.b64decode(payload.image_base64, validate=True)
+        except (binascii.Error, ValueError) as error:
+            raise InvalidMediaInputError("图片编码无效。") from error
+        async with document_ocr_lock:
+            try:
+                return await run_local(document_ocr_preview.create, session_id, image, payload.client_action_id,
+                                       payload.expected_generation)
+            except OcrWorkflowDeferredError as error:
+                raise HTTPException(status_code=409, detail={'code': 'DOCUMENT_OCR_BUSY'}) from error
+            except OcrWorkflowFailedError as error:
+                raise HTTPException(status_code=503, detail={'code': 'DOCUMENT_PREVIEW_OCR_FAILED'}) from error
+            except (OcrActionConflict, OcrSourceInvalid):
+                raise
+            except ValueError as error:
+                raise HTTPException(status_code=409, detail={'code': str(error)}) from error
+
     @application.post("/v1/sessions/{session_id}/document-monitor/ocr")
     async def run_document_monitor_ocr(session_id: str, payload: OcrRequest) -> dict:
         nonlocal document_ocr_lock
@@ -8488,6 +8527,16 @@ def _create_app_without_money_owner(
     register_document_goal(application, database, agent_orchestrator.agent_runtime)
     from .parent_restore_recovery_http import RestoreRecoveryDispatch
     application.add_middleware(RestoreRecoveryDispatch,database=database,settings=resolved_settings,pin_model=ParentPinRequest,original_auth=parent_auth,clear=clear_restore_runtime,normal_state=application.state)
+
+    @application.middleware('http')
+    async def no_store_document_preview(request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith('/v1/sessions/') and path.endswith('/document-monitor/previews'):
+            response.headers['Cache-Control'] = 'no-store'
+            response.headers['Pragma'] = 'no-cache'
+        return response
+
     return application
 
 
