@@ -966,12 +966,16 @@ class OcrRequest(BaseModel):
 
 
 class DocumentOcrPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     image_base64: str = Field(min_length=32, max_length=24_000_000)
     client_action_id: str = Field(min_length=8, max_length=128)
     expected_generation: int = Field(strict=True, ge=0)
     expected_lease_id: str = Field(min_length=1, max_length=128)
     frame_signature: Optional[str] = Field(default=None, min_length=64, max_length=64, pattern='^[0-9a-f]{64}$')
     inspection_turn_id: Optional[str] = Field(default=None, min_length=1, max_length=128)
+    page_token: Optional[str] = Field(default=None, min_length=36, max_length=36,
+        pattern='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
     expected_phase: Optional[Literal["homework_capture", "plan_review", "study"]] = None
 
 
@@ -6389,7 +6393,7 @@ def _create_app_without_money_owner(
             try:
                 return await run_local(document_ocr_preview.create, session_id, image, payload.client_action_id,
                                        payload.expected_generation, payload.expected_lease_id, payload.frame_signature,
-                                       payload.inspection_turn_id, payload.expected_phase)
+                                       payload.inspection_turn_id, payload.expected_phase, payload.page_token)
             except OcrWorkflowDeferredError as error:
                 raise HTTPException(status_code=409, detail={'code': 'DOCUMENT_OCR_BUSY'}) from error
             except OcrWorkflowFailedError as error:

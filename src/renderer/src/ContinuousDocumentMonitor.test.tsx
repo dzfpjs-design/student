@@ -107,7 +107,7 @@ describe('continuous document monitor device lifecycle', () => {
       },
     })
     expect(view.getByText(/持续本地监控已开启/)).toBeTruthy()
-    expect(view.getByText('多帧遮挡补全暂不可用，当前使用单帧识别。')).toBeTruthy()
+    expect(view.getByText(/同页文字可跨多次采样累计为待核对草稿/)).toBeTruthy()
 
     view.rerender(<ContinuousDocumentMonitor sessionId="session" active={false} />)
     await waitFor(() => expect(localApi.releaseDeviceLease).toHaveBeenCalledWith('lease-document', 'document_monitor_yielded', expect.any(AbortSignal)))
@@ -302,6 +302,127 @@ describe('continuous document monitor device lifecycle', () => {
       return vi.spyOn(localApi, 'createDocumentMonitorPreview').mockResolvedValue(warmPreview)
     }
 
+    it('renders complementary saved page reads without granting a formal page', async () => {
+      const preview = prepareWarmPreview().mockImplementationOnce(async (...args) => ({ ...warmPreview,
+        page_draft: { page_token: args[9]!, anchor_preview_id: 'first', merged: true, frame_count: 2, reason: 'matched',
+          lines: ['前帧读到第一道题', '当前读到第二道题'].map((text, index) => ({ text, status: index ? 'current' as const : 'historical' as const,
+            conflict: false, preview_id: `source-${index}`, frame_sha256: 'a'.repeat(64), confidence: .96,
+            original_polygon: [[0, 0], [1, 0], [1, .1], [0, .1]], canonical_polygon: [[0, 0], [1, 0], [1, .1], [0, .1]] })) } }))
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(3000)
+      expect(preview.mock.calls[0][9]).toMatch(/^[0-9a-f-]{36}$/)
+      expect(view.getByText('前帧读到第一道题')).toBeTruthy()
+      expect(view.getByText('当前读到第二道题')).toBeTruthy()
+      expect(view.getByText('先前画面 ·')).toBeTruthy()
+      expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+      expect(voiceCaptureReference('session', 'child').question_reference).toBeNull()
+    })
+
+    it('rejects a draft returned for a different physical page group', async () => {
+      prepareWarmPreview().mockResolvedValueOnce({ ...warmPreview, text: '错误页面不可显示', page_draft: {
+        page_token: 'wrong-page', anchor_preview_id: 'other', merged: false, frame_count: 1, reason: 'unmatched', lines: []
+      } })
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(3000)
+      expect(view.queryByText('错误页面不可显示')).toBeNull()
+      expect(view.getByText(/暂未确认保存/)).toBeTruthy()
+    })
+
+    it('retains readable single-frame text when its geometry cannot be accumulated', async () => {
+      prepareWarmPreview().mockImplementationOnce(async (...args) => ({ ...warmPreview, page_draft: {
+        page_token: args[9]!, anchor_preview_id: 'first', merged: false, frame_count: 1, reason: 'geometry_unavailable', lines: []
+      } }))
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(3000)
+      expect(view.getByText('待核对题目文字')).toBeTruthy()
+      expect(view.getByText(/单独保留，未参与跨帧累计/)).toBeTruthy()
+    })
+
+    it('starts a different page group after sustained black video then resumes reading', async () => {
+      const preview = prepareWarmPreview()
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(3000)
+      const firstToken = preview.mock.calls[0][9], lit = { ...features }
+      features = { ...features, brightness: 0, contrast: 0, paperRatio: 0 }
+      await advance(2500)
+      features = lit
+      await advance(3500)
+      expect(preview).toHaveBeenCalledTimes(2)
+      expect(preview.mock.calls[1][9]).not.toBe(firstToken)
+    })
+
+    it('keeps a warm voice inspection alive when the aborted automatic reader still owns the server lock', async () => {
+      const preview = prepareWarmPreview().mockImplementationOnce(async (...args) => new Promise((_resolve, reject) => {
+        args[4].addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+      })).mockRejectedValueOnce(new ApiError('DOCUMENT_OCR_BUSY', 409, 'DOCUMENT_OCR_BUSY'))
+        .mockImplementationOnce(async (...args) => ({ ...warmPreview, client_action_id: args[3], inspection_turn_id: args[7],
+          inspection_response_text: '本次已重新读取，请核对当前题目。' }))
+      const resolve = vi.fn(), report = vi.fn()
+      await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(3000)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'warm-busy', resolve, report }
+      })))
+      await advance(3000)
+      expect(preview).toHaveBeenCalledTimes(2)
+      expect(resolve).not.toHaveBeenCalled()
+      expect(report).not.toHaveBeenCalled()
+      await advance(8000)
+      expect(preview).toHaveBeenCalledTimes(3)
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(true)
+      expect(report).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ page_status: 'partial_local_preview' }))
+    })
+
+    it('explains sustained near-black decoded frames and automatically recognizes the page when light returns', async () => {
+      const preview = prepareWarmPreview()
+      const litPage = { ...features, skinRatio: .01 }
+      features = { ...features, brightness: .3, contrast: .5, paperRatio: 0, skinRatio: 0 }
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(600)
+      expect(view.queryByText(/高拍仪画面接近全黑/)).toBeNull()
+      const resolve = vi.fn()
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'inspect-black', resolve }
+      })))
+      await advance(9000)
+      expect(view.getByText(/高拍仪画面接近全黑.*增加桌面照明/)).toBeTruthy()
+      expect(view.queryByText('等待放好书本或作业纸')).toBeNull()
+      expect(view.queryByText('等待页面稳定')).toBeNull()
+      expect((view.getByRole('button', { name: '检查当前页' }) as HTMLButtonElement).disabled).toBe(true)
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(false)
+      expect(localApi.runDocumentMonitorOcr).not.toHaveBeenCalled()
+      expect(preview).not.toHaveBeenCalled()
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
+      expect(localApi.recordDocumentMonitorEvent).toHaveBeenCalledWith('session', 'no_page', expect.any(Number), expect.objectContaining({ brightness: .3 }))
+      expect(intervention).not.toHaveBeenCalled()
+
+      features = litPage
+      await advance(3000)
+      expect(view.queryByText(/高拍仪画面接近全黑/)).toBeNull()
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
+      expect(localApi.recordDocumentMonitorRevision).toHaveBeenCalledTimes(1)
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
+    })
+
+    it.each(['brief black frame', 'dark lettering with contrast', 'ordinary hand occlusion'] as const)('avoids a near-black alert for %s', async (scenario) => {
+      const original = features
+      features = scenario === 'brief black frame' ? { ...features, brightness: .5, contrast: 2, paperRatio: 0 }
+        : scenario === 'dark lettering with contrast' ? { ...features, brightness: 7, contrast: 20 }
+          : { ...features, brightness: 50, contrast: 4, skinRatio: .37 }
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" active />) })
+      if (scenario === 'brief black frame') {
+        await advance(600)
+        features = original
+      }
+      await advance(2500)
+      expect(view.queryByText(/高拍仪画面接近全黑/)).toBeNull()
+    })
+
     it('saves a single local review preview during stationary warm-color flicker without creating a formal revision', async () => {
       const preview = prepareWarmPreview()
       let samples = 0
@@ -444,7 +565,7 @@ describe('continuous document monitor device lifecycle', () => {
       await advance(2100)
       expect(decisions.mock.results.some(result => result.value?.state === 'stable' && result.value.captureRecommended)).toBe(true)
       expect(preview).toHaveBeenCalledExactlyOnceWith('session', expect.any(String), 7, expect.any(String), expect.any(AbortSignal),
-        'lease-document', expect.any(String), 'inspect-warm-to-clear', 'homework_capture')
+        'lease-document', expect.any(String), 'inspect-warm-to-clear', 'homework_capture', expect.any(String))
       expect(localApi.runDocumentMonitorOcr).not.toHaveBeenCalled()
       expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
       expect(report).not.toHaveBeenCalled()
@@ -1593,6 +1714,20 @@ describe('continuous document monitor device lifecycle', () => {
       expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(1)
       await advance(500)
       expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(2)
+      expect(handled).toHaveBeenCalledExactlyOnceWith(true)
+    })
+
+    it('keeps the same requested inspection pending while a prior preview owns OCR', async () => {
+      const view = await mount()
+      await advance(2000)
+      vi.mocked(localApi.runDocumentMonitorOcr).mockRejectedValueOnce(new ApiError('DOCUMENT_OCR_BUSY', 409, 'DOCUMENT_OCR_BUSY'))
+      const handled = vi.fn()
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', { detail: { sessionId: 'session', action: 'inspect', resolve: handled } })))
+      await advance(15_000)
+      expect(view.getByText(/正在完成上一帧读取/)).toBeTruthy()
+      expect(handled).not.toHaveBeenCalled()
+      await advance(5500)
+      expect(localApi.runDocumentMonitorOcr).toHaveBeenCalledTimes(3)
       expect(handled).toHaveBeenCalledExactlyOnceWith(true)
     })
 

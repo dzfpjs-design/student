@@ -1,8 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { localApi } from './api'
+import { ApiError, localApi } from './api'
 import type { DocumentInspectionOutput } from './cameraDeviceRuntime'
 import { contentChanged, extractDocumentFrameFeatures, type DocumentFrameFeatures } from './documentFrameMonitor'
 import type { DocumentOcrPreview, DocumentOcrPreviewPhase } from './types'
+import { DocumentPreviewPageEpoch } from './documentPreviewPageEpoch'
 
 const sampleCount = 4
 const minimumSpan = 1_500
@@ -21,6 +22,8 @@ type PreviewSample = {
   cameraKey: string
   current: () => boolean
   available: boolean
+  allowClear?: boolean
+  pageChanged?: boolean
   inspection?: {
     turnId: string
     report: (result: Extract<DocumentInspectionOutput, { page_status: 'partial_local_preview' }>) => void
@@ -126,6 +129,9 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
   const activeRead = useRef<AbortController | null>(null)
   const pending = useRef<PendingPreview | null>(null)
   const attempts = useRef<PreviewAttempt | null>(null)
+  const pageEpoch = useRef(new DocumentPreviewPageEpoch())
+  const pageTokenRef = useRef<string | undefined>(undefined)
+  const busyRetryAt = useRef(0)
   const [history, setHistory] = useState(emptyHistory)
   const [captureStatus, setCaptureStatus] = useState<CaptureStatus>('idle')
 
@@ -140,6 +146,14 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
       }
     }
   }, [])
+
+  const invalidatePage = useCallback(() => {
+    cancelFramePreview()
+    pageEpoch.current.reset()
+    pageTokenRef.current = undefined
+    attempts.current = null
+    busyRetryAt.current = 0
+  }, [cancelFramePreview])
 
   const refresh = useCallback(() => {
     const owner = ownerRef.current
@@ -177,6 +191,8 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     const discard = () => {
       if (ownerRef.current !== owner) return
       ownerRef.current = null
+      pageEpoch.current.reset()
+      pageTokenRef.current = undefined
       activeRead.current?.abort()
       cancelFramePreview()
       attempts.current = null
@@ -193,10 +209,20 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     }
   }, [cancelFramePreview, refresh, scope])
 
-  const sample = useCallback(({ video, features, motion, token, generation, leaseId, cameraKey, current, available, inspection }: PreviewSample) => {
+  const sample = useCallback(({ video, features, motion, token, generation, leaseId, cameraKey, current, available, inspection, allowClear, pageChanged }: PreviewSample) => {
     const owner = ownerRef.current
-    const warmth = previewWarmth(features, motion, Boolean(inspection))
-    if (!owner || owner.scope !== scope || !current() || !warmth) {
+    if (!owner || owner.scope !== scope || !current()) {
+      cancelFramePreview()
+      return
+    }
+    const pageToken = pageEpoch.current.observe(cameraKey, token, Date.now(), features, pageChanged)
+    if (pageTokenRef.current !== pageToken) {
+      cancelFramePreview()
+      attempts.current = null
+      pageTokenRef.current = pageToken
+    }
+    const warmth = previewWarmth(features, motion, Boolean(inspection) || allowClear)
+    if (!warmth) {
       cancelFramePreview()
       return
     }
@@ -206,6 +232,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         || inProgress.warmth !== warmth || coarseDistance(features.fingerprint, inProgress.frame.fingerprint) > maximumMotion
         || (inspection && previewContentChanged(inProgress.frame, features)))) cancelFramePreview()
     const now = Date.now()
+    if (now < busyRetryAt.current) return
     const last = attempts.current?.scope === scope ? attempts.current : null
     const changedSinceAttempt = !!inspection || !last || previewContentChanged(last.frame, features)
     const previous = windowRef.current
@@ -233,13 +260,14 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     if (!inspection && last && !previewContentChanged(last.frame, frozen.features)) return
     const controller = new AbortController()
     const capture: PendingPreview = { controller, cameraKey, inspectionTurnId, warmth, frame: frozen.features }
-    const inScope = () => ownerRef.current === owner && pending.current === capture && current()
+    const inScope = () => ownerRef.current === owner && pending.current === capture && pageTokenRef.current === pageToken && current()
     pending.current = capture
     void (async () => {
       try {
         const signature = await frameSignature(frozen.image)
         if (!inScope() || controller.signal.aborted) return
-        if (!inspection && !last && signature && history.items.some(item => item.frame_signature === signature)) {
+        if (!inspection && !last && signature && history.items.some(item => item.frame_signature === signature
+            && (!item.page_draft || item.page_draft.page_token === pageToken))) {
           attempts.current = { scope: owner.scope, frame: frozen.features, at: 0, state: 'saved' }
           return
         }
@@ -247,8 +275,9 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         const attempt: PreviewAttempt = { scope: owner.scope, actionId, inspectionTurnId, frame: frozen.features, at: now, state: 'pending' }
         capture.attempt = attempts.current = attempt
         setCaptureStatus('reading')
-        const result = await localApi.createDocumentMonitorPreview(sessionId, frozen.image, generation, actionId, controller.signal, leaseId, signature, inspectionTurnId, phase)
+        const result = await localApi.createDocumentMonitorPreview(sessionId, frozen.image, generation, actionId, controller.signal, leaseId, signature, inspectionTurnId, phase, pageToken)
         if (!inScope() || controller.signal.aborted) return
+        if (result.page_draft && result.page_draft.page_token !== pageToken) throw new Error('DOCUMENT_PREVIEW_PAGE_RESPONSE_MISMATCH')
         const inspectionText = inspection && result.inspection_response_text?.trim()
         if (inspection && (result.inspection_turn_id !== inspectionTurnId || result.client_action_id !== actionId
             || result.generation !== generation || result.phase !== phase || !result.preview_id || !inspectionText)) {
@@ -262,8 +291,19 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         if (inspection && inspectionText) {
           inspection.report({ preview_id: result.preview_id, page_status: 'partial_local_preview', response_text: inspectionText })
         }
-      } catch {
+      } catch (error) {
         if (capture.attempt && inScope() && !controller.signal.aborted) {
+          if (error instanceof ApiError && error.status === 409
+              && (error.code === 'DOCUMENT_OCR_BUSY' || error.message === 'DOCUMENT_OCR_BUSY')) {
+            // This response confirms no preview was committed. Keep the named
+            // inspection alive and retry from new pixels after the old OCR
+            // releases its server lock; unknown outcomes must not use this path.
+            attempts.current = null
+            windowRef.current = null
+            busyRetryAt.current = Date.now() + (inspection ? 5_000 : minimumAttemptInterval)
+            setCaptureStatus(inspection ? 'reading' : 'idle')
+            return
+          }
           capture.attempt.state = 'unconfirmed'
           setCaptureStatus('unconfirmed')
           // The POST may have saved before the response was lost. Recover by
@@ -286,6 +326,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     captureStatus,
     sample,
     cancelFramePreview,
+    invalidatePage,
     refresh
   }
 }

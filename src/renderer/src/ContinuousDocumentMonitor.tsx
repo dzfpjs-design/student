@@ -11,12 +11,16 @@ import { selectOcrTextCandidate } from './tutorOcrEvidence'
 import { publishVoiceDocumentCapture, releaseVoiceDocumentCapture } from './voiceCaptureContext'
 import { DocumentVisibilityChannel } from './documentVisibilityChannel'
 import { isWarmLocalPreviewCandidate, useDocumentMonitorPreviews } from './documentMonitorPreviews'
+import { DocumentPageDraft } from './DocumentPageDraft'
 import { mistakeLearningApi } from './mistakeLearningApi'
 import type { RefObject } from 'react'
 
 type RuntimeStatus = 'inactive' | 'starting' | 'active' | 'paused' | 'unavailable'
 const DOCUMENT_INSPECTION_WATCHDOG_MS = 180_000
 const DEVICE_LEASE_RELEASE_TIMEOUT_MS = 5_000
+const BLACK_FRAME_CONFIRMATION_MS = 1_000
+const BLACK_FRAME_MAX_GAP_MS = 1_250
+const BLACK_VIDEO_MESSAGE = '高拍仪画面接近全黑，暂时无法识别。请检查镜头是否被挡住，或打开补光、增加桌面照明。画面恢复后会自动识别。'
 type MonitorDiagnostic = 'frame_state' | 'frame_stalled' | 'ocr_started' | 'ocr_pending' | 'ocr_result' | 'ocr_discarded' | 'ocr_retry_considered' | 'revision_saved' | 'revision_inflight_interrupted' | 'revision_historical' | 'ocr_failed' | 'ocr_unconfirmed' | 'revision_failed' | 'revision_unconfirmed' | 'post_revision_failed'
 function monitorDiagnostic(event: MonitorDiagnostic, details: Record<string, unknown> = {}, level: 'info' | 'warn' = 'info'): void {
   try { void window.desktop?.recordRendererDiagnostic?.({ event: `document.monitor.${event}`, level, details })?.catch(() => undefined) }
@@ -123,6 +127,7 @@ export function ContinuousDocumentMonitor({
   const monitorStartPendingRef = useRef<Promise<Awaited<ReturnType<typeof localApi.startDocumentMonitor>>> | null>(null)
   const monitorChoicePendingRef = useRef<Promise<unknown>>(Promise.resolve())
   const deviceFrameClock = useRef(new CameraFrameClock())
+  const blackFramesRef = useRef<{ firstAt: number; lastAt: number; confirmed: boolean } | null>(null)
   const visibilityRef = useRef<DocumentVisibilityChannel | null>(null)
   const releasePendingRef = useRef<Promise<boolean>>(Promise.resolve(true))
   const failedLeasesRef = useRef<string[]>([])
@@ -130,6 +135,7 @@ export function ContinuousDocumentMonitor({
   const manualPaused = pausedSession === sessionId
   const [status, setStatus] = useState<RuntimeStatus>('inactive')
   const [frameState, setFrameState] = useState<DocumentMonitorState>('stabilizing')
+  const [blackVideo, setBlackVideo] = useState(false)
   const [message, setMessage] = useState('进入作业或学习阶段后，高拍仪会自动进行本地页面识别。')
   const [revision, setRevision] = useState<DocumentPageRevision | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -145,7 +151,7 @@ export function ContinuousDocumentMonitor({
   useLayoutEffect(() => { reviewScopeRef.current = { sessionId, childId } }, [sessionId, childId])
   const shouldRun = active && !manualPaused
   const { visible: localPreviewVisible, history: localPreviewHistory, captureStatus: localPreviewStatus,
-    sample: observePreview, cancelFramePreview, refresh: refreshLocalPreviews } =
+    sample: observePreview, cancelFramePreview, invalidatePage: invalidatePreviewPage, refresh: refreshLocalPreviews } =
     useDocumentMonitorPreviews(sessionId, childId, localOcrPreviewPhase, shouldRun && analysisActive)
   const previewPhaseRef = useRef(localOcrPreviewPhase)
   useLayoutEffect(() => {
@@ -166,6 +172,8 @@ export function ContinuousDocumentMonitor({
   useLayoutEffect(() => {
     analysisActiveRef.current = analysisActive
     if (!analysisActive) {
+      blackFramesRef.current = null
+      setBlackVideo(false)
       lifecycleEpochRef.current += 1
       freshnessEpochRef.current += 1
       freshnessInvalidRef.current = true
@@ -296,7 +304,9 @@ export function ContinuousDocumentMonitor({
   }, [])
 
   const release = useCallback((reason: string): Promise<boolean> => {
-    cancelFramePreview()
+    invalidatePreviewPage()
+    blackFramesRef.current = null
+    setBlackVideo(false)
     lifecycleEpochRef.current += 1
     freshnessEpochRef.current += 1
     freshnessInvalidRef.current = true
@@ -335,7 +345,7 @@ export function ContinuousDocumentMonitor({
     pendingInspectRef.current?.(false)
     pendingInspectRef.current = null
     return releasePendingRef.current
-  }, [cancelFramePreview, releaseDocumentCapture, releaseLeases])
+  }, [invalidatePreviewPage, releaseDocumentCapture, releaseLeases])
 
   const persistEvent = useCallback((decision: DocumentFrameDecision, features: DocumentFrameFeatures): void => {
     const now = Date.now()
@@ -542,7 +552,12 @@ export function ContinuousDocumentMonitor({
       }
       if (!current()) return
       if (cause instanceof ApiError && cause.status === 409 && (cause.code === 'DOCUMENT_OCR_BUSY' || cause.message === 'DOCUMENT_OCR_BUSY')) {
-        setMessage('页面解析正忙，本次检查没有完成；你可以继续说话。')
+        if (inspectionOwner && pendingInspectRef.current === inspectionOwner) {
+          retryCurrentPage = true
+          forceCaptureRef.current = true
+          monitorRef.current.markStaleCaptureAttempt(Date.now())
+          setMessage('正在完成上一帧读取，随后会重新取当前画面检查。')
+        } else setMessage('页面解析正忙，稍后会重新取当前画面识别。')
         return
       }
       const error = cause instanceof ApiError ? cause.message : '页面识别失败。'
@@ -932,7 +947,7 @@ export function ContinuousDocumentMonitor({
         return
       }
       if (!usable || !frame.frame_confirmed || !analysisActive) {
-        cancelFramePreview()
+        invalidatePreviewPage()
         visibilityRef.current?.pause()
         releaseDocumentCapture()
         return
@@ -941,7 +956,7 @@ export function ContinuousDocumentMonitor({
       canvas.width = 320
       canvas.height = Math.max(180, Math.round(video.videoHeight / video.videoWidth * canvas.width))
       const context = canvas.getContext('2d', { willReadFrequently: true })
-      if (!context) { cancelFramePreview(); visibilityRef.current?.pause(); return }
+      if (!context) { invalidatePreviewPage(); visibilityRef.current?.pause(); return }
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
       const features = extractDocumentFrameFeatures(context.getImageData(0, 0, canvas.width, canvas.height))
       const frameToken = deviceFrameClock.current.frameToken()
@@ -953,6 +968,7 @@ export function ContinuousDocumentMonitor({
         releaseDocumentCapture()
         if ((deviceFrameClock.current.frameAgeMs() ?? Infinity) >= 1250) cancelFramePreview()
         if ((deviceFrameClock.current.frameAgeMs() ?? Infinity) >= 1500 && !freshnessInvalidRef.current) {
+          invalidatePreviewPage()
           freshnessInvalidRef.current = true
           lifecycleEpochRef.current += 1
           freshnessEpochRef.current += 1
@@ -965,6 +981,31 @@ export function ContinuousDocumentMonitor({
       if (decision.state !== 'stable' && processingRef.current) {
         visualInterruptionEpochRef.current += 1
         freshnessEpochRef.current += 1
+      }
+      const previousBlack = blackFramesRef.current
+      if (features.brightness <= 8 && features.contrast <= 4) {
+        const now = performance.now()
+        const firstAt = previousBlack && now - previousBlack.lastAt <= BLACK_FRAME_MAX_GAP_MS ? previousBlack.firstAt : now
+        const confirmed = Boolean(previousBlack?.confirmed) || now - firstAt >= BLACK_FRAME_CONFIRMATION_MS
+        blackFramesRef.current = { firstAt, lastAt: now, confirmed }
+        cancelFramePreview()
+        visibilityRef.current?.pause()
+        releaseDocumentCapture()
+        persistEvent(decision, features)
+        if (confirmed && !previousBlack?.confirmed) {
+          invalidatePreviewPage()
+          setBlackVideo(true)
+          setFrameState('no_page')
+          const pending = pendingInspectRef.current
+          pendingInspectRef.current = null
+          forceCaptureRef.current = false
+          pending?.(false)
+        }
+        return
+      }
+      if (previousBlack) {
+        blackFramesRef.current = null
+        if (previousBlack.confirmed) setBlackVideo(false)
       }
       const matched = monitorRef.current.matchesCapturedPage(features)
       const page = documentCaptureRef.current.page
@@ -987,6 +1028,8 @@ export function ContinuousDocumentMonitor({
           const inspectionTurnId = inspectionOwner?.partialClaimed ? inspectionOwner.inspectionTurnId : undefined
           observePreview({ video, features, motion: decision.motionScore, token: frameToken, generation: serverGeneration, leaseId: lease,
             cameraKey: JSON.stringify([generation, serverGeneration, lease]),
+            allowClear: decision.state === 'stable' && !decision.captureRecommended && !forceCaptureRef.current,
+            pageChanged: decision.changed && decision.state === 'page_changed',
             available: !processingRef.current && (!forceCaptureRef.current || Boolean(inspectionTurnId)) && !unconfirmedCaptureRef.current,
             ...(inspectionTurnId ? { inspection: { turnId: inspectionTurnId, report: finishInspection, unavailable: () => finishInspection() } } : {}),
             current: () => runningRef.current && analysisActiveRef.current && generationRef.current === generation
@@ -1023,7 +1066,7 @@ export function ContinuousDocumentMonitor({
       }
       setFrameState(decision.state)
       persistEvent(decision, features)
-      if (decision.changed && decision.state === 'no_page') {
+      if ((decision.changed || previousBlack) && decision.state === 'no_page') {
         const now = Date.now()
         const previous = lastFramingGuidanceRef.current
         if (now - previous.at >= 20_000) {
@@ -1039,12 +1082,12 @@ export function ContinuousDocumentMonitor({
       }
       if (!pendingInspectRef.current?.partialClaimed && (decision.captureRecommended || (forceCaptureRef.current && decision.state === 'stable'))) {
         void captureStablePage()
-      } else if (decision.changed && !processingRef.current && !analysisBlocked) {
+      } else if ((decision.changed || previousBlack) && !processingRef.current && !analysisBlocked) {
         setMessage(frameStateMessage(decision.state))
       }
     }, 500)
     return () => window.clearInterval(timer)
-  }, [analysisActive, analysisBlocked, cancelFramePreview, captureStablePage, childId, localOcrPreviewPhase, observePreview, persistEvent, release, releaseDocumentCapture, retainTrialFrame, sessionId, shouldRun, status])
+  }, [analysisActive, analysisBlocked, cancelFramePreview, invalidatePreviewPage, captureStablePage, childId, localOcrPreviewPhase, observePreview, persistEvent, release, releaseDocumentCapture, retainTrialFrame, sessionId, shouldRun, status])
 
   useEffect(() => {
     if (!shouldRun || status !== 'active') return
@@ -1094,6 +1137,7 @@ export function ContinuousDocumentMonitor({
       }
       if (detail.action === 'inspect' || detail.action === 'review') {
         if (!runningRef.current || status !== 'active') { detail.resolve?.(false); return }
+        if (blackFramesRef.current?.confirmed) { detail.resolve?.(false); return }
         if (!analysisActiveRef.current) {
           setMessage('当前只显示本地实时预览；进入作业或学习阶段后才能识别页面。')
           detail.resolve?.(false)
@@ -1159,11 +1203,12 @@ export function ContinuousDocumentMonitor({
     }
   }
 
+  const showBlackVideo = status === 'active' && blackVideo
   return <section className={`continuous-document-monitor is-${status}`} aria-label="高拍仪纸面识别">
     {diagnosticNotice && <p role="status" className="report-uncertainty">{diagnosticNotice}</p>}
     <div className="continuous-document-heading">
       <FileScan size={21} aria-hidden="true" />
-      <div><strong>纸面识别</strong><span>{message}</span></div>
+      <div><strong>纸面识别</strong><span>{showBlackVideo ? BLACK_VIDEO_MESSAGE : message}</span></div>
       {(active || status === 'unavailable') && <div className="document-camera-connection-actions">
         {active && <button className="secondary-button" title={manualPaused ? '继续书写监控' : '暂停书写监控'} onClick={togglePause}>
           {manualPaused ? <Play size={17} aria-hidden="true" /> : <Pause size={17} aria-hidden="true" />}
@@ -1190,25 +1235,25 @@ export function ContinuousDocumentMonitor({
         <span className={`device-frame-badge is-${status}`}>{status === 'active' ? '实时画面' : status === 'starting' ? '等待首帧' : status === 'unavailable' ? '画面不可用' : status === 'paused' ? '已暂停' : '未读取'}</span>
         {previewOrientation !== 0 && <span className="device-orientation-badge">已自动转正 {previewOrientation}°</span>}
       </div>
-      <div><b>{status === 'active' ? frameStateLabel(frameState) : status === 'paused' ? '已暂停' : status === 'starting' ? '正在连接并验证画面' : status === 'unavailable' ? '设备不可用' : '等待任务开始'}</b>
+      <div><b>{showBlackVideo ? '画面过暗，暂无法识别' : status === 'active' ? frameStateLabel(frameState) : status === 'paused' ? '已暂停' : status === 'starting' ? '正在连接并验证画面' : status === 'unavailable' ? '设备不可用' : '等待任务开始'}</b>
         <div className="device-live-facts" aria-label="高拍仪连接详情">
           <span title={deviceLabel}>设备：{deviceLabel}</span>
           <span>画面：{frameDimensions ?? '尚未确认'}</span>
           <span>重连：{reconnectAttempt > 0 ? `第 ${reconnectAttempt} 次` : '无需重连'}</span>
         </div>
         {recoveryNotice && <p>{recoveryNotice}</p>}
-        <small>{analysisActive && status === 'active' && !analysisBlocked
+        <small>{showBlackVideo ? '高拍仪仍在检查新画面。' : analysisActive && status === 'active' && !analysisBlocked
           ? '每半秒检查画面；稳定后识别，通常间隔至少15秒；被中断时会尽快重试，不变时约5分钟复查。'
           : !analysisActive ? '进入作业或学习阶段后才会自动识别页面。'
             : analysisBlocked ? '页面识别暂受阻，原因见上方提示。' : '设备连接并恢复页面识别后才会自动检查。'}</small>
-        <small>多帧遮挡补全暂不可用，当前使用单帧识别。</small>
+        <small>同页文字可跨多次采样累计为待核对草稿；无法确认同页时分开保留。原图不拼接，未读出的内容不会自动补写。</small>
         <small>{allowDiagnosticFrameCapture ? '原视频不上传；合格页内图按配置解析，识别内容仍需核对。' : '当前仅在本机识别页面，不保留原始画面或上传云端；识别内容仍需核对。'}</small>
         {revision?.extracted_text && <p>{revision.extracted_text.slice(0, 180)}</p>}
         {revision && <small>第{revision.revision_index}版 · 识别置信度 {Math.round(revision.ocr_confidence * 100)}%</small>}
         {localPreviewVisible && (localPreviewHistory.items.length > 0 || localPreviewStatus !== 'idle' || localPreviewHistory.unavailable) &&
           <section className="document-ocr-preview-history" aria-label="本机待核对预览">
             <strong>本机待核对预览</strong>
-            <small>每条只记录拍摄当时读到的文字，可能缺题或混读。请对照原卷核对。</small>
+            <small>可查看每次实际读值及同页累计草稿，可能缺题或混读。请对照原卷核对。</small>
             {localPreviewStatus === 'reading' && <small role="status">正在本机读取可见文字…</small>}
             {localPreviewStatus === 'interrupted' && <small role="status">画面变化，预览已中断。可以刷新查看已保存的预览。</small>}
             {localPreviewStatus === 'unconfirmed' && <small role="status">暂未确认保存。可以刷新查看已保存的预览。</small>}
@@ -1217,7 +1262,13 @@ export function ContinuousDocumentMonitor({
               <button className="secondary-button" onClick={refreshLocalPreviews}>刷新预览记录</button>}
             {localPreviewHistory.items.map(item => <details key={item.preview_id}>
               <summary><time dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time> · {item.question_count} 个题目候选</summary>
-              <div className="document-ocr-preview-text">{item.text || '这次未读出可核对的文字。'}</div>
+              {item.page_draft?.lines.length ? <DocumentPageDraft draft={item.page_draft} />
+                : <div className="document-ocr-preview-text">{item.text || '这次未读出可核对的文字。'}</div>}
+              {item.page_draft && ['source_limit', 'line_limit'].includes(item.page_draft.reason) && <>
+                <small>累计草稿已达本页容量，先前内容仍保存；这次新读值单独保留，请对照核对。</small>
+                <div className="document-ocr-preview-text">{item.text || '这次未读出可核对的文字。'}</div>
+              </>}
+              {item.page_draft && !item.page_draft.lines.length && item.text && <small>本次文字缺少可配准的位置来源，单独保留，未参与跨帧累计。</small>}
             </details>)}
           </section>}
         {cloudFeedback && <div aria-label="云端页面解析">
@@ -1228,8 +1279,8 @@ export function ContinuousDocumentMonitor({
         </div>}
       </div>
       <div className="continuous-document-actions">
-        {analysisActive && revision?.extracted_text && onReviewRevision && <button className="secondary-button" disabled={processing} onClick={() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', { cancelable: true, detail: { sessionId, action: 'review' } }))}>核对这页并提问</button>}
-        {status === 'active' && analysisActive && <button className="secondary-button" disabled={processing} onClick={() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', { cancelable: true, detail: { sessionId, action: 'inspect' } }))}>{processing ? '正在识别' : '检查当前页'}</button>}
+        {analysisActive && revision?.extracted_text && onReviewRevision && <button className="secondary-button" disabled={processing || showBlackVideo} onClick={() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', { cancelable: true, detail: { sessionId, action: 'review' } }))}>核对这页并提问</button>}
+        {status === 'active' && analysisActive && <button className="secondary-button" disabled={processing || showBlackVideo} onClick={() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', { cancelable: true, detail: { sessionId, action: 'inspect' } }))}>{processing ? '正在识别' : '检查当前页'}</button>}
       </div>
     </div>
   </section>

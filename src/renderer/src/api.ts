@@ -1632,11 +1632,11 @@ export const localApi = {
     request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-monitor/previews`, {
       cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)])
     }, false, true),
-  createDocumentMonitorPreview: (sessionId: string, imageBase64: string, generation: number, actionId: string, signal: AbortSignal, leaseId: string, frameSignature?: string, inspectionTurnId?: string, phase?: DocumentOcrPreviewPhase): Promise<DocumentOcrPreview> =>
+  createDocumentMonitorPreview: (sessionId: string, imageBase64: string, generation: number, actionId: string, signal: AbortSignal, leaseId: string, frameSignature?: string, inspectionTurnId?: string, phase?: DocumentOcrPreviewPhase, pageToken?: string): Promise<DocumentOcrPreview> =>
     request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-monitor/previews`, {
       method: 'POST',
       body: JSON.stringify({ image_base64: imageBase64, expected_generation: generation, expected_lease_id: leaseId,
-        client_action_id: actionId, frame_signature: frameSignature, inspection_turn_id: inspectionTurnId, expected_phase: phase }),
+        client_action_id: actionId, frame_signature: frameSignature, inspection_turn_id: inspectionTurnId, expected_phase: phase, page_token: pageToken }),
       signal: AbortSignal.any([signal, AbortSignal.timeout(180_000)])
     }, false, true),
   documentGoalReview: (sessionId: string, rootTurnId: string, signal: AbortSignal): Promise<Record<string, unknown>> =>

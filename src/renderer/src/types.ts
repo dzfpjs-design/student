@@ -1424,6 +1424,24 @@ export type DocumentPageRevision = {
 
 export type DocumentOcrPreviewPhase = 'homework_capture' | 'plan_review' | 'study'
 
+export type DocumentPreviewPageDraft = {
+  page_token: string
+  anchor_preview_id: string
+  frame_count: number
+  merged: boolean
+  reason: string
+  lines: {
+    text: string
+    status: 'current' | 'historical'
+    conflict: boolean
+    frame_sha256: string
+    preview_id: string
+    confidence: number
+    original_polygon: number[][]
+    canonical_polygon: number[][]
+  }[]
+}
+
 export type DocumentOcrPreview = {
   preview_id: string
   created_at: string
@@ -1435,6 +1453,7 @@ export type DocumentOcrPreview = {
   inspection_turn_id?: string
   inspection_response_text?: string
   phase?: DocumentOcrPreviewPhase | null
+  page_draft?: DocumentPreviewPageDraft | null
 }
 
 export type DocumentMonitorStatus = {

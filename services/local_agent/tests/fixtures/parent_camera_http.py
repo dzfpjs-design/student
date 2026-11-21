@@ -7,7 +7,8 @@ import socket
 import sys
 import tempfile
 from types import SimpleNamespace
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
+from urllib.request import url2pathname
 
 
 def main():
@@ -48,7 +49,7 @@ def main():
             uri = urlsplit(value)
             if uri.netloc not in {'', 'localhost'}:
                 raise RuntimeError('PARENT_CAMERA_FIXTURE_PATH_ESCAPE')
-            value = unquote(uri.path)
+            value = url2pathname(uri.path)
         path = Path(value).resolve()
         if (any(path == blocked or blocked in path.parents for blocked in forbidden)
                 or (event == 'sqlite3.connect' and root not in path.parents)):

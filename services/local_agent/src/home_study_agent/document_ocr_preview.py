@@ -4,6 +4,7 @@ import json
 from uuid import uuid4
 
 from .document_monitoring import DOCUMENT_ANALYSIS_STATES
+from .document_preview_accumulator import build_page_draft, verified_frame
 from .local_ocr.cache_lifecycle import assert_current, request_digest
 from .repository import utc_now
 
@@ -35,6 +36,9 @@ _CREATE_PREVIEWS = """CREATE TABLE IF NOT EXISTS document_ocr_preview (
     client_action_id TEXT NOT NULL UNIQUE,
     inspection_turn_id TEXT,
     phase TEXT,
+    page_token TEXT,
+    geometry_json TEXT,
+    page_draft_json TEXT,
     text TEXT NOT NULL,
     question_count INTEGER NOT NULL,
     created_at TEXT NOT NULL
@@ -56,31 +60,33 @@ class DocumentOcrPreviewService:
                 row['name'] for row in connection.execute("SELECT name FROM pragma_index_info(?) ORDER BY seqno",
                                                           (index['name'],))
             ] == ['session_id', 'monitor_generation'] for index in indexes)
+            optional_columns = (
+                'frame_signature', 'inspection_turn_id', 'phase', 'page_token', 'geometry_json', 'page_draft_json',
+            )
             if legacy_constraint:
                 # SQLite cannot drop a table-level UNIQUE index. Copy its rows
                 # transactionally, retaining the original request identities.
                 connection.execute("ALTER TABLE document_ocr_preview RENAME TO document_ocr_preview_previous")
                 connection.execute(_CREATE_PREVIEWS)
-                signature_column = 'frame_signature' if 'frame_signature' in columns else 'NULL'
-                inspection_column = 'inspection_turn_id' if 'inspection_turn_id' in columns else 'NULL'
-                phase_column = 'phase' if 'phase' in columns else 'NULL'
+                optional_names = ','.join(optional_columns)
+                values = ','.join(name if name in columns else 'NULL' for name in optional_columns)
                 connection.execute(f"""INSERT INTO document_ocr_preview
-                    (preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,frame_signature,
-                     client_action_id,inspection_turn_id,phase,text,question_count,created_at)
-                    SELECT preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,{signature_column},
-                           client_action_id,{inspection_column},{phase_column},text,question_count,created_at FROM document_ocr_preview_previous""")
+                    (preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,client_action_id,
+                     text,question_count,created_at,{optional_names})
+                    SELECT preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,client_action_id,
+                           text,question_count,created_at,{values} FROM document_ocr_preview_previous""")
                 connection.execute("DROP TABLE document_ocr_preview_previous")
             else:
-                if 'frame_signature' not in columns:
-                    connection.execute("ALTER TABLE document_ocr_preview ADD COLUMN frame_signature TEXT")
-                if 'inspection_turn_id' not in columns:
-                    connection.execute("ALTER TABLE document_ocr_preview ADD COLUMN inspection_turn_id TEXT")
-                if 'phase' not in columns:
-                    connection.execute("ALTER TABLE document_ocr_preview ADD COLUMN phase TEXT")
+                for name in optional_columns:
+                    if name not in columns:
+                        connection.execute(f"ALTER TABLE document_ocr_preview ADD COLUMN {name} TEXT")
             connection.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_document_ocr_preview_inspection
                 ON document_ocr_preview(inspection_turn_id) WHERE inspection_turn_id IS NOT NULL""")
             connection.execute("""CREATE INDEX IF NOT EXISTS idx_document_ocr_preview_session
                 ON document_ocr_preview(session_id, created_at DESC)""")
+            connection.execute("""CREATE INDEX IF NOT EXISTS idx_document_ocr_preview_page_token
+                ON document_ocr_preview(session_id, child_id, phase, lease_id, monitor_generation, page_token, created_at)
+                WHERE page_token IS NOT NULL""")
             connection.commit()
 
     @staticmethod
@@ -180,6 +186,7 @@ class DocumentOcrPreviewService:
             **{key: row[key] for key in ('preview_id', 'client_action_id', 'created_at', 'text', 'question_count',
                                         'frame_signature', 'phase')},
             'generation': row['monitor_generation'],
+            **({'page_draft': json.loads(row['page_draft_json'])} if row['page_draft_json'] else {}),
         }
 
     def latest(self, session_id):
@@ -187,26 +194,49 @@ class DocumentOcrPreviewService:
             connection.execute('BEGIN')
             child_id, _ = self._active_scope(connection, session_id)
             rows = connection.execute("""SELECT preview_id,client_action_id,created_at,text,question_count,
-                monitor_generation,frame_signature,phase
+                monitor_generation,frame_signature,phase,page_draft_json
                 FROM document_ocr_preview WHERE session_id=? AND child_id=?
                 ORDER BY created_at DESC,preview_id DESC LIMIT 10""", (session_id, child_id))
             return {'items': [self._readback(row) for row in rows]}
 
     @staticmethod
-    def _existing(connection, client_action_id, session_id, child_id, lease_id, generation, frame_sha, frame_signature, inspection_turn_id, phase):
+    def _existing(connection, client_action_id, session_id, child_id, lease_id, generation, frame_sha, frame_signature, inspection_turn_id, phase, page_token):
         row = connection.execute("SELECT * FROM document_ocr_preview WHERE client_action_id=?",
                                  (client_action_id,)).fetchone()
         if row:
             previous_scope = (row['session_id'], row['child_id'], row['lease_id'], row['monitor_generation'],
                               row['frame_sha256'], row['frame_signature'], row['inspection_turn_id'],
-                              row['phase'] or 'homework_capture')
+                              row['phase'] or 'homework_capture', row['page_token'])
             if previous_scope != (session_id, child_id, lease_id, generation, frame_sha, frame_signature,
-                                  inspection_turn_id, phase):
+                                  inspection_turn_id, phase, page_token):
                 raise ValueError('DOCUMENT_PREVIEW_ACTION_CONFLICT')
         return row
 
+    @staticmethod
+    def _page_draft(connection, scope, page_token, preview_id, frame):
+        if frame is None:
+            return build_page_draft(page_token, preview_id, frame)
+        where = ("session_id=? AND child_id=? AND phase=? AND lease_id=? AND monitor_generation=? AND page_token=?")
+        parameters = (*scope, page_token)
+        anchor = connection.execute(f"""SELECT preview_id,geometry_json FROM document_ocr_preview
+            WHERE {where} AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page')
+            ORDER BY rowid DESC LIMIT 1""", parameters).fetchone()
+        if anchor is None:
+            return build_page_draft(page_token, preview_id, frame)
+        latest = connection.execute(f"""SELECT page_draft_json FROM document_ocr_preview
+            WHERE {where} AND json_extract(page_draft_json,'$.anchor_preview_id')=?
+            AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page','merged')
+            ORDER BY rowid DESC LIMIT 1""", (*parameters, anchor['preview_id'])).fetchone()
+        duplicate = connection.execute(f"""SELECT 1 FROM document_ocr_preview
+            WHERE {where} AND json_extract(page_draft_json,'$.anchor_preview_id')=? AND frame_sha256=?
+            AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page','merged') LIMIT 1""",
+            (*parameters, anchor['preview_id'], frame['frame_sha256'])).fetchone()
+        return build_page_draft(page_token, preview_id, frame, anchor_id=anchor['preview_id'],
+                                anchor=json.loads(anchor['geometry_json']),
+                                previous=json.loads(latest['page_draft_json']), duplicate=duplicate is not None)
+
     def create(self, session_id, image, client_action_id, generation, expected_lease_id, frame_signature=None,
-               inspection_turn_id=None, expected_phase=None):
+               inspection_turn_id=None, expected_phase=None, page_token=None):
         if inspection_turn_id is not None and expected_phase is None:
             raise ValueError('DOCUMENT_PREVIEW_INSPECTION_PHASE_REQUIRED')
         frame_sha = sha256(image).hexdigest()
@@ -226,12 +256,14 @@ class DocumentOcrPreviewService:
                     connection, session_id, generation, expected_lease_id, expected_phase)
                 self._check_inspection_capture(connection, inspection_turn_id, session_id, child_id, phase, client_action_id)
                 saved = self._existing(connection, client_action_id, session_id, child_id, lease_id, generation,
-                                       frame_sha, frame_signature, inspection_turn_id, phase)
+                                       frame_sha, frame_signature, inspection_turn_id, phase, page_token)
                 if saved:
                     return self._inspection_response(self._readback(saved), inspection_turn_id)
             preview_signature = frame_signature
             if inspection_turn_id is not None or phase != 'homework_capture':
                 preview_signature = sha256(json.dumps([frame_signature, inspection_turn_id, phase]).encode()).hexdigest()
+            if page_token is not None:
+                preview_signature = sha256(json.dumps([preview_signature, page_token]).encode()).hexdigest()
             scheduled = self.workflow.queue_recognition(
                 session_id, image, request_id, generation, preview_lease_id=lease_id, preview_signature=preview_signature
             )
@@ -239,6 +271,7 @@ class DocumentOcrPreviewService:
         result = job['result']
         text = '\n'.join(line['text'] for line in result['lines'] if line['text'].strip())
         question_count = sum(block['block_kind'] == 'question' for block in result['question_blocks'])
+        frame = verified_frame(result, frame_sha) if page_token is not None else None
 
         # Coordinate with privacy deletion/restore and recheck the original
         # lease in the same transaction as the preview insert.
@@ -254,7 +287,7 @@ class DocumentOcrPreviewService:
                     raise ValueError('DOCUMENT_PREVIEW_SOURCE_CHANGED')
                 self._check_inspection_capture(connection, inspection_turn_id, session_id, child_id, phase, client_action_id)
                 saved = self._existing(connection, client_action_id, session_id, child_id, lease_id, generation,
-                                       frame_sha, frame_signature, inspection_turn_id, phase)
+                                       frame_sha, frame_signature, inspection_turn_id, phase, page_token)
                 assert_current(connection, current)
             except ValueError:
                 connection.execute("INSERT OR IGNORE INTO ocr_request_tombstone VALUES (?, 'deleted')",
@@ -269,10 +302,18 @@ class DocumentOcrPreviewService:
             preview = dict(preview_id=str(uuid4()), client_action_id=client_action_id, created_at=utc_now(),
                            text=text, question_count=question_count, generation=generation,
                            frame_signature=frame_signature, phase=phase)
+            draft = None
+            if page_token is not None:
+                scope = (session_id, child_id, phase, lease_id, generation)
+                draft = self._page_draft(connection, scope, page_token, preview['preview_id'], frame)
+                preview['page_draft'] = draft
             connection.execute("""INSERT INTO document_ocr_preview
                 (preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,frame_signature,client_action_id,
-                 inspection_turn_id,phase,text,question_count,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 inspection_turn_id,phase,page_token,geometry_json,page_draft_json,text,question_count,created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (preview['preview_id'], child_id, session_id, lease_id, generation, frame_sha, frame_signature,
-                 client_action_id, inspection_turn_id, phase, text, question_count, preview['created_at']))
+                 client_action_id, inspection_turn_id, phase, page_token, json.dumps(frame) if frame is not None else None,
+                 json.dumps(draft, ensure_ascii=False, allow_nan=False) if draft is not None else None,
+                 text, question_count, preview['created_at']))
             connection.commit()
             return self._inspection_response(preview, inspection_turn_id)
