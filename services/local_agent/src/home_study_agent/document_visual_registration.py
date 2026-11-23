@@ -1,0 +1,258 @@
+"""Short-lived local image landmarks; only a checked transform leaves this module.
+
+There is no image/descriptor serialization. Landmarks are restricted to OCR ink
+neighbourhoods: a stationary desk must never register two different worksheets.
+"""
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from hashlib import sha256
+from math import atan2, degrees, hypot
+from threading import RLock, Timer
+from time import monotonic
+from weakref import WeakKeyDictionary, WeakSet
+
+import cv2
+import numpy as np
+
+from .document_preview_accumulator import _scale, _spread, _text_key, _TEMPLATE
+
+METHOD = 'local_orb_v1'
+_registry = WeakKeyDictionary()
+_registry_lock = RLock()
+
+
+def register_cache(database, cache):
+    with _registry_lock:
+        _registry.setdefault(database, WeakSet()).add(cache)
+
+
+def clear_registered_landmarks(database, child_id=None):
+    """Privacy/restore boundary, including standalone services on the same DB."""
+    with _registry_lock:
+        caches = list(_registry.get(database, ()))
+    for cache in caches:
+        cache.clear(child_id)
+
+
+@dataclass(frozen=True)
+class Landmarks:
+    frame_sha256: str
+    points: np.ndarray = field(repr=False)
+    descriptors: np.ndarray = field(repr=False)
+
+
+class LandmarkCache:
+    """One fixed source, bounded RAM, and five minutes of validated idle time."""
+    def __init__(self, *, ttl=300, limit=4, clock=monotonic):
+        self._items = OrderedDict()
+        self._ttl, self._limit, self._clock = ttl, limit, clock
+        self._lock = RLock()
+        self._timer = None
+        self._timer_generation = 0
+
+    def _schedule(self):
+        self._timer_generation += 1
+        generation = self._timer_generation
+        if self._timer is not None:
+            self._timer.cancel()
+            self._timer = None
+        if self._items:
+            delay = max(.001, min(value[3] + self._ttl for value in self._items.values()) - self._clock())
+            self._timer = Timer(delay, self._expire, args=(generation,))
+            self._timer.daemon = True
+            self._timer.start()
+
+    def _expire(self, generation):
+        with self._lock:
+            if generation != self._timer_generation:
+                return
+            now = self._clock()
+            for key, (_, _, _, at) in list(self._items.items()):
+                if now - at >= self._ttl:
+                    del self._items[key]
+            self._schedule()
+
+    def clear(self, child_id=None):
+        with self._lock:
+            for scope in list(self._items):
+                if child_id is None or scope[1] == child_id:
+                    del self._items[scope]
+            self._schedule()
+
+    def activate(self, scope):
+        with self._lock:
+            now = self._clock()
+            for key, (_, _, _, at) in list(self._items.items()):
+                if key != scope or now - at >= self._ttl:
+                    del self._items[key]
+            self._schedule()
+
+    def get(self, scope, anchor_id, frame_sha):
+        with self._lock:
+            self.activate(scope)
+            value = self._items.get(scope)
+            if value is None or value[:2] != (anchor_id, frame_sha):
+                return None
+            self._items.move_to_end(scope)
+            # Merely looking up an anchor cannot extend its lifetime. The
+            # caller refreshes it only after verified registration commits.
+            return value[2]
+
+    def touch(self, scope, anchor_id, frame_sha):
+        """Renew idle time without replacing the original geometry/descriptors."""
+        with self._lock:
+            value = self._items.get(scope)
+            if value is None or value[:2] != (anchor_id, frame_sha):
+                return False
+            now = self._clock()
+            if now - value[3] >= self._ttl:
+                del self._items[scope]
+                self._schedule()
+                return False
+            self._items[scope] = (*value[:3], now)
+            self._items.move_to_end(scope)
+            self._schedule()
+            return True
+
+    def put(self, scope, anchor_id, landmarks):
+        with self._lock:
+            self.activate(scope)
+            self._items[scope] = (anchor_id, landmarks.frame_sha256, landmarks, self._clock())
+            self._items.move_to_end(scope)
+            while len(self._items) > self._limit:
+                self._items.popitem(last=False)
+            self._schedule()
+
+
+def _usable_text(frame):
+    return [line for line in frame['lines'] if line['confidence'] >= .9
+            and sum(char.isalnum() for char in line['text']) >= 2
+            and not _TEMPLATE.match(_text_key(line['text']))]
+
+
+def extract_landmarks(image, frame):
+    """Decode exact validated bytes once; retain only bounded ink descriptors."""
+    if frame is None or sha256(image).hexdigest() != frame['frame_sha256']:
+        return None
+    lines = _usable_text(frame)
+    if len(lines) < 6:
+        return None
+    centers = np.asarray([np.mean(line['original_polygon'], axis=0) for line in lines])
+    if not _spread(centers, np.ones(2), span=.25):
+        return None
+    try:
+        gray = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_GRAYSCALE)
+        width, height = (int(value) + 1 for value in frame['frame_size'])
+        if gray is None or gray.shape != (height, width) or gray.mean() < 20 or gray.std() < 7:
+            return None
+        factor = min(1., 1920 / max(width, height))
+        if factor < 1:
+            gray = cv2.resize(gray, (round(width * factor), round(height * factor)), interpolation=cv2.INTER_AREA)
+        h, w = gray.shape
+        mask = np.zeros_like(gray)
+        for line in lines:
+            polygon = np.rint(np.asarray(line['original_polygon']) * (w - 1, h - 1)).astype(np.int32)
+            cv2.fillConvexPoly(mask, polygon, 255)
+        mask = cv2.dilate(mask, np.ones((5, 5), np.uint8))
+        points, descriptors = cv2.ORB_create(nfeatures=2500, edgeThreshold=15, fastThreshold=12).detectAndCompute(gray, mask)
+        if descriptors is None or len(points) < 64:
+            return None
+        # Bound density as well as total memory: one detailed digit is not a page.
+        cells, chosen = {}, []
+        for index in sorted(range(len(points)), key=lambda n: -points[n].response):
+            cell = (int(points[index].pt[0] * 4 / w), int(points[index].pt[1] * 4 / h))
+            if cells.get(cell, 0) < 96:
+                cells[cell] = cells.get(cell, 0) + 1
+                chosen.append(index)
+        locations = np.asarray([points[index].pt for index in chosen], dtype=np.float32) / (w - 1, h - 1)
+        if len(chosen) < 64 or not _spread(locations, np.ones(2), span=.25):
+            return None
+        return Landmarks(frame['frame_sha256'], locations.astype(np.float32), descriptors[chosen].copy())
+    except (cv2.error, ValueError, TypeError, OverflowError):
+        return None
+
+
+def _text_evidence(anchor, frame, matrix):
+    """Digits may establish identity, but labels and shared form headers cannot."""
+    fixed = _usable_text(anchor)
+    moving = _usable_text(frame)
+    if not fixed or not moving:
+        return False, False
+    target = np.asarray([line['original_polygon'] for line in fixed])
+    original = np.asarray([line['original_polygon'] for line in moving])
+    aligned = ((original * _scale(frame)) @ matrix[:, :2].T + matrix[:, 2]) / _scale(anchor)
+    left, right = target.min(axis=1), target.max(axis=1)
+    low, high = aligned.min(axis=1), aligned.max(axis=1)
+    intersection = np.prod(np.maximum(np.minimum(high[:, None], right) - np.maximum(low[:, None], left), 0), axis=2)
+    smaller = np.minimum(np.prod(high - low, axis=1)[:, None], np.prod(right - left, axis=1))
+    overlaps = intersection >= .52 * smaller
+    accepted, keys, conflicts, used = [], set(), [], set()
+    for index, line in enumerate(moving):
+        candidates = np.flatnonzero(overlaps[index])
+        key = _text_key(line['text'])
+        same = [int(n) for n in candidates if _text_key(fixed[n]['text']) == key and int(n) not in used]
+        if same:
+            best = max(same, key=lambda n: intersection[index, n])
+            used.add(best)
+            accepted.append(target[best].mean(axis=0))
+            keys.add(key)
+        elif len(candidates):
+            conflicts.append((low[index] + high[index]) / 2)
+    broad_conflict = (len(conflicts) >= 3 and _spread(np.asarray(conflicts), np.ones(2), min_quadrants=2, span=0)
+                      and np.ptp(conflicts, axis=0).max() >= .22)
+    consistent = (len(accepted) >= 6 and len(keys) >= 4
+                  and len({char for key in keys for char in key if char.isalnum()}) >= 4
+                  and _spread(np.asarray(accepted), np.ones(2), min_quadrants=2, span=.20))
+    return bool(consistent), bool(broad_conflict)
+
+
+def register(anchor, frame, fixed, moving):
+    """Return (matrix, broad_text_conflict, numerical evidence); no pixels warp."""
+    if fixed is None or moving is None:
+        evidence = {'method': METHOD, 'status': 'landmarks_unavailable'} if fixed is not None else None
+        return None, False, evidence
+    if fixed.frame_sha256 != anchor['frame_sha256'] or moving.frame_sha256 != frame['frame_sha256']:
+        return None, False, None
+    anchor_scale, incoming_scale = _scale(anchor), _scale(frame)
+    if abs((incoming_scale[0] / incoming_scale[1]) / (anchor_scale[0] / anchor_scale[1]) - 1) > .05:
+        return None, False, None
+    try:
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
+        forward = matcher.knnMatch(moving.descriptors, fixed.descriptors, k=2)
+        backward = matcher.knnMatch(fixed.descriptors, moving.descriptors, k=2)
+        reverse = {pair[0].queryIdx: pair[0].trainIdx for pair in backward
+                   if len(pair) == 2 and pair[0].distance < .72 * pair[1].distance}
+        matches = [pair[0] for pair in forward if len(pair) == 2 and pair[0].distance < .72 * pair[1].distance
+                   and reverse.get(pair[0].trainIdx) == pair[0].queryIdx]
+        if len(matches) < 32:
+            return None, False, {'method': METHOD, 'status': 'insufficient_matches', 'matches': len(matches)}
+        source = np.asarray([moving.points[m.queryIdx] * incoming_scale for m in matches], dtype=np.float32)
+        target = np.asarray([fixed.points[m.trainIdx] * anchor_scale for m in matches], dtype=np.float32)
+        matrix, mask = cv2.estimateAffinePartial2D(source, target, method=cv2.RANSAC,
+            ransacReprojThreshold=.003, maxIters=1000, confidence=.999, refineIters=10)
+        if matrix is None or mask is None or not np.isfinite(matrix).all():
+            return None, False, None
+        inliers = mask.ravel().astype(bool)
+        if inliers.sum() < 24 or inliers.mean() < .65:
+            return None, False, {'method': METHOD, 'status': 'insufficient_inliers',
+                                 'matches': len(matches), 'inliers': int(inliers.sum())}
+        residuals = np.linalg.norm(source @ matrix[:, :2].T + matrix[:, 2] - target, axis=1)[inliers]
+        scale = hypot(matrix[0, 0], matrix[1, 0])
+        angle = abs(degrees(atan2(matrix[1, 0], matrix[0, 0])))
+        if (not .9 <= scale <= 1.1 or angle > 5 or np.linalg.norm(matrix[:, 2]) > .08
+                or np.quantile(residuals, .9) > .003 or residuals.max() > .005
+                or not _spread(source[inliers], incoming_scale) or not _spread(target[inliers], anchor_scale)):
+            return None, False, None
+        corners = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=float)
+        transformed = ((corners * incoming_scale) @ matrix[:, :2].T + matrix[:, 2]) / anchor_scale
+        intersection, _ = cv2.intersectConvexConvex(corners.astype(np.float32), transformed.astype(np.float32))
+        if intersection < .80:
+            return None, False, None
+        consistent, conflict = _text_evidence(anchor, frame, matrix)
+        stats = {'method': METHOD, 'anchor_frame_sha256': fixed.frame_sha256,
+                 'source_frame_sha256': moving.frame_sha256, 'inliers': int(inliers.sum()),
+                 'matches': len(matches), 'p90_residual': round(float(np.quantile(residuals, .9)), 6),
+                 'status': 'conflicting_page' if conflict else 'verified' if consistent else 'text_identity_unconfirmed'}
+        return (matrix if consistent and not conflict else None), conflict, stats
+    except (cv2.error, ValueError, TypeError, OverflowError):
+        return None, False, None

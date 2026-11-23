@@ -1456,6 +1456,12 @@ export type DocumentOcrPreview = {
   page_draft?: DocumentPreviewPageDraft | null
 }
 
+export type DocumentOcrPreviewResolution = {
+  client_action_id: string
+  generation: number
+  phase: DocumentOcrPreviewPhase
+} & ({ status: 'saved'; preview: DocumentOcrPreview } | { status: 'retired' })
+
 export type DocumentMonitorStatus = {
   generation?: number
   trial_capture_policy?: { enabled: boolean; interval_seconds: number; maximum_bytes: number; local_only: true }

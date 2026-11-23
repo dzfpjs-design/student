@@ -379,3 +379,9 @@ ERROR_CODES = ERROR_CODES.union(("MODEL_TUTOR_EXPLANATION_CONFIG_REQUIRED",))
 # The legacy original route logs only its template, never report/child identifiers.
 ENUMS['route_template'] = ENUMS['route_template'].union(('/v1/parent/children/{child_id}/legacy-daily-reports/{report_id}/original', '/v1/parent/children/{child_id}/legacy-daily-reports/{report_id}/original/status'))
 ENUMS['route_template'] = ENUMS['route_template'].union(('/v1/sessions/{session_id}/document-monitor/previews',))
+ENUMS['route_template'] = ENUMS['route_template'].union(('/v1/sessions/{session_id}/document-monitor/previews/{action_id}/resolve',))
+EVENTS = EVENTS.union(tuple('document.preview.' + event for event in (
+    'started', 'saved', 'unconfirmed', 'resolve_saved', 'resolve_retired', 'resolve_source_blocked', 'refresh_due')))
+ERROR_CODES = ERROR_CODES.union(('DOCUMENT_PREVIEW_RESULT_UNCONFIRMED', 'DOCUMENT_PREVIEW_SOURCE_CHANGED',
+    'DOCUMENT_PREVIEW_ACTION_CONFLICT', 'DOCUMENT_PREVIEW_RETIRED', 'DOCUMENT_PREVIEW_OCR_FAILED',
+    'DOCUMENT_PREVIEW_RESOLUTION_MISMATCH', 'DOCUMENT_OCR_BUSY'))

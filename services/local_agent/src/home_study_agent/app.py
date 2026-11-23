@@ -979,6 +979,17 @@ class DocumentOcrPreviewRequest(BaseModel):
     expected_phase: Optional[Literal["homework_capture", "plan_review", "study"]] = None
 
 
+class DocumentOcrPreviewResolveRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    expected_generation: int = Field(strict=True, ge=0)
+    expected_lease_id: str = Field(min_length=1, max_length=128)
+    expected_phase: Literal['homework_capture', 'plan_review', 'study']
+    page_token: Optional[str] = Field(default=None, min_length=36, max_length=36,
+        pattern='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+    inspection_turn_id: Optional[str] = Field(default=None, min_length=1, max_length=128)
+
+
 class OcrReviewActionRequest(BaseModel):
     child_id: str = Field(min_length=3, max_length=120)
     client_action_id: str = Field(min_length=8, max_length=128)
@@ -1560,6 +1571,8 @@ def _create_app_without_money_owner(
     observation_calibration = ObservationCalibrationService(database, observation_engine)
     document_monitoring = DocumentMonitoringService(database)
     document_ocr_preview = DocumentOcrPreviewService(database, ocr_workflow)
+    from .document_preview_recovery import DocumentPreviewRecoveryService
+    document_preview_recovery = DocumentPreviewRecoveryService(database, ocr_workflow)
     from .document_trial_capture import DocumentTrialCaptureService, install_trial_capture_routes
     document_trial_capture = DocumentTrialCaptureService(database, media_ai, document_monitoring, resolved_settings)
     answer_attempt_ledger = AnswerAttemptLedger(database)
@@ -6403,6 +6416,21 @@ def _create_app_without_money_owner(
             except ValueError as error:
                 raise HTTPException(status_code=409, detail={'code': str(error)}) from error
 
+    @application.post('/v1/sessions/{session_id}/document-monitor/previews/{action_id}/resolve')
+    async def resolve_document_ocr_preview(session_id: str, action_id: str, request: Request,
+                                           payload: DocumentOcrPreviewResolveRequest) -> dict:
+        require_visual_preview_session(request)
+        if not 8 <= len(action_id) <= 128:
+            raise HTTPException(422, detail={'code': 'DOCUMENT_PREVIEW_ACTION_INVALID'})
+        try:
+            return await run_local(document_preview_recovery.resolve, session_id, action_id,
+                                   payload.expected_generation, payload.expected_lease_id, payload.expected_phase,
+                                   payload.page_token, payload.inspection_turn_id)
+        except (OcrActionConflict, OcrSourceInvalid):
+            raise
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail={'code': str(error)}) from error
+
     @application.post("/v1/sessions/{session_id}/document-monitor/ocr")
     async def run_document_monitor_ocr(session_id: str, payload: OcrRequest) -> dict:
         nonlocal document_ocr_lock
@@ -8541,7 +8569,8 @@ def _create_app_without_money_owner(
     async def no_store_document_preview(request: Request, call_next):
         response = await call_next(request)
         path = request.url.path
-        if path.startswith('/v1/sessions/') and path.endswith('/document-monitor/previews'):
+        if path.startswith('/v1/sessions/') and (path.endswith('/document-monitor/previews') or
+                '/document-monitor/previews/' in path and path.endswith('/resolve')):
             response.headers['Cache-Control'] = 'no-store'
             response.headers['Pragma'] = 'no-cache'
         return response

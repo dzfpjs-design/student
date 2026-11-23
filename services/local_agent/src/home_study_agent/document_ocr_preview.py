@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from .document_monitoring import DOCUMENT_ANALYSIS_STATES
 from .document_preview_accumulator import build_page_draft, verified_frame
+from .document_visual_registration import LandmarkCache, METHOD, extract_landmarks, register, register_cache
 from .local_ocr.cache_lifecycle import assert_current, request_digest
 from .repository import utc_now
 
@@ -51,6 +52,8 @@ class DocumentOcrPreviewService:
     def __init__(self, database, workflow):
         self.database = database
         self.workflow = workflow
+        self._visual_landmarks = LandmarkCache()
+        register_cache(database, self._visual_landmarks)
         with database.connect() as connection:
             connection.execute('BEGIN IMMEDIATE')
             connection.execute(_CREATE_PREVIEWS)
@@ -212,17 +215,24 @@ class DocumentOcrPreviewService:
                 raise ValueError('DOCUMENT_PREVIEW_ACTION_CONFLICT')
         return row
 
-    @staticmethod
-    def _page_draft(connection, scope, page_token, preview_id, frame):
+    def _page_draft(self, connection, scope, page_token, preview_id, frame, landmarks=None):
         if frame is None:
             return build_page_draft(page_token, preview_id, frame)
         where = ("session_id=? AND child_id=? AND phase=? AND lease_id=? AND monitor_generation=? AND page_token=?")
         parameters = (*scope, page_token)
-        anchor = connection.execute(f"""SELECT preview_id,geometry_json FROM document_ocr_preview
+        anchor = connection.execute(f"""SELECT preview_id,geometry_json,page_draft_json FROM document_ocr_preview
             WHERE {where} AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page')
             ORDER BY rowid DESC LIMIT 1""", parameters).fetchone()
         if anchor is None:
-            return build_page_draft(page_token, preview_id, frame)
+            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None)
+        anchor_frame = json.loads(anchor['geometry_json'])
+        anchor_draft = json.loads(anchor['page_draft_json'])
+        fixed = self._visual_landmarks.get((*scope, page_token), anchor['preview_id'], anchor_frame['frame_sha256'])
+        if anchor_draft.get('alignment_method') == METHOD and fixed is None:
+            # No raw frame/descriptor is persisted. After restart/expiry the
+            # durable old draft stays readable, but a new coordinate anchor is
+            # required rather than silently continuing without its evidence.
+            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None)
         latest = connection.execute(f"""SELECT page_draft_json FROM document_ocr_preview
             WHERE {where} AND json_extract(page_draft_json,'$.anchor_preview_id')=?
             AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page','merged')
@@ -231,9 +241,11 @@ class DocumentOcrPreviewService:
             WHERE {where} AND json_extract(page_draft_json,'$.anchor_preview_id')=? AND frame_sha256=?
             AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page','merged') LIMIT 1""",
             (*parameters, anchor['preview_id'], frame['frame_sha256'])).fetchone()
+        matrix, conflict, evidence = register(anchor_frame, frame, fixed, landmarks)
         return build_page_draft(page_token, preview_id, frame, anchor_id=anchor['preview_id'],
-                                anchor=json.loads(anchor['geometry_json']),
-                                previous=json.loads(latest['page_draft_json']), duplicate=duplicate is not None)
+                                anchor=anchor_frame, previous=json.loads(latest['page_draft_json']),
+                                duplicate=duplicate is not None, visual_matrix=matrix,
+                                visual_conflict=conflict, registration=evidence)
 
     def create(self, session_id, image, client_action_id, generation, expected_lease_id, frame_signature=None,
                inspection_turn_id=None, expected_phase=None, page_token=None):
@@ -254,6 +266,7 @@ class DocumentOcrPreviewService:
                 connection.execute('BEGIN')
                 child_id, lease_id, phase = self._capture_scope(
                     connection, session_id, generation, expected_lease_id, expected_phase)
+                self._visual_landmarks.activate((session_id, child_id, phase, lease_id, generation, page_token))
                 self._check_inspection_capture(connection, inspection_turn_id, session_id, child_id, phase, client_action_id)
                 saved = self._existing(connection, client_action_id, session_id, child_id, lease_id, generation,
                                        frame_sha, frame_signature, inspection_turn_id, phase, page_token)
@@ -272,6 +285,7 @@ class DocumentOcrPreviewService:
         text = '\n'.join(line['text'] for line in result['lines'] if line['text'].strip())
         question_count = sum(block['block_kind'] == 'question' for block in result['question_blocks'])
         frame = verified_frame(result, frame_sha) if page_token is not None else None
+        landmarks = extract_landmarks(image, frame)
 
         # Coordinate with privacy deletion/restore and recheck the original
         # lease in the same transaction as the preview insert.
@@ -305,7 +319,7 @@ class DocumentOcrPreviewService:
             draft = None
             if page_token is not None:
                 scope = (session_id, child_id, phase, lease_id, generation)
-                draft = self._page_draft(connection, scope, page_token, preview['preview_id'], frame)
+                draft = self._page_draft(connection, scope, page_token, preview['preview_id'], frame, landmarks)
                 preview['page_draft'] = draft
             connection.execute("""INSERT INTO document_ocr_preview
                 (preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,frame_signature,client_action_id,
@@ -316,4 +330,18 @@ class DocumentOcrPreviewService:
                  json.dumps(draft, ensure_ascii=False, allow_nan=False) if draft is not None else None,
                  text, question_count, preview['created_at']))
             connection.commit()
+            if (landmarks is not None and draft is not None
+                    and draft['anchor_preview_id'] == preview['preview_id']
+                    and draft['reason'] in {'anchor_started', 'conflicting_page'}):
+                # Publish RAM state only after the durable anchor commits and
+                # the original child/phase/lease/generation was revalidated.
+                self._visual_landmarks.put((*scope, page_token), preview['preview_id'], landmarks)
+            elif draft is not None:
+                evidence = draft.get('registration') or {}
+                if (evidence.get('status') == 'verified' and evidence.get('source_frame_sha256') == frame_sha
+                        and draft.get('anchor_preview_id')):
+                    # A committed match keeps the same physical reference alive
+                    # while the child works. Failed/unknown reads never renew it.
+                    self._visual_landmarks.touch((*scope, page_token), draft['anchor_preview_id'],
+                                                 evidence.get('anchor_frame_sha256'))
             return self._inspection_response(preview, inspection_turn_id)

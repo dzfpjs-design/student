@@ -191,19 +191,27 @@ def _merge(previous, incoming, anchor_id):
     return combined, 'merged'
 
 
-def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=None, previous=None, duplicate=False):
+def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=None, previous=None, duplicate=False,
+                     visual_anchor=False, visual_matrix=None, visual_conflict=False, registration=None):
     current = _observations(preview_id, frame)
     draft = {'page_token': page_token, 'anchor_preview_id': anchor_id, 'frame_count': 1, 'merged': False,
              'reason': 'geometry_unavailable' if frame is None else 'insufficient_anchors', 'lines': current}
+    if registration is not None:
+        draft['registration'] = registration
     if frame is None:
         return draft
     if anchor is None:
-        if qualifies_as_anchor(frame):
+        if qualifies_as_anchor(frame) or visual_anchor:
             draft.update(anchor_preview_id=preview_id, reason='anchor_started')
+            if visual_anchor:
+                draft['alignment_method'] = 'local_orb_v1'
         return draft
     if duplicate:
         return {**draft, 'reason': 'duplicate_frame'}
-    matrix = _alignment(anchor, frame)
+    if visual_conflict:
+        return {**draft, 'anchor_preview_id': preview_id, 'reason': 'conflicting_page',
+                'alignment_method': 'local_orb_v1'}
+    matrix = visual_matrix if visual_matrix is not None else _alignment(anchor, frame)
     if matrix is None:
         return draft
     aligned = _observations(preview_id, frame, anchor=anchor, matrix=matrix)
@@ -211,16 +219,25 @@ def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=No
         return {**draft, 'reason': 'geometry_outside_anchor'}
     lines, reason = _merge(previous['lines'], aligned, anchor_id)
     if reason in {'line_limit', 'source_limit'}:
-        return {**previous, 'reason': reason, 'merged': True,
-                'lines': [{**line, 'status': 'historical'} for line in previous['lines']]}
+        limited = {**previous, 'reason': reason, 'merged': True,
+                   'lines': [{**line, 'status': 'historical'} for line in previous['lines']]}
+        if visual_matrix is not None:
+            limited.update(alignment_method='local_orb_v1', registration=registration)
+        return limited
     if lines is None:
         # Extensively conflicting high-confidence text is evidence for an
         # epoch boundary, even when the renderer has not spotted a page turn.
         # The first frame of the new epoch is still a single-frame candidate.
         new_anchor = preview_id if reason == 'conflicting_page' else anchor_id
-        return {**draft, 'anchor_preview_id': new_anchor, 'reason': reason}
+        result = {**draft, 'anchor_preview_id': new_anchor, 'reason': reason}
+        if visual_matrix is not None:
+            result['alignment_method'] = 'local_orb_v1'
+        return result
     lines.sort(key=lambda line: (
         round(min(point[1] for point in line['canonical_polygon']), 2),
         min(point[0] for point in line['canonical_polygon']),
     ))
-    return {**draft, 'lines': lines, 'frame_count': previous['frame_count'] + 1, 'merged': True, 'reason': reason}
+    result = {**draft, 'lines': lines, 'frame_count': previous['frame_count'] + 1, 'merged': True, 'reason': reason}
+    if visual_matrix is not None:
+        result.update(alignment_method='local_orb_v1', registration=registration)
+    return result

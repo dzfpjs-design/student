@@ -189,6 +189,9 @@ for(const reason of ['quiet_not_verified','source_or_close_unknown'])REASON_CODE
 ENUMS.reason.add('transient_occlusion')
 for (const event of ['document.capture.frame_state', 'document.capture.ocr_pending']) EVENTS.add(event)
 for (const event of ['frame_state','frame_stalled','ocr_started','ocr_pending','ocr_result','ocr_discarded','ocr_retry_considered','revision_saved','revision_inflight_interrupted','revision_historical','ocr_failed','ocr_unconfirmed','revision_failed','revision_unconfirmed','post_revision_failed']) EVENTS.add(`document.monitor.${event}`)
+for (const event of ['started', 'saved', 'unconfirmed', 'resolve_saved', 'resolve_retired', 'resolve_source_blocked', 'refresh_due']) EVENTS.add(`document.preview.${event}`)
+for (const code of ['DOCUMENT_PREVIEW_RESULT_UNCONFIRMED', 'DOCUMENT_PREVIEW_SOURCE_CHANGED', 'DOCUMENT_PREVIEW_ACTION_CONFLICT',
+  'DOCUMENT_PREVIEW_RETIRED', 'DOCUMENT_PREVIEW_OCR_FAILED', 'DOCUMENT_PREVIEW_RESOLUTION_MISMATCH', 'DOCUMENT_OCR_BUSY']) ERROR_CODES.add(code)
 ENUMS.protected_startup_reason = new Set(['storage','media_key_recovery','rotation_model_unclassified','tutor_recovery_marker'])
 ENUMS.frame_state = new Set(['no_page', 'stabilizing', 'writing', 'occluded', 'page_changed', 'stable'])
 ENUMS.frame_motion_band = new Set(['lt_2', '2_to_4_5', '4_5_to_7', '7_to_11', 'ge_11'])

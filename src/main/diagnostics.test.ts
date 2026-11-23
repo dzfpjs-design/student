@@ -138,13 +138,28 @@ describe('voice media observation metadata', () => {
         route_template: '/v1/pilot-test-digest/{delivery_date}/submit-email' })
     expect(sanitizeDiagnosticValue({ route_template: '/v1/children/PRIVATE_CHILD/reports' })).toEqual({})
   })
-  it('registers local document preview metrics without retaining the paper contents', () => {
-    const route_template = '/v1/sessions/{session_id}/document-monitor/previews'
+  it.each(['/v1/sessions/{session_id}/document-monitor/previews',
+    '/v1/sessions/{session_id}/document-monitor/previews/{action_id}/resolve'])('registers document route %s without retaining the paper contents', (route_template) => {
     expect(sanitizeDiagnosticValue({ route_template, method: 'POST', statusCode: 200,
       image_base64: 'PRIVATE_IMAGE', text: 'PRIVATE_PAPER', preview_id: 'PRIVATE_PREVIEW' }))
       .toEqual({ route_template, method: 'POST', statusCode: 200 })
     expect(sanitizeDiagnosticValue({ route_template: '/v1/sessions/PRIVATE_SESSION/document-monitor/previews' }))
       .toEqual({})
+  })
+  it('persists closed preview recovery stages while removing raw IDs, images and errors', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'hsc-preview-diagnostics-')); roots.push(root)
+    const recorder = new DiagnosticRecorder(root)
+    const events = ['started', 'saved', 'unconfirmed', 'resolve_saved', 'resolve_retired', 'resolve_source_blocked', 'refresh_due']
+      .map(stage => `document.preview.${stage}`)
+    for (const event of events) await recorder.record({ source: 'renderer', event, details: {
+      latency_ms: 17, count: 2, error_code: 'DOCUMENT_PREVIEW_SOURCE_CHANGED', text: 'PRIVATE_PAPER', image_base64: 'PRIVATE_IMAGE',
+      client_action_id: 'PRIVATE_ACTION', child_id: 'PRIVATE_CHILD', page_token: 'PRIVATE_PAGE', message: 'PRIVATE_ERROR'
+    } })
+    const raw = await readFile(recorder.logPath, 'utf8'), rows = raw.trim().split('\n').map(line => JSON.parse(line))
+    expect(rows.map(row => row.event)).toEqual(events)
+    expect(rows.every(row => JSON.stringify(row.details) === JSON.stringify({ latency_ms: 17, count: 2, error_code: 'DOCUMENT_PREVIEW_SOURCE_CHANGED' }))).toBe(true)
+    expect(raw).not.toContain('PRIVATE_')
+    expect(sanitizeDiagnosticValue({ error_code: 'DOCUMENT_PREVIEW_PRIVATE_CHILD' })).toEqual({})
   })
   it('retains actionable SMTP outcomes across reopen without recording mailbox credentials or content', async () => {
     const root = await mkdtemp(join(tmpdir(), 'hsc-smtp-diagnostics-')); roots.push(root)

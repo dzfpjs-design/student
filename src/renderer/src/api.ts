@@ -43,7 +43,7 @@ import type {
   , VariantCandidate, SpecializedSupplyCandidate, SpecializedSupplyGap, ExamBlueprintReadiness
   , ChildModelCorrection, ChildModelCorrectionTarget, GoalProgramCycle, LongitudinalChildModel, SpecializedRoadmap
   , BehaviorReplay, BehaviorBaseline, BehaviorPersonalization, HabitExperimentList, HabitExperiment, PendingBehaviorInterventionResponse, KnowledgeGraphLearningPath
-  , DocumentMonitorStatus, DocumentMonitorState, DocumentPageRevision, DocumentOcrPreview, DocumentOcrPreviewPhase, AgentRuntimeStatus
+  , DocumentMonitorStatus, DocumentMonitorState, DocumentPageRevision, DocumentOcrPreview, DocumentOcrPreviewPhase, DocumentOcrPreviewResolution, AgentRuntimeStatus
   , ControlledContentCandidate, ControlledContentPlayback, ControlledContentRule
   , ControlledGameApproval, ControlledGameRule, ControlledGameSession
   , PetVocabularyCard, PetVocabularyReview, PetVocabularySummary
@@ -1638,6 +1638,12 @@ export const localApi = {
       body: JSON.stringify({ image_base64: imageBase64, expected_generation: generation, expected_lease_id: leaseId,
         client_action_id: actionId, frame_signature: frameSignature, inspection_turn_id: inspectionTurnId, expected_phase: phase, page_token: pageToken }),
       signal: AbortSignal.any([signal, AbortSignal.timeout(180_000)])
+    }, false, true),
+  resolveDocumentMonitorPreview: (sessionId: string, actionId: string, generation: number, leaseId: string, phase: DocumentOcrPreviewPhase, pageToken: string, signal: AbortSignal, inspectionTurnId?: string): Promise<DocumentOcrPreviewResolution> =>
+    request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-monitor/previews/${encodeURIComponent(actionId)}/resolve`, {
+      method: 'POST', body: JSON.stringify({ expected_generation: generation, expected_lease_id: leaseId,
+        expected_phase: phase, page_token: pageToken, inspection_turn_id: inspectionTurnId }),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)])
     }, false, true),
   documentGoalReview: (sessionId: string, rootTurnId: string, signal: AbortSignal): Promise<Record<string, unknown>> =>
     request(`/v1/sessions/${encodeURIComponent(sessionId)}/document-goals/${encodeURIComponent(rootTurnId)}/review`, {

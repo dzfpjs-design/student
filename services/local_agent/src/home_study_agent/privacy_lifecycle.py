@@ -1762,12 +1762,15 @@ class PrivacyLifecycleService:
             job = connection.execute(
                 "SELECT * FROM deletion_job WHERE deletion_id = ?", (deletion_id,)
             ).fetchone()
-        if (self.clear_ephemeral_child and json.loads(job["verification_json"] or "{}").get("database_delete_committed")
+        if (json.loads(job["verification_json"] or "{}").get("database_delete_committed")
                 and (job['target_type'] in {'capture_artifact', 'knowledge_source'} or job['target_type'] == 'child_scope'
                      and job['scope'] in {'knowledge', 'learning', 'media', 'all_history'})):
             # Database rollback must not erase live playback provenance. Once
             # committed, clear it even if a later media-file cleanup must retry.
-            self.clear_ephemeral_child(job['child_id'])
+            from .document_visual_registration import clear_registered_landmarks
+            clear_registered_landmarks(self.database, job['child_id'])
+            if self.clear_ephemeral_child:
+                self.clear_ephemeral_child(job['child_id'])
         residuals = [str(value) for value in json.loads(job["residual_paths_json"] or "[]")]
         remaining_paths: list[str] = []
         deleted_files = 0
@@ -3117,6 +3120,9 @@ class PrivacyLifecycleService:
 
     def _prepare_database_snapshot(self, source_path: Path, staged: Database, *, pause_restored_observation: bool = False) -> None:
         from .report_delivery import ReportDeliveryService
+        from .document_visual_registration import clear_registered_landmarks
+
+        clear_registered_landmarks(self.database)
 
         from .restore_publication import _sql
         original_owner=staged._restore_sql_owner()

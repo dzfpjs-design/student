@@ -10,7 +10,25 @@ const minimumSpan = 1_500
 const maximumGap = 1_250
 const maximumMotion = 1
 const minimumAttemptInterval = 20_000
+const refreshAttemptInterval = 5 * 60_000
 const previewPixelChange = 12
+type PreviewDiagnostic = 'started' | 'saved' | 'unconfirmed' | 'resolve_saved' | 'resolve_retired' | 'resolve_source_blocked' | 'refresh_due'
+const previewErrorCodes = new Set(['DOCUMENT_PREVIEW_SOURCE_CHANGED', 'DOCUMENT_PREVIEW_ACTION_CONFLICT',
+  'DOCUMENT_PREVIEW_RETIRED', 'DOCUMENT_PREVIEW_OCR_FAILED', 'DOCUMENT_PREVIEW_RESOLUTION_MISMATCH', 'DOCUMENT_OCR_BUSY'])
+
+function previewDiagnostic(event: PreviewDiagnostic, startedAt: number, count?: number, error?: unknown): void {
+  const details: { latency_ms: number; count?: number; error_code?: string } = {
+    latency_ms: Math.max(0, Math.min(300_000, Date.now() - startedAt))
+  }
+  if (count !== undefined && Number.isFinite(count)) details.count = Math.max(0, Math.min(10_000, Math.floor(count)))
+  if (error !== undefined) {
+    const code = error instanceof ApiError ? error.code : error instanceof Error ? error.message : undefined
+    details.error_code = code && previewErrorCodes.has(code) ? code : 'DOCUMENT_PREVIEW_RESULT_UNCONFIRMED'
+  }
+  try { void window.desktop?.recordRendererDiagnostic?.({ event: `document.preview.${event}`,
+    level: event === 'unconfirmed' || event === 'resolve_source_blocked' ? 'warn' : 'info', details })?.catch(() => undefined) }
+  catch { /* Diagnostics cannot interrupt recognition or recovery. */ }
+}
 
 type PreviewSample = {
   video: HTMLVideoElement
@@ -34,6 +52,10 @@ type Warmth = 'clear' | 'warm' | 'high'
 type PreviewAttempt = {
   scope: string
   actionId?: string
+  generation?: number
+  leaseId?: string
+  phase?: DocumentOcrPreviewPhase
+  pageToken?: string
   inspectionTurnId?: string
   at: number
   frame: DocumentFrameFeatures
@@ -129,9 +151,14 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
   const activeRead = useRef<AbortController | null>(null)
   const pending = useRef<PendingPreview | null>(null)
   const attempts = useRef<PreviewAttempt | null>(null)
+  const unresolved = useRef<PreviewAttempt | null>(null)
+  const resolution = useRef<{ attempt: PreviewAttempt; controller: AbortController } | null>(null)
+  const resolutionRetryAt = useRef(0)
+  const historyWriteVersion = useRef(0)
   const pageEpoch = useRef(new DocumentPreviewPageEpoch())
   const pageTokenRef = useRef<string | undefined>(undefined)
   const busyRetryAt = useRef(0)
+  const retiredRetryAt = useRef(0)
   const [history, setHistory] = useState(emptyHistory)
   const [captureStatus, setCaptureStatus] = useState<CaptureStatus>('idle')
 
@@ -140,8 +167,10 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     const current = pending.current
     if (current && !current.controller.signal.aborted) {
       current.controller.abort()
-      if (current.attempt) {
+      if (current.attempt?.state === 'pending') {
         current.attempt.state = 'interrupted'
+        unresolved.current = current.attempt
+        previewDiagnostic('unconfirmed', current.attempt.at, undefined, new Error('DOCUMENT_PREVIEW_RESULT_UNCONFIRMED'))
         if (ownerRef.current) setCaptureStatus('interrupted')
       }
     }
@@ -153,21 +182,80 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     pageTokenRef.current = undefined
     attempts.current = null
     busyRetryAt.current = 0
+    retiredRetryAt.current = 0
   }, [cancelFramePreview])
+
+  const resolveAttempt = useCallback(() => {
+    const owner = ownerRef.current, attempt = unresolved.current
+    if (!owner || owner.scope !== scope || !attempt || attempt.scope !== owner.scope || !attempt.actionId
+        || attempt.generation === undefined || !attempt.leaseId || !attempt.phase || !attempt.pageToken
+        || resolution.current || Date.now() < resolutionRetryAt.current) return
+    const controller = new AbortController()
+    const active = { attempt, controller }
+    const startedAt = Date.now()
+    resolution.current = active
+    void localApi.resolveDocumentMonitorPreview(sessionId, attempt.actionId, attempt.generation, attempt.leaseId,
+      attempt.phase, attempt.pageToken, controller.signal, attempt.inspectionTurnId).then(result => {
+      if (ownerRef.current !== owner || controller.signal.aborted || unresolved.current !== attempt) return
+      if (result.client_action_id !== attempt.actionId || result.generation !== attempt.generation || result.phase !== attempt.phase
+          || (result.status !== 'saved' && result.status !== 'retired')) throw new Error('DOCUMENT_PREVIEW_RESOLUTION_MISMATCH')
+      if (result.status === 'saved') {
+        const preview = result.preview
+        if (!preview?.preview_id || preview.client_action_id !== attempt.actionId || preview.generation !== attempt.generation
+            || preview.phase !== attempt.phase || preview.page_draft && preview.page_draft.page_token !== attempt.pageToken) {
+          throw new Error('DOCUMENT_PREVIEW_RESOLUTION_MISMATCH')
+        }
+        attempt.state = 'saved'
+        previewDiagnostic('resolve_saved', startedAt, preview.question_count)
+        historyWriteVersion.current += 1
+        setHistory(previous => previous.scope === owner.scope ? ({ ...previous,
+          items: [preview, ...previous.items.filter(item => item.preview_id !== preview.preview_id)].slice(0, 10)
+        }) : previous)
+      } else {
+        // Retirement is an atomic server receipt: even a late original POST
+        // can no longer commit. An empty recent-history list cannot prove this.
+        if (attempts.current === attempt) attempts.current = null
+        retiredRetryAt.current = attempt.at + minimumAttemptInterval
+        previewDiagnostic('resolve_retired', startedAt)
+      }
+      unresolved.current = null
+      resolutionRetryAt.current = 0
+      windowRef.current = null
+      setCaptureStatus('idle')
+    }).catch(error => {
+      if (ownerRef.current !== owner || controller.signal.aborted || unresolved.current !== attempt) return
+      attempt.state = 'unconfirmed'
+      setCaptureStatus('unconfirmed')
+      // A changed privacy/source scope needs a fresh owner; never silently
+      // replay an image after the server rejects that captured scope.
+      resolutionRetryAt.current = error instanceof ApiError && [401, 403, 409].includes(error.status ?? 0)
+        ? Infinity : Date.now() + minimumAttemptInterval
+      if (resolutionRetryAt.current === Infinity) previewDiagnostic('resolve_source_blocked', startedAt, undefined, error)
+    }).finally(() => {
+      if (resolution.current === active) resolution.current = null
+    })
+  }, [scope, sessionId])
 
   const refresh = useCallback(() => {
     const owner = ownerRef.current
     if (!owner || owner.scope !== scope) return
     activeRead.current?.abort()
     const controller = new AbortController()
+    const readVersion = historyWriteVersion.current
     activeRead.current = controller
     setHistory(previous => ({ scope: owner.scope, items: previous.scope === scope ? previous.items : [], loaded: false, unavailable: false }))
     void localApi.documentMonitorPreviews(sessionId, controller.signal).then(result => {
       if (ownerRef.current === owner && !controller.signal.aborted) {
-        setHistory({ scope: owner.scope, items: result.items, loaded: true, unavailable: false })
-        const last = attempts.current
-        if (last?.scope === owner.scope && last.actionId && result.items.some(item => item.client_action_id === last.actionId)) {
+        setHistory(previous => ({ scope: owner.scope,
+          items: readVersion === historyWriteVersion.current || previous.scope !== owner.scope ? result.items
+            : [...previous.items, ...result.items.filter(item => !previous.items.some(saved => saved.preview_id === item.preview_id))].slice(0, 10),
+          loaded: true, unavailable: false }))
+        const last = unresolved.current ?? attempts.current
+        if (last?.scope === owner.scope && last.actionId && result.items.some(item => item.client_action_id === last.actionId
+            && item.generation === last.generation && item.phase === last.phase
+            && (!item.page_draft || item.page_draft.page_token === last.pageToken))) {
           last.state = 'saved'
+          if (unresolved.current === last) unresolved.current = null
           setCaptureStatus(status => status === 'unconfirmed' || status === 'interrupted' ? 'idle' : status)
         }
       }
@@ -176,7 +264,8 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         setHistory(previous => ({ ...previous, unavailable: true }))
       }
     })
-  }, [scope, sessionId])
+    resolveAttempt()
+  }, [resolveAttempt, scope, sessionId])
 
   useLayoutEffect(() => {
     if (!scope) {
@@ -196,6 +285,10 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
       activeRead.current?.abort()
       cancelFramePreview()
       attempts.current = null
+      unresolved.current = null
+      resolution.current?.controller.abort()
+      resolution.current = null
+      resolutionRetryAt.current = 0
     }
     const privacyPause = () => {
       discard()
@@ -232,9 +325,14 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         || inProgress.warmth !== warmth || coarseDistance(features.fingerprint, inProgress.frame.fingerprint) > maximumMotion
         || (inspection && previewContentChanged(inProgress.frame, features)))) cancelFramePreview()
     const now = Date.now()
-    if (now < busyRetryAt.current) return
+    if (unresolved.current) {
+      resolveAttempt()
+      return
+    }
+    if (now < busyRetryAt.current || !inspection && now < retiredRetryAt.current) return
     const last = attempts.current?.scope === scope ? attempts.current : null
-    const changedSinceAttempt = !!inspection || !last || previewContentChanged(last.frame, features)
+    const refreshDue = last?.state === 'saved' && now - last.at >= refreshAttemptInterval
+    const changedSinceAttempt = !!inspection || !last || refreshDue || previewContentChanged(last.frame, features)
     const previous = windowRef.current
     if (previous?.cameraKey === cameraKey && token === previous.token) return
     if (previous?.cameraKey === cameraKey && token < previous.token) cancelFramePreview()
@@ -257,7 +355,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
       cancelFramePreview()
       return
     }
-    if (!inspection && last && !previewContentChanged(last.frame, frozen.features)) return
+    if (!inspection && last && !refreshDue && !previewContentChanged(last.frame, frozen.features)) return
     const controller = new AbortController()
     const capture: PendingPreview = { controller, cameraKey, inspectionTurnId, warmth, frame: frozen.features }
     const inScope = () => ownerRef.current === owner && pending.current === capture && pageTokenRef.current === pageToken && current()
@@ -268,13 +366,16 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         if (!inScope() || controller.signal.aborted) return
         if (!inspection && !last && signature && history.items.some(item => item.frame_signature === signature
             && (!item.page_draft || item.page_draft.page_token === pageToken))) {
-          attempts.current = { scope: owner.scope, frame: frozen.features, at: 0, state: 'saved' }
+          attempts.current = { scope: owner.scope, frame: frozen.features, at: now, state: 'saved' }
           return
         }
         const actionId = crypto.randomUUID()
-        const attempt: PreviewAttempt = { scope: owner.scope, actionId, inspectionTurnId, frame: frozen.features, at: now, state: 'pending' }
+        const attempt: PreviewAttempt = { scope: owner.scope, actionId, inspectionTurnId, generation, leaseId, phase, pageToken,
+          frame: frozen.features, at: now, state: 'pending' }
         capture.attempt = attempts.current = attempt
         setCaptureStatus('reading')
+        if (refreshDue && !inspection) previewDiagnostic('refresh_due', now)
+        previewDiagnostic('started', now)
         const result = await localApi.createDocumentMonitorPreview(sessionId, frozen.image, generation, actionId, controller.signal, leaseId, signature, inspectionTurnId, phase, pageToken)
         if (!inScope() || controller.signal.aborted) return
         if (result.page_draft && result.page_draft.page_token !== pageToken) throw new Error('DOCUMENT_PREVIEW_PAGE_RESPONSE_MISMATCH')
@@ -284,6 +385,8 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
           throw new Error('DOCUMENT_PREVIEW_INSPECTION_RESPONSE_MISMATCH')
         }
         attempt.state = 'saved'
+        previewDiagnostic('saved', now, result.question_count)
+        historyWriteVersion.current += 1
         setHistory(previous => previous.scope === owner.scope ? ({
           ...previous, items: [result, ...previous.items.filter(item => item.preview_id !== result.preview_id)].slice(0, 10)
         }) : previous)
@@ -305,6 +408,8 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
             return
           }
           capture.attempt.state = 'unconfirmed'
+          unresolved.current = capture.attempt
+          previewDiagnostic('unconfirmed', capture.attempt.at, undefined, error)
           setCaptureStatus('unconfirmed')
           // The POST may have saved before the response was lost. Recover by
           // reading history instead of submitting another image.
@@ -318,7 +423,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         }
       }
     })()
-  }, [cancelFramePreview, history, phase, refresh, scope, sessionId])
+  }, [cancelFramePreview, history, phase, refresh, resolveAttempt, scope, sessionId])
 
   return {
     visible: scope !== null && history.scope === scope,
