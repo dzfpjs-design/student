@@ -15,8 +15,11 @@ import cv2
 import numpy as np
 
 from .document_preview_accumulator import _scale, _spread, _text_key, _TEMPLATE
+from .document_text_overlap import compare as compare_text_overlap
 
 METHOD = 'local_orb_v1'
+EXTRACTION_REASONS = frozenset({'ready', 'geometry', 'sha', 'no_text', 'text_spread', 'shape', 'dark',
+                                'keypoints', 'landmark_spread', 'opencv_error'})
 _registry = WeakKeyDictionary()
 _registry_lock = RLock()
 
@@ -130,20 +133,44 @@ def _usable_text(frame):
             and not _TEMPLATE.match(_text_key(line['text']))]
 
 
-def extract_landmarks(image, frame):
+def extract_landmarks(image, frame, diagnostics=None):
     """Decode exact validated bytes once; retain only bounded ink descriptors."""
-    if frame is None or sha256(image).hexdigest() != frame['frame_sha256']:
-        return None
-    lines = _usable_text(frame)
-    if len(lines) < 6:
-        return None
-    centers = np.asarray([np.mean(line['original_polygon'], axis=0) for line in lines])
-    if not _spread(centers, np.ones(2), span=.25):
-        return None
+    if diagnostics is not None:
+        diagnostics.clear()
+        diagnostics.update(method=METHOD, status='unavailable', reason='geometry')
+
+    def report(reason, **counts):
+        if diagnostics is not None:
+            diagnostics.update(reason=reason, status='ready' if reason == 'ready' else 'unavailable', **counts)
+
+    def spread_counts(points, prefix):
+        return {prefix + '_span': np.round(np.ptp(points, axis=0), 4).tolist(),
+                prefix + '_quadrants': len({tuple(point > .5) for point in points})}
+
     try:
+        if frame is None:
+            return None
+        if sha256(image).hexdigest() != frame['frame_sha256']:
+            report('sha')
+            return None
+        lines = _usable_text(frame)
+        report('no_text', line_count=len(frame['lines']),
+               high_confidence_lines=sum(line['confidence'] >= .9 for line in frame['lines']), usable_lines=len(lines))
+        if len(lines) < 6:
+            return None
+        centers = np.asarray([np.mean(line['original_polygon'], axis=0) for line in lines])
+        report('text_spread', **spread_counts(centers, 'text'))
+        if not _spread(centers, np.ones(2), span=.25):
+            return None
         gray = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_GRAYSCALE)
         width, height = (int(value) + 1 for value in frame['frame_size'])
-        if gray is None or gray.shape != (height, width) or gray.mean() < 20 or gray.std() < 7:
+        report('shape', expected_frame_size=[width, height],
+               decoded_frame_size=[gray.shape[1], gray.shape[0]] if gray is not None else None)
+        if gray is None or gray.shape != (height, width):
+            return None
+        brightness, contrast = float(gray.mean()), float(gray.std())
+        report('dark', brightness=round(brightness, 1), contrast=round(contrast, 1))
+        if brightness < 20 or contrast < 7:
             return None
         factor = min(1., 1920 / max(width, height))
         if factor < 1:
@@ -155,7 +182,8 @@ def extract_landmarks(image, frame):
             cv2.fillConvexPoly(mask, polygon, 255)
         mask = cv2.dilate(mask, np.ones((5, 5), np.uint8))
         points, descriptors = cv2.ORB_create(nfeatures=2500, edgeThreshold=15, fastThreshold=12).detectAndCompute(gray, mask)
-        if descriptors is None or len(points) < 64:
+        report('keypoints', raw_keypoints=len(points) if points is not None else 0)
+        if descriptors is None or points is None or len(points) < 64:
             return None
         # Bound density as well as total memory: one detailed digit is not a page.
         cells, chosen = {}, []
@@ -165,49 +193,56 @@ def extract_landmarks(image, frame):
                 cells[cell] = cells.get(cell, 0) + 1
                 chosen.append(index)
         locations = np.asarray([points[index].pt for index in chosen], dtype=np.float32) / (w - 1, h - 1)
+        report('landmark_spread', bounded_keypoints=len(chosen), **spread_counts(locations, 'landmark'))
         if len(chosen) < 64 or not _spread(locations, np.ones(2), span=.25):
             return None
+        report('ready')
         return Landmarks(frame['frame_sha256'], locations.astype(np.float32), descriptors[chosen].copy())
-    except (cv2.error, ValueError, TypeError, OverflowError):
+    except cv2.error as error:
+        # Never serialize OpenCV's message, which can contain input/private text.
+        code = getattr(error, 'code', None)
+        report('opencv_error', error_code='CV_OPERATION_FAILED',
+               opencv_code=code if type(code) is int and -1_000_000 <= code <= 1_000_000 else None)
+        return None
+    except (ValueError, TypeError, KeyError, IndexError, OverflowError):
+        report('geometry')
         return None
 
 
-def _text_evidence(anchor, frame, matrix):
+def _text_evidence(anchor, frame, matrix, diagnostics=None):
     """Digits may establish identity, but labels and shared form headers cannot."""
-    fixed = _usable_text(anchor)
-    moving = _usable_text(frame)
+    # Single digits/operators may be fragments of one arithmetic reading. They
+    # participate in exact split/join checks but cannot alone prove identity.
+    fixed = [line for line in anchor['lines'] if line['confidence'] >= .9 and not _TEMPLATE.match(_text_key(line['text']))]
+    moving = [line for line in frame['lines'] if line['confidence'] >= .9 and not _TEMPLATE.match(_text_key(line['text']))]
+    if diagnostics is not None:
+        diagnostics['content_conflict_count'] = 0
     if not fixed or not moving:
         return False, False
     target = np.asarray([line['original_polygon'] for line in fixed])
     original = np.asarray([line['original_polygon'] for line in moving])
     aligned = ((original * _scale(frame)) @ matrix[:, :2].T + matrix[:, 2]) / _scale(anchor)
-    left, right = target.min(axis=1), target.max(axis=1)
-    low, high = aligned.min(axis=1), aligned.max(axis=1)
-    intersection = np.prod(np.maximum(np.minimum(high[:, None], right) - np.maximum(low[:, None], left), 0), axis=2)
-    smaller = np.minimum(np.prod(high - low, axis=1)[:, None], np.prod(right - left, axis=1))
-    overlaps = intersection >= .52 * smaller
-    accepted, keys, conflicts, used = [], set(), [], set()
-    for index, line in enumerate(moving):
-        candidates = np.flatnonzero(overlaps[index])
-        key = _text_key(line['text'])
-        same = [int(n) for n in candidates if _text_key(fixed[n]['text']) == key and int(n) not in used]
-        if same:
-            best = max(same, key=lambda n: intersection[index, n])
-            used.add(best)
-            accepted.append(target[best].mean(axis=0))
-            keys.add(key)
-        elif len(candidates):
-            conflicts.append((low[index] + high[index]) / 2)
+    previous = [{**line, 'canonical_polygon': polygon.tolist()} for line, polygon in zip(fixed, target)]
+    incoming = [{**line, 'canonical_polygon': polygon.tolist()} for line, polygon in zip(moving, aligned)]
+    accepted, keys, conflicts = [], set(), []
+    for group in compare_text_overlap(previous, incoming):
+        if group.identity_key is not None and sum(char.isalnum() for char in group.identity_key) >= 2:
+            accepted.append(group.center)
+            keys.add(group.identity_key)
+        if group.broad_conflict:
+            conflicts.extend(group.conflict_centers)
     broad_conflict = (len(conflicts) >= 3 and _spread(np.asarray(conflicts), np.ones(2), min_quadrants=2, span=0)
                       and np.ptp(conflicts, axis=0).max() >= .22)
     consistent = (len(accepted) >= 6 and len(keys) >= 4
                   and len({char for key in keys for char in key if char.isalnum()}) >= 4
                   and _spread(np.asarray(accepted), np.ones(2), min_quadrants=2, span=.20))
+    if diagnostics is not None:
+        diagnostics['content_conflict_count'] = min(300, len(conflicts))
     return bool(consistent), bool(broad_conflict)
 
 
 def register(anchor, frame, fixed, moving):
-    """Return (matrix, broad_text_conflict, numerical evidence); no pixels warp."""
+    """Return a checked transform or an unconfirmed-content boundary; no warp."""
     if fixed is None or moving is None:
         evidence = {'method': METHOD, 'status': 'landmarks_unavailable'} if fixed is not None else None
         return None, False, evidence
@@ -248,11 +283,17 @@ def register(anchor, frame, fixed, moving):
         intersection, _ = cv2.intersectConvexConvex(corners.astype(np.float32), transformed.astype(np.float32))
         if intersection < .80:
             return None, False, None
-        consistent, conflict = _text_evidence(anchor, frame, matrix)
+        content = {}
+        consistent, conflict = _text_evidence(anchor, frame, matrix, diagnostics=content)
         stats = {'method': METHOD, 'anchor_frame_sha256': fixed.frame_sha256,
                  'source_frame_sha256': moving.frame_sha256, 'inliers': int(inliers.sum()),
                  'matches': len(matches), 'p90_residual': round(float(np.quantile(residuals, .9)), 6),
-                 'status': 'conflicting_page' if conflict else 'verified' if consistent else 'text_identity_unconfirmed'}
-        return (matrix if consistent and not conflict else None), conflict, stats
+                 'status': 'verified' if consistent else 'conflicting_page' if conflict else 'text_identity_unconfirmed',
+                 **content}
+        # The geometry and independent unchanged text establish a usable
+        # coordinate registration, not immutable page content. Preserve edits
+        # as competing readings; physical boundaries belong to the source/page
+        # token lifecycle. With no independent agreement, remain separate.
+        return (matrix if consistent else None), bool(conflict and not consistent), stats
     except (cv2.error, ValueError, TypeError, OverflowError):
         return None, False, None

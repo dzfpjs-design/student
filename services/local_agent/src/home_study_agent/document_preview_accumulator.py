@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 
 from .local_ocr.text_geometry import validate as validate_geometry
+from .document_text_overlap import compare as compare_text_overlap
 
 MAX_SOURCE_FRAMES = 32
 MAX_LINES = 300
@@ -143,37 +144,23 @@ def _boxes(lines):
     return polygons.min(axis=1), polygons.max(axis=1)
 
 
-def _merge(previous, incoming, anchor_id):
+def _merge(previous, incoming, anchor_id, *, allow_page_reset=True):
     # Compare placement in the fixed original coordinate system. A repeat at
     # another location is a different line. An overlapped contradictory line
     # remains visible as a competing reading.
     if not previous or not incoming:
         return None, 'insufficient_anchors'
-    previous_min, previous_max = _boxes(previous)
-    incoming_min, incoming_max = _boxes(incoming)
-    intersection = np.minimum(incoming_max[:, None], previous_max) - np.maximum(incoming_min[:, None], previous_min)
-    intersection_area = np.prod(np.maximum(intersection, 0), axis=2)
-    smaller_area = np.minimum(np.prod(incoming_max - incoming_min, axis=1)[:, None],
-                              np.prod(previous_max - previous_min, axis=1))
-    overlap = intersection_area >= .52 * smaller_area
-    previous_keys = [_text_key(line['text']) for line in previous]
-    incoming_keys = [_text_key(line['text']) for line in incoming]
     replaced = set()
     older_conflicts = set()
     broad_conflicts = []
-    for position, line in enumerate(incoming):
-        matches = np.flatnonzero(overlap[position])
-        same = [index for index in matches if previous_keys[index] == incoming_keys[position]]
-        if same:
-            replaced.add(max(same, key=lambda index: intersection_area[position, index]))
-        contradictions = [index for index in matches if previous_keys[index] != incoming_keys[position]]
-        if contradictions:
-            line['conflict'] = True
-            older_conflicts.update(contradictions)
-            if line['confidence'] >= _ANCHOR_CONFIDENCE and any(
-                    previous[index]['confidence'] >= _ANCHOR_CONFIDENCE for index in contradictions):
-                broad_conflicts.append((incoming_min[position] + incoming_max[position]) / 2)
-    if len(broad_conflicts) >= 3:
+    for group in compare_text_overlap(previous, incoming):
+        replaced.update(group.replaced_old)
+        older_conflicts.update(group.conflicting_old)
+        for index in group.conflicting_new:
+            incoming[index]['conflict'] = True
+        if group.broad_conflict:
+            broad_conflicts.extend(group.conflict_centers)
+    if allow_page_reset and len(broad_conflicts) >= 3:
         points = np.asarray(broad_conflicts)
         quadrants = {tuple(point > .5) for point in points}
         if len(quadrants) >= 2 and np.ptp(points, axis=0).max() >= .22:
@@ -217,7 +204,9 @@ def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=No
     aligned = _observations(preview_id, frame, anchor=anchor, matrix=matrix)
     if aligned is None:
         return {**draft, 'reason': 'geometry_outside_anchor'}
-    lines, reason = _merge(previous['lines'], aligned, anchor_id)
+    # On a strongly registered source, several corrections are revisions of
+    # this reading, not proof that the child physically turned the page.
+    lines, reason = _merge(previous['lines'], aligned, anchor_id, allow_page_reset=visual_matrix is None)
     if reason in {'line_limit', 'source_limit'}:
         limited = {**previous, 'reason': reason, 'merged': True,
                    'lines': [{**line, 'status': 'historical'} for line in previous['lines']]}
@@ -225,9 +214,8 @@ def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=No
             limited.update(alignment_method='local_orb_v1', registration=registration)
         return limited
     if lines is None:
-        # Extensively conflicting high-confidence text is evidence for an
-        # epoch boundary, even when the renderer has not spotted a page turn.
-        # The first frame of the new epoch is still a single-frame candidate.
+        # The text-only path lacks a checked visual registration; keep its
+        # conservative separate-candidate boundary for broad disagreement.
         new_anchor = preview_id if reason == 'conflicting_page' else anchor_id
         result = {**draft, 'anchor_preview_id': new_anchor, 'reason': reason}
         if visual_matrix is not None:

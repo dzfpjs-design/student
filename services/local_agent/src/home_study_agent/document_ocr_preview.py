@@ -285,7 +285,8 @@ class DocumentOcrPreviewService:
         text = '\n'.join(line['text'] for line in result['lines'] if line['text'].strip())
         question_count = sum(block['block_kind'] == 'question' for block in result['question_blocks'])
         frame = verified_frame(result, frame_sha) if page_token is not None else None
-        landmarks = extract_landmarks(image, frame)
+        landmark_diagnostics = {}
+        landmarks = extract_landmarks(image, frame, diagnostics=landmark_diagnostics)
 
         # Coordinate with privacy deletion/restore and recheck the original
         # lease in the same transaction as the preview insert.
@@ -320,6 +321,9 @@ class DocumentOcrPreviewService:
             if page_token is not None:
                 scope = (session_id, child_id, phase, lease_id, generation)
                 draft = self._page_draft(connection, scope, page_token, preview['preview_id'], frame, landmarks)
+                if (landmarks is None and draft['reason'] in {'insufficient_anchors', 'geometry_unavailable'}
+                        and not draft['merged']):
+                    draft['registration'] = landmark_diagnostics
                 preview['page_draft'] = draft
             connection.execute("""INSERT INTO document_ocr_preview
                 (preview_id,child_id,session_id,lease_id,monitor_generation,frame_sha256,frame_signature,client_action_id,

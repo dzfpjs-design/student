@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from home_study_agent.document_preview_accumulator import build_page_draft, qualifies_as_anchor, verified_frame
-from home_study_agent.document_visual_registration import LandmarkCache, METHOD, extract_landmarks, register
+from home_study_agent.document_visual_registration import LandmarkCache, METHOD, _text_evidence, extract_landmarks, register
 from home_study_agent.local_ocr.text_geometry import build
 
 
@@ -77,17 +77,23 @@ def test_short_math_complementary_ink_registers_to_fixed_original_and_keeps_sour
     assert current['original_polygon'] != current['canonical_polygon']
 
 
-def test_shared_math_template_and_broad_rewrite_are_rejected_and_create_new_boundary():
+def test_shared_template_with_different_problem_content_has_no_independent_identity():
     raw_a, frame_a, _ = math_paper(background=True)
-    changed = {(q, 1): str(800 + q * 13) for q in range(8)}
+    # Keep only the printed question labels/division/zero scaffolding. Change
+    # all distinctive operands and results, unlike corrections on one page.
+    changed = {(q, i): str(800 + q * 13 + i * 7) for q in range(8) for i in (1, 3, 4, 5, 6)}
     raw_b, frame_b, _ = math_paper(changed=changed, background=True)
     matrix, conflict, _ = register(frame_a, frame_b, extract_landmarks(raw_a, frame_a), extract_landmarks(raw_b, frame_b))
-    assert matrix is None and conflict
+    assert matrix is None
+    # This substantially changed ink may fail registration before textual
+    # comparison. Even if geometry were identical, it has no independent text
+    # agreement; neither route may merge the different problem content.
+    consistent, broad = _text_evidence(frame_a, frame_b, np.array([[1, 0, 0], [0, 1, 0]]))
+    assert not consistent and broad
     old = build_page_draft(PAGE, 'old', frame_a, visual_anchor=True)
     new = build_page_draft(PAGE, 'new', frame_b, anchor_id='old', anchor=frame_a, previous=old,
                            visual_conflict=conflict)
-    assert new['reason'] == 'conflicting_page' and not new['merged']
-    assert new['anchor_preview_id'] == 'new'
+    assert not new['merged'] and new['frame_count'] == 1
     assert {line['preview_id'] for line in new['lines']} == {'new'}
 
 
@@ -245,6 +251,13 @@ def test_http_short_math_saves_sources_reanchors_after_ram_loss_and_keeps_old_dr
                 assert 'descriptors' not in value and 'image_base64' not in value and 'Landmarks' not in value
             assert c.execute('SELECT COUNT(*) FROM capture_artifact').fetchone()[0] == 0
             assert c.execute('SELECT COUNT(*) FROM document_page_revision').fetchone()[0] == 0
+
+        changed_page = upload(hidden=(7,), token=str(uuid4()))
+        assert changed_page.status_code == 200, changed_page.text
+        separate = changed_page.json()
+        assert separate['page_draft']['anchor_preview_id'] == separate['preview_id']
+        assert separate['page_draft']['frame_count'] == 1 and not separate['page_draft']['merged']
+        assert {line['preview_id'] for line in separate['page_draft']['lines']} == {separate['preview_id']}
 
         # A fresh service has no image-derived memory, exactly as after a
         # backend restart. The old persisted aggregate must remain readable.

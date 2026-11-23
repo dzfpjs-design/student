@@ -29,11 +29,9 @@ export class DocumentPreviewPageEpoch {
     if (missing) this.missingSince ??= at
     else { this.missingSince = undefined; this.missingBoundary = false }
     const missingBoundary = this.missingSince !== undefined && at - this.missingSince >= 1_000 && !this.missingBoundary
-    // Observe broad changes even before a formal page has ever been captured.
-    // Local writing/partial hand occlusion need not start a different page.
-    const broadChange = !newSource && this.previous && frame.skinRatio < .025 && this.previous.skinRatio < .025
-      && frame.paperRatio >= .2 && this.previous.paperRatio >= .2
-      && distance(frame.fingerprint, this.previous.fingerprint) >= 18
+    // Spatial changes can isolate a page before any formal capture. Warm paper
+    // and incomplete framing cannot establish or rule out a page boundary.
+    const broadChange = !newSource && this.previous && hasBroadSpatialChange(frame.fingerprint, this.previous.fingerprint)
     if (!newSource && (pageChanged || missingBoundary || broadChange)) this.pageToken = this.newToken()
     if (missingBoundary) this.missingBoundary = true
     this.source = source
@@ -43,7 +41,25 @@ export class DocumentPreviewPageEpoch {
   }
 }
 
-function distance(a: Uint8Array, b: Uint8Array): number {
-  if (a.length !== b.length || !a.length) return Infinity
-  return a.reduce((sum, value, index) => sum + Math.abs(value - b[index]), 0) / a.length
+function hasBroadSpatialChange(a: Uint8Array, b: Uint8Array): boolean {
+  const rows = 6, columns = 8, cells = rows * columns
+  if (a.length !== cells || b.length !== cells) return false
+  const changes = Array.from(a, (value, index) => value - b[index])
+  // Remove the camera's global exposure offset. An observed middle value,
+  // rather than the mean of two values, avoids inventing residual changes in
+  // both halves when exactly half the frame is covered by a stationary hand.
+  const exposureShift = [...changes].sort((left, right) => left - right)[Math.floor(cells / 2)]
+  let strongCells = 0, totalResidual = 0
+  const quadrants = new Set<number>()
+  for (let index = 0; index < cells; index += 1) {
+    const residual = Math.abs(changes[index] - exposureShift)
+    totalResidual += residual
+    if (residual < 25) continue
+    strongCells += 1
+    const row = Math.floor(index / columns), column = index % columns
+    quadrants.add((row >= rows / 2 ? 2 : 0) + (column >= columns / 2 ? 1 : 0))
+  }
+  // This is a conservative isolation boundary, never proof of physical page
+  // identity. A local mark/hand and an exposure-only shift stay in one group.
+  return strongCells >= Math.ceil(cells * .35) && quadrants.size >= 3 && totalResidual / cells >= 18
 }
