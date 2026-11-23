@@ -3,7 +3,7 @@ import { ApiError, localApi } from './api'
 import type { DocumentInspectionOutput } from './cameraDeviceRuntime'
 import { contentChanged, extractDocumentFrameFeatures, type DocumentFrameFeatures } from './documentFrameMonitor'
 import type { DocumentOcrPreview, DocumentOcrPreviewPhase } from './types'
-import { DocumentPreviewPageEpoch } from './documentPreviewPageEpoch'
+import { DocumentPreviewPageEpoch, type DocumentPreviewPageBoundary } from './documentPreviewPageEpoch'
 
 const sampleCount = 4
 const minimumSpan = 1_500
@@ -28,6 +28,14 @@ function previewDiagnostic(event: PreviewDiagnostic, startedAt: number, count?: 
   try { void window.desktop?.recordRendererDiagnostic?.({ event: `document.preview.${event}`,
     level: event === 'unconfirmed' || event === 'resolve_source_blocked' ? 'warn' : 'info', details })?.catch(() => undefined) }
   catch { /* Diagnostics cannot interrupt recognition or recovery. */ }
+}
+
+function previewBoundaryDiagnostic(decision: DocumentPreviewPageBoundary): void {
+  const details = { preview_boundary_reason: decision.preview_boundary_reason, strong_cells: decision.strong_cells,
+    quadrants: decision.quadrants, mean_residual: decision.mean_residual, exposure_offset_abs: decision.exposure_offset_abs,
+    missing_elapsed_ms: decision.missing_elapsed_ms }
+  try { void window.desktop?.recordRendererDiagnostic?.({ event: 'document.preview.page_boundary', level: 'info', details })?.catch(() => undefined) }
+  catch { /* Optional diagnostics cannot affect token ownership or sampling. */ }
 }
 
 type PreviewSample = {
@@ -155,7 +163,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
   const resolution = useRef<{ attempt: PreviewAttempt; controller: AbortController } | null>(null)
   const resolutionRetryAt = useRef(0)
   const historyWriteVersion = useRef(0)
-  const pageEpoch = useRef(new DocumentPreviewPageEpoch())
+  const pageEpoch = useRef(new DocumentPreviewPageEpoch(undefined, previewBoundaryDiagnostic))
   const pageTokenRef = useRef<string | undefined>(undefined)
   const busyRetryAt = useRef(0)
   const retiredRetryAt = useRef(0)

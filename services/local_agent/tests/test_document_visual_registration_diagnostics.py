@@ -15,7 +15,9 @@ from test_document_visual_registration import PAGE, math_paper
 
 SAFE_KEYS = {'method', 'status', 'reason', 'line_count', 'high_confidence_lines', 'usable_lines',
              'text_span', 'text_quadrants', 'expected_frame_size', 'decoded_frame_size', 'brightness', 'contrast',
-             'raw_keypoints', 'bounded_keypoints', 'landmark_span', 'landmark_quadrants', 'error_code', 'opencv_code'}
+             'raw_keypoints', 'bounded_keypoints', 'landmark_span', 'landmark_quadrants', 'error_code', 'opencv_code',
+             'text_hull_frame_area', 'text_hull_bbox_ratio', 'text_support_cells',
+             'landmark_hull_frame_area', 'landmark_hull_bbox_ratio', 'landmark_support_cells'}
 
 
 def assert_safe(diagnostic):

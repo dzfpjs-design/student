@@ -161,6 +161,29 @@ describe('voice media observation metadata', () => {
     expect(raw).not.toContain('PRIVATE_')
     expect(sanitizeDiagnosticValue({ error_code: 'DOCUMENT_PREVIEW_PRIVATE_CHILD' })).toEqual({})
   })
+  it('persists closed page-boundary reasons and bounded counts without private source data', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'hsc-page-boundary-diagnostics-')); roots.push(root)
+    const recorder = new DiagnosticRecorder(root)
+    const details = { preview_boundary_reason: 'broad_spatial_change', strong_cells: 48, quadrants: 4,
+      mean_residual: 255, exposure_offset_abs: 255, missing_elapsed_ms: 300_000 }
+    await recorder.record({ source: 'renderer', event: 'document.preview.page_boundary', details: { ...details,
+      source: 'PRIVATE_SOURCE', token: 'PRIVATE_TOKEN', child_id: 'PRIVATE_CHILD', page_token: 'PRIVATE_PAGE',
+      fingerprint: [1, 2, 3], image_base64: 'PRIVATE_IMAGE', text: 'PRIVATE_PAPER' } })
+    const raw = await readFile(recorder.logPath, 'utf8'), entry = JSON.parse(raw.trim())
+    expect(entry).toMatchObject({ event: 'document.preview.page_boundary', details })
+    expect(Object.keys(entry.details).sort()).toEqual(Object.keys(details).sort())
+    expect(raw).not.toMatch(/PRIVATE_|fingerprint/)
+    expect(sanitizeDiagnosticValue({ preview_boundary_reason: 'PRIVATE_REASON' })).toEqual({})
+  })
+  it.each(Object.entries({ strong_cells: 48, quadrants: 4, mean_residual: 255, exposure_offset_abs: 255, missing_elapsed_ms: 300_000 }))(
+    'rejects invalid page-boundary metadata for %s', (key, max) => {
+      for (const value of [-1, max + 1, Infinity, -Infinity, NaN, true, 'PRIVATE_NUMBER', [0]]) {
+        expect(sanitizeDiagnosticValue({ [key]: value })).toEqual({})
+      }
+      if (['strong_cells', 'quadrants'].includes(key)) expect(sanitizeDiagnosticValue({ [key]: .5 })).toEqual({})
+      expect(sanitizeDiagnosticValue({ [key]: 0 })).toEqual({ [key]: 0 })
+      expect(sanitizeDiagnosticValue({ [key]: max })).toEqual({ [key]: max })
+    })
   it('retains actionable SMTP outcomes across reopen without recording mailbox credentials or content', async () => {
     const root = await mkdtemp(join(tmpdir(), 'hsc-smtp-diagnostics-')); roots.push(root)
     const recorder = new DiagnosticRecorder(root)

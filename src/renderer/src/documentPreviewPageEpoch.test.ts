@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DocumentPreviewPageEpoch } from './documentPreviewPageEpoch'
 import type { DocumentFrameFeatures } from './documentFrameMonitor'
 
@@ -12,6 +12,51 @@ function spatialFrame(cells: number[], change = 80): DocumentFrameFeatures {
 }
 
 describe('document preview page boundary', () => {
+  it('reports each actual token creation once with closed reasons and no source identity', () => {
+    let id = 0
+    const boundary = vi.fn()
+    const e = new DocumentPreviewPageEpoch(() => `PRIVATE_TOKEN_${++id}`, boundary)
+    e.observe('PRIVATE_SOURCE', 1, 0, frame())
+    e.observe('PRIVATE_SOURCE', 1, 500, spatialFrame(broadCells), true)
+    e.observe('PRIVATE_SOURCE', 2, 1_000, frame(165))
+    expect(boundary.mock.calls.map(([details]) => details.preview_boundary_reason)).toEqual(['initial'])
+    e.observe('PRIVATE_SOURCE', 3, 1_500, { ...spatialFrame(broadCells), skinRatio: .118 })
+    e.observe('PRIVATE_SOURCE', 4, 2_000, { ...spatialFrame(broadCells), skinRatio: .118 })
+    e.observe('PRIVATE_SOURCE', 5, 2_500, frame(), true)
+    e.observe('PRIVATE_OTHER_SOURCE', 6, 3_000, frame())
+    e.observe('PRIVATE_OTHER_SOURCE', 1, 3_500, frame())
+    e.reset(); e.reset()
+    e.observe('PRIVATE_OTHER_SOURCE', 2, 4_000, frame())
+    const reasons = boundary.mock.calls.map(([details]) => details.preview_boundary_reason)
+    expect(reasons).toEqual(['initial', 'broad_spatial_change', 'page_changed_signal', 'source_changed', 'counter_reset', 'explicit_invalidation'])
+    const broad = boundary.mock.calls[1][0]
+    expect(broad).toMatchObject({ strong_cells: 17, quadrants: 3, exposure_offset_abs: 25 })
+    expect(broad.mean_residual).toBeCloseTo(17 * 80 / 48)
+    expect(JSON.stringify(boundary.mock.calls)).not.toMatch(/PRIVATE_|fingerprint|contentFingerprint|skinRatio|paperRatio/)
+  })
+  it('bounds the missing-frame duration and reports one boundary until paper returns', () => {
+    const boundary = vi.fn(), e = new DocumentPreviewPageEpoch(() => 'page', boundary)
+    e.observe('camera', 1, 0, frame())
+    const dark = { ...frame(0), paperRatio: 0, brightness: 0 }
+    e.observe('camera', 2, 500, dark)
+    e.observe('camera', 3, 1_000_000, dark)
+    e.observe('camera', 4, 1_500_000, dark)
+    expect(boundary).toHaveBeenCalledTimes(2)
+    expect(boundary.mock.calls[1][0]).toMatchObject({ preview_boundary_reason: 'blackout_or_page_missing', missing_elapsed_ms: 300_000 })
+    for (const [details] of boundary.mock.calls) {
+      for (const [key, max] of Object.entries({ strong_cells: 48, quadrants: 4, mean_residual: 255, exposure_offset_abs: 255, missing_elapsed_ms: 300_000 })) {
+        if (details[key] !== undefined) expect(details[key]).toBeGreaterThanOrEqual(0)
+        if (details[key] !== undefined) expect(details[key]).toBeLessThanOrEqual(max)
+      }
+    }
+  })
+  it('does not let a throwing diagnostic callback change page-boundary decisions', () => {
+    let id = 0
+    const e = new DocumentPreviewPageEpoch(() => `page-${++id}`, () => { throw new Error('diagnostics unavailable') })
+    const first = e.observe('camera', 1, 0, frame())
+    expect(e.observe('camera', 2, 500, spatialFrame(broadCells))).not.toBe(first)
+    expect(e.observe('camera', 3, 1_000, spatialFrame(broadCells))).toBe('page-2')
+  })
   it('retains a page through handwriting and partial hand coverage', () => {
     const e = setup(), first = e.observe('camera', 1, 0, frame())
     expect(e.observe('camera', 2, 500, { ...frame(142), skinRatio: .2 })).toBe(first)

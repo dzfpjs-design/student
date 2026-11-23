@@ -23,6 +23,7 @@ import zipfile
 from .daily_diagnostic_schema import (
     BOOLEANS, CONTAINERS, ENUMS, ERROR_CODES, EVENTS, LOGGER_SOURCE_SHA256,
     NUMBERS, REASON_CODES, ROUTES_SOURCE_SHA256, TOKEN_COUNTS,
+    PREVIEW_BOUNDARY_COUNT_KEYS, PREVIEW_BOUNDARY_NUMERIC_LIMITS,
 )
 
 
@@ -301,6 +302,9 @@ def _code(value) -> bool:
 def _safe_number(key: str, value) -> bool:
     if type(value) not in {int, float} or not (-1_000_000_000_000 <= value <= 1_000_000_000_000):
         return False
+    if key in PREVIEW_BOUNDARY_NUMERIC_LIMITS:
+        return (0 <= value <= PREVIEW_BOUNDARY_NUMERIC_LIMITS[key]
+                and (key not in PREVIEW_BOUNDARY_COUNT_KEYS or type(value) is int))
     if key == "exitCode":
         return type(value) is int and -2**31 <= value <= 2**32 - 1
     if key == "statusCode":

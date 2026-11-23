@@ -133,6 +133,31 @@ def _usable_text(frame):
             and not _TEMPLATE.match(_text_key(line['text']))]
 
 
+def _registration_support(points, scale, *, metrics=None):
+    """Require broad 2-D support without depending on the full frame centre.
+
+    The existing quarter-frame span is retained on each axis. A hull filling
+    at least one quarter of that box therefore covers at least 1/64 of the
+    frame. Three occupied local quadrants retain three spatial directions;
+    tiny patches, straight lines and two endpoint clusters cannot qualify.
+    This checks coordinate support, not physical page identity.
+    """
+    points, scale = np.asarray(points, dtype=float), np.asarray(scale, dtype=float)
+    if (points.ndim != 2 or points.shape[1] != 2 or len(points) < 3 or scale.shape != (2,)
+            or not np.isfinite(points).all() or not np.isfinite(scale).all() or np.any(scale <= 0)):
+        return False
+    normalized = points / scale
+    low, high = normalized.min(axis=0), normalized.max(axis=0)
+    span = high - low
+    box_area = float(np.prod(span))
+    hull_area = float(cv2.contourArea(cv2.convexHull(normalized.astype(np.float32))))
+    hull_ratio = min(1., max(0., hull_area / box_area)) if box_area > 0 else 0.
+    occupied = len({tuple(point > (low + high) / 2) for point in normalized})
+    if metrics is not None:
+        metrics.update(hull_frame_area=round(hull_area, 6), hull_bbox_ratio=round(hull_ratio, 6), support_cells=occupied)
+    return bool(np.all(span >= .25) and hull_ratio >= .25 and occupied >= 3)
+
+
 def extract_landmarks(image, frame, diagnostics=None):
     """Decode exact validated bytes once; retain only bounded ink descriptors."""
     if diagnostics is not None:
@@ -159,8 +184,10 @@ def extract_landmarks(image, frame, diagnostics=None):
         if len(lines) < 6:
             return None
         centers = np.asarray([np.mean(line['original_polygon'], axis=0) for line in lines])
-        report('text_spread', **spread_counts(centers, 'text'))
-        if not _spread(centers, np.ones(2), span=.25):
+        text_support = {}
+        supported = _registration_support(centers, np.ones(2), metrics=text_support)
+        report('text_spread', **spread_counts(centers, 'text'), **{'text_' + key: value for key, value in text_support.items()})
+        if not supported:
             return None
         gray = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_GRAYSCALE)
         width, height = (int(value) + 1 for value in frame['frame_size'])
@@ -193,8 +220,11 @@ def extract_landmarks(image, frame, diagnostics=None):
                 cells[cell] = cells.get(cell, 0) + 1
                 chosen.append(index)
         locations = np.asarray([points[index].pt for index in chosen], dtype=np.float32) / (w - 1, h - 1)
-        report('landmark_spread', bounded_keypoints=len(chosen), **spread_counts(locations, 'landmark'))
-        if len(chosen) < 64 or not _spread(locations, np.ones(2), span=.25):
+        landmark_support = {}
+        supported = _registration_support(locations, np.ones(2), metrics=landmark_support)
+        report('landmark_spread', bounded_keypoints=len(chosen), **spread_counts(locations, 'landmark'),
+               **{'landmark_' + key: value for key, value in landmark_support.items()})
+        if len(chosen) < 64 or not supported:
             return None
         report('ready')
         return Landmarks(frame['frame_sha256'], locations.astype(np.float32), descriptors[chosen].copy())
@@ -276,7 +306,8 @@ def register(anchor, frame, fixed, moving):
         angle = abs(degrees(atan2(matrix[1, 0], matrix[0, 0])))
         if (not .9 <= scale <= 1.1 or angle > 5 or np.linalg.norm(matrix[:, 2]) > .08
                 or np.quantile(residuals, .9) > .003 or residuals.max() > .005
-                or not _spread(source[inliers], incoming_scale) or not _spread(target[inliers], anchor_scale)):
+                or not _registration_support(source[inliers], incoming_scale)
+                or not _registration_support(target[inliers], anchor_scale)):
             return None, False, None
         corners = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=float)
         transformed = ((corners * incoming_scale) @ matrix[:, :2].T + matrix[:, 2]) / anchor_scale

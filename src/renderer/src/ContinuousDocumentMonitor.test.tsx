@@ -508,13 +508,40 @@ describe('continuous document monitor device lifecycle', () => {
         const preview = prepareWarmPreview()
         await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
         await advance(305_000)
-        const entries = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event.startsWith('document.preview.'))
+        const entries = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event.startsWith('document.preview.') && entry.event !== 'document.preview.page_boundary')
         expect(entries.map(entry => entry.event)).toEqual(['document.preview.started', 'document.preview.saved',
           'document.preview.refresh_due', 'document.preview.started', 'document.preview.saved'])
         expect(entries.every(entry => Object.keys(entry.details).every(key => ['latency_ms', 'count'].includes(key)))).toBe(true)
         const output = JSON.stringify(entries)
         for (const privateValue of [warmPreview.text, 'dGVzdA==', 'lease-document', preview.mock.calls[0][3], preview.mock.calls[0][9]]) {
           expect(output).not.toContain(privateValue)
+        }
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it('records the actual page-boundary branch once without frame, page or source identities', async () => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        const preview = prepareWarmPreview()
+        await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+        await advance(3000)
+        const fingerprint = new Uint8Array(48).fill(140)
+        for (const index of [0, 1, 2, 8, 9, 10, 16, 17, 18, 4, 5, 12, 13, 24, 25, 32, 33]) fingerprint[index] = 220
+        features = { ...features, fingerprint }
+        await advance(13_000)
+        const entries = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event === 'document.preview.page_boundary')
+        expect(entries.map(entry => entry.details.preview_boundary_reason)).toEqual(['initial', 'broad_spatial_change'])
+        expect(entries[1].details).toMatchObject({ strong_cells: 17, quadrants: 3, exposure_offset_abs: 0, missing_elapsed_ms: 0 })
+        expect(Object.keys(entries[1].details).sort()).toEqual(['exposure_offset_abs', 'mean_residual', 'missing_elapsed_ms',
+          'preview_boundary_reason', 'quadrants', 'strong_cells'])
+        const output = JSON.stringify(entries)
+        for (const value of [warmPreview.text, 'dGVzdA==', 'lease-document', preview.mock.calls[0][3], preview.mock.calls[0][9]]) {
+          expect(output).not.toContain(value)
         }
       } finally {
         if (previous) Object.defineProperty(window, 'desktop', previous)
@@ -537,7 +564,7 @@ describe('continuous document monitor device lifecycle', () => {
         }
         await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
         await advance(3000)
-        const entries = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event.startsWith('document.preview.'))
+        const entries = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event.startsWith('document.preview.') && entry.event !== 'document.preview.page_boundary')
         expect(entries.map(entry => entry.event)).toEqual(['document.preview.started', 'document.preview.unconfirmed', `document.preview.resolve_${outcome}`])
         expect(entries.every(entry => Object.keys(entry.details).every(key => ['latency_ms', 'count', 'error_code'].includes(key)))).toBe(true)
         expect(entries[1].details.error_code).toBe('DOCUMENT_PREVIEW_RESULT_UNCONFIRMED')
