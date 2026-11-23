@@ -229,7 +229,7 @@ def test_http_requires_configured_current_token_valid_scope_and_no_store(tmp_pat
         # Privacy export carries neither tombstones nor recovery digests. The
         # retained anonymous fence has no child text or identifiers to leak.
         export = client.app.state.privacy_lifecycle.export_child('child-primary-4')
-        payload = json.loads(Path(export['path']).read_text())
+        payload = json.loads(Path(export['path']).read_text(encoding='utf-8'))
         assert 'document_preview_recovery_fence' not in payload and 'ocr_request_tombstone' not in payload
         assert payload['document_ocr_previews'] == []
         client.app.state.privacy_lifecycle.delete_child_scope('child-primary-4', 'media', '确认删除', 'erase-retired-preview')
