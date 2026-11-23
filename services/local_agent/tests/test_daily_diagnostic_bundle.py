@@ -21,6 +21,15 @@ END = START + timedelta(days=1)
 CORRELATION = "f210d041-a277-42a1-b117-033b8511af48"
 
 
+def symlink_fixture(path, target, *, target_is_directory=False):
+    try:
+        path.symlink_to(target, target_is_directory=target_is_directory)
+    except OSError as error:
+        if os.name == "nt" and error.winerror == 1314:
+            pytest.skip("Windows test account lacks symbolic-link creation privilege")
+        raise
+
+
 def event(**changes):
     result = {
         "privacy_policy_version": "diagnostic_metadata_v2",
@@ -258,7 +267,7 @@ def test_nonregular_or_aliased_file_is_not_read(tmp_path, kind):
     outside.write_bytes(b"PRIVATE_NOT_A_RUNTIME_LOG")
     path = directory / "runtime.jsonl"
     if kind == "symlink":
-        path.symlink_to(outside)
+        symlink_fixture(path, outside)
     elif kind == "hardlink":
         os.link(outside, path)
     else:
@@ -275,7 +284,7 @@ def test_symlink_parent_and_traversal_fail_closed(tmp_path):
     outside = tmp_path / "outside"
     logs(outside, [event()])
     alias = tmp_path / "alias"
-    alias.symlink_to(outside, target_is_directory=True)
+    symlink_fixture(alias, outside, target_is_directory=True)
     bundle = diagnostic.build_daily_diagnostic_bundle(alias, start_utc=START, end_utc=END)
     assert bundle.manifest["events_included"] == 0
     assert "unsafe_or_unreadable_directory" in bundle.manifest["coverage"]["issues"]
@@ -552,7 +561,7 @@ def test_frozen_release_symlink_and_untrusted_paths_cannot_authorize(tmp_path, m
     backend.write_bytes(b"BACKEND")
     outside = tmp_path / "private"
     outside.write_bytes(b"FRONTEND_OR_SECRET")
-    (resources / "app.asar").symlink_to(outside)
+    symlink_fixture(resources / "app.asar", outside)
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "executable", str(backend))
     manifest, _, raw = unpack(build(tmp_path, release_info={"release_id": "forged", "app_asar_path": str(outside)}))

@@ -136,10 +136,9 @@ def _usable_text(frame):
 def _registration_support(points, scale, *, metrics=None):
     """Require broad 2-D support without depending on the full frame centre.
 
-    The existing quarter-frame span is retained on each axis. A hull filling
-    at least one quarter of that box therefore covers at least 1/64 of the
-    frame. Three occupied local quadrants retain three spatial directions;
-    tiny patches, straight lines and two endpoint clusters cannot qualify.
+    Preserve the old minimum hull area of 1/64 frame, without requiring a
+    quarter of each frame dimension. Shape is measured in pixel-isotropic
+    coordinates; area and local-cell occupancy use normalized frame locations.
     This checks coordinate support, not physical page identity.
     """
     points, scale = np.asarray(points, dtype=float), np.asarray(scale, dtype=float)
@@ -153,9 +152,67 @@ def _registration_support(points, scale, *, metrics=None):
     hull_area = float(cv2.contourArea(cv2.convexHull(normalized.astype(np.float32))))
     hull_ratio = min(1., max(0., hull_area / box_area)) if box_area > 0 else 0.
     occupied = len({tuple(point > (low + high) / 2) for point in normalized})
+    hull = cv2.convexHull(points.astype(np.float32)).reshape(-1, 2).astype(float)
+    width, diameter = 0., 0.
+    if len(hull) >= 3:
+        edges = np.roll(hull, -1, axis=0) - hull
+        lengths = np.linalg.norm(edges, axis=1)
+        if np.all(lengths > 1e-12):
+            normals = np.c_[-edges[:, 1], edges[:, 0]] / lengths[:, None]
+            width = float(np.min(np.ptp(hull @ normals.T, axis=0)))
+            diameter = float(np.max(np.linalg.norm(hull[:, None] - hull, axis=2)))
+    width_ratio = width / diameter if diameter > 1e-12 else 0.
     if metrics is not None:
-        metrics.update(hull_frame_area=round(hull_area, 6), hull_bbox_ratio=round(hull_ratio, 6), support_cells=occupied)
-    return bool(np.all(span >= .25) and hull_ratio >= .25 and occupied >= 3)
+        metrics.update(hull_frame_area=round(hull_area, 6), hull_bbox_ratio=round(hull_ratio, 6), support_cells=occupied,
+                       min_width_diagonal=round(width, 6), diameter_diagonal=round(diameter, 6),
+                       width_diameter_ratio=round(width_ratio, 6))
+    return bool(hull_area >= 1 / 64 and hull_ratio >= .25 and occupied >= 3 and width_ratio >= .10)
+
+
+def _similarity_least_squares(source, target):
+    source_center, target_center = source.mean(axis=0), target.mean(axis=0)
+    centered, expected = source - source_center, target - target_center
+    denominator = float(np.sum(centered * centered))
+    if denominator <= 1e-12:
+        return None
+    a = float(np.sum(centered * expected) / denominator)
+    b = float(np.sum(centered[:, 0] * expected[:, 1] - centered[:, 1] * expected[:, 0]) / denominator)
+    linear = np.array([[a, -b], [b, a]])
+    return np.c_[linear, target_center - linear @ source_center]
+
+
+def _spatial_holdout(source, target):
+    """Check every occupied spatial group, conditional on the RANSAC consensus.
+
+    This measures spatial stability, not independent statistical validation or
+    the behaviour of unobserved bent paper. No heldout point is discarded.
+    """
+    source, target = np.asarray(source, dtype=float), np.asarray(target, dtype=float)
+    midpoint = (source.min(axis=0) + source.max(axis=0)) / 2
+    labels = (source[:, 0] > midpoint[0]).astype(int) + 2 * (source[:, 1] > midpoint[1]).astype(int)
+    counts = np.bincount(labels, minlength=4)
+    groups = np.flatnonzero(counts)
+    evidence = {'holdout_groups': len(groups), 'holdout_min_training': int(len(source) - counts.max()),
+                'holdout_cell_counts': counts.tolist()}
+    if len(groups) < 3 or evidence['holdout_min_training'] < 24:
+        return False, {**evidence, 'status': 'holdout_budget_insufficient'}
+    worst_p90, worst_max = 0., 0.
+    for group in groups:
+        selected = labels != group
+        matrix = _similarity_least_squares(source[selected], target[selected])
+        if matrix is None or not np.isfinite(matrix).all():
+            return False, {**evidence, 'status': 'holdout_unstable'}
+        fold_scale = hypot(matrix[0, 0], matrix[1, 0])
+        if (not .9 <= fold_scale <= 1.1 or abs(degrees(atan2(matrix[1, 0], matrix[0, 0]))) > 5
+                or np.linalg.norm(matrix[:, 2]) > .08):
+            return False, {**evidence, 'status': 'holdout_unstable'}
+        residuals = np.linalg.norm(source[~selected] @ matrix[:, :2].T + matrix[:, 2] - target[~selected], axis=1)
+        worst_p90 = max(worst_p90, float(np.quantile(residuals, .9)))
+        worst_max = max(worst_max, float(residuals.max()))
+    evidence.update(holdout_p90=round(worst_p90, 6), holdout_max=round(worst_max, 6))
+    if worst_p90 > .003 or worst_max > .005:
+        return False, {**evidence, 'status': 'holdout_unstable'}
+    return True, evidence
 
 
 def extract_landmarks(image, frame, diagnostics=None):
@@ -184,9 +241,13 @@ def extract_landmarks(image, frame, diagnostics=None):
         if len(lines) < 6:
             return None
         centers = np.asarray([np.mean(line['original_polygon'], axis=0) for line in lines])
+        glyphs = np.asarray([line['original_polygon'] for line in lines]).reshape(-1, 2)
+        frame_scale = _scale(frame)
         text_support = {}
-        supported = _registration_support(centers, np.ones(2), metrics=text_support)
-        report('text_spread', **spread_counts(centers, 'text'), **{'text_' + key: value for key, value in text_support.items()})
+        supported = _registration_support(glyphs * frame_scale, frame_scale, metrics=text_support)
+        report('text_spread', **spread_counts(centers, 'text'), text_support_basis='glyph_polygons',
+               text_support_span=np.round(np.ptp(glyphs, axis=0), 4).tolist(),
+               **{'text_' + key: value for key, value in text_support.items()})
         if not supported:
             return None
         gray = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_GRAYSCALE)
@@ -221,7 +282,7 @@ def extract_landmarks(image, frame, diagnostics=None):
                 chosen.append(index)
         locations = np.asarray([points[index].pt for index in chosen], dtype=np.float32) / (w - 1, h - 1)
         landmark_support = {}
-        supported = _registration_support(locations, np.ones(2), metrics=landmark_support)
+        supported = _registration_support(locations * frame_scale, frame_scale, metrics=landmark_support)
         report('landmark_spread', bounded_keypoints=len(chosen), **spread_counts(locations, 'landmark'),
                **{'landmark_' + key: value for key, value in landmark_support.items()})
         if len(chosen) < 64 or not supported:
@@ -254,20 +315,49 @@ def _text_evidence(anchor, frame, matrix, diagnostics=None):
     aligned = ((original * _scale(frame)) @ matrix[:, :2].T + matrix[:, 2]) / _scale(anchor)
     previous = [{**line, 'canonical_polygon': polygon.tolist()} for line, polygon in zip(fixed, target)]
     incoming = [{**line, 'canonical_polygon': polygon.tolist()} for line, polygon in zip(moving, aligned)]
-    accepted, keys, conflicts = [], set(), []
+    accepted, keys, conflicts, fixed_glyphs, moving_glyphs, fixed_groups = [], set(), [], [], [], []
     for group in compare_text_overlap(previous, incoming):
         if group.identity_key is not None and sum(char.isalnum() for char in group.identity_key) >= 2:
             accepted.append(group.center)
             keys.add(group.identity_key)
+            fixed_glyphs.extend(previous[n]['canonical_polygon'] for n in group.replaced_old)
+            moving_glyphs.extend(incoming[n]['canonical_polygon'] for n in group.matched_new)
+            fixed_groups.append([previous[n]['canonical_polygon'] for n in group.replaced_old])
         if group.broad_conflict:
             conflicts.extend(group.conflict_centers)
     broad_conflict = (len(conflicts) >= 3 and _spread(np.asarray(conflicts), np.ones(2), min_quadrants=2, span=0)
                       and np.ptp(conflicts, axis=0).max() >= .22)
-    consistent = (len(accepted) >= 6 and len(keys) >= 4
-                  and len({char for key in keys for char in key if char.isalnum()}) >= 4
-                  and _spread(np.asarray(accepted), np.ones(2), min_quadrants=2, span=.20))
+    character_count = len({char for key in keys for char in key if char.isalnum()})
+    coverage = []
+    for polygons in (fixed_glyphs, moving_glyphs):
+        points = np.asarray(polygons).reshape(-1, 2) if polygons else np.empty((0, 2))
+        supported = bool(len(points) and np.all(np.ptp(points, axis=0) >= .20)
+                         and _registration_support(points * _scale(anchor), _scale(anchor)))
+        coverage.append(supported)
+    crossline_span, typical_height = 0., 0.
+    if fixed_glyphs and accepted:
+        polygons = np.asarray(fixed_glyphs) * _scale(anchor)
+        edges = polygons[:, 1] - polygons[:, 0]
+        lengths = np.linalg.norm(edges, axis=1)
+        if np.all(lengths > 1e-12):
+            directions = edges / lengths[:, None]
+            _, vectors = np.linalg.eigh(directions.T @ directions)
+            baseline = vectors[:, -1]
+            normal = np.array([-baseline[1], baseline[0]])
+            # Polygon bottom edges approximate each text baseline. Centres
+            # would misclassify a single mixed-font headline as several rows.
+            row_positions = [float(np.median(((np.asarray(group) * _scale(anchor))[:, 2:4].mean(axis=1)) @ normal))
+                             for group in fixed_groups]
+            crossline_span = float(np.ptp(row_positions))
+            typical_height = float(np.median(np.ptp(polygons @ normal, axis=1)))
+    multiline = typical_height > 0 and crossline_span >= typical_height
+    consistent = len(accepted) >= 6 and len(keys) >= 4 and character_count >= 4 and all(coverage) and multiline
     if diagnostics is not None:
         diagnostics['content_conflict_count'] = min(300, len(conflicts))
+        diagnostics.update(agreement_groups=min(300, len(accepted)), agreement_keys=min(300, len(keys)),
+                           agreement_characters=min(4096, character_count), agreement_coverage=all(coverage),
+                           agreement_multiline=multiline, agreement_crossline_span=round(crossline_span, 6),
+                           agreement_typical_height=round(typical_height, 6))
     return bool(consistent), bool(broad_conflict)
 
 
@@ -314,13 +404,16 @@ def register(anchor, frame, fixed, moving):
         intersection, _ = cv2.intersectConvexConvex(corners.astype(np.float32), transformed.astype(np.float32))
         if intersection < .80:
             return None, False, None
+        stable, holdout = _spatial_holdout(source[inliers], target[inliers])
+        if not stable:
+            return None, False, {'method': METHOD, **holdout}
         content = {}
         consistent, conflict = _text_evidence(anchor, frame, matrix, diagnostics=content)
         stats = {'method': METHOD, 'anchor_frame_sha256': fixed.frame_sha256,
                  'source_frame_sha256': moving.frame_sha256, 'inliers': int(inliers.sum()),
                  'matches': len(matches), 'p90_residual': round(float(np.quantile(residuals, .9)), 6),
                  'status': 'verified' if consistent else 'conflicting_page' if conflict else 'text_identity_unconfirmed',
-                 **content}
+                 **holdout, **content}
         # The geometry and independent unchanged text establish a usable
         # coordinate registration, not immutable page content. Preserve edits
         # as competing readings; physical boundaries belong to the source/page

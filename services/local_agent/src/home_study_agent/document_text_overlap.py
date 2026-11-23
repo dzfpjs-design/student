@@ -81,6 +81,7 @@ class Overlap:
     center: tuple
     broad_conflict: bool
     conflict_centers: tuple
+    matched_new: frozenset
 
 
 def compare(previous, incoming):
@@ -159,5 +160,5 @@ def compare(previous, incoming):
             # and the existing per-observed-region contradiction accounting.
             conflict_centers = [tuple((new_low[n] + new_high[n]) / 2) for n in reliable]
         decisions.append(Overlap(frozenset(replaced), frozenset(conflicts), frozenset(conflicting_new),
-                                 identity, tuple(center), bool(conflict_centers), tuple(conflict_centers)))
+                                 identity, tuple(center), bool(conflict_centers), tuple(conflict_centers), frozenset(matched_new)))
     return decisions

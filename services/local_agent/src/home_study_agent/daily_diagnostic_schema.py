@@ -2,7 +2,7 @@
 No runtime source parsing or arbitrary field-name passthrough.
 """
 
-LOGGER_SOURCE_SHA256 = '155473e5ca975fc4856b241d51214cd1df13b0130cc4cb9428b1368de5341efc'
+LOGGER_SOURCE_SHA256 = 'eff763f4e2d26f587d32b86919eb8dd2bda73276e015263eb1cc1c2930234dc2'
 ROUTES_SOURCE_SHA256 = 'f8205342306a4fbf62f1a9d54651ef8380e023c1a76f7d61159816747313ab14'
 EVENTS = frozenset(('app_process_started',
  'app_quit_codec_disposed',
@@ -388,13 +388,16 @@ ERROR_CODES = ERROR_CODES.union(('DOCUMENT_PREVIEW_RESULT_UNCONFIRMED', 'DOCUMEN
 
 # Scene-boundary explanations carry only closed reasons and bounded aggregates.
 EVENTS = EVENTS.union(('document.preview.page_boundary',))
+EVENTS = EVENTS.union(('document.preview.scene_change',))
+ENUMS['preview_scene_reason'] = frozenset(('broad_spatial_change', 'page_changed_signal',
+    'blackout_or_page_missing', 'reference_returned', 'registered'))
 ENUMS['preview_boundary_reason'] = frozenset((
     'initial', 'source_changed', 'counter_reset', 'blackout_or_page_missing',
     'page_changed_signal', 'broad_spatial_change', 'explicit_invalidation',
 ))
 PREVIEW_BOUNDARY_NUMERIC_LIMITS = {
     'strong_cells': 48, 'quadrants': 4, 'mean_residual': 255,
-    'exposure_offset_abs': 255, 'missing_elapsed_ms': 300_000,
+    'exposure_offset_abs': 255, 'missing_elapsed_ms': 300_000, 'scene_elapsed_ms': 300_000,
 }
 PREVIEW_BOUNDARY_COUNT_KEYS = frozenset(('strong_cells', 'quadrants'))
 NUMBERS = NUMBERS.union(PREVIEW_BOUNDARY_NUMERIC_LIMITS)

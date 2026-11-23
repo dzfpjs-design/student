@@ -179,7 +179,7 @@ def _merge(previous, incoming, anchor_id, *, allow_page_reset=True):
 
 
 def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=None, previous=None, duplicate=False,
-                     visual_anchor=False, visual_matrix=None, visual_conflict=False, registration=None):
+                     visual_anchor=False, visual_matrix=None, visual_conflict=False, registration=None, allow_text_anchor=True):
     current = _observations(preview_id, frame)
     draft = {'page_token': page_token, 'anchor_preview_id': anchor_id, 'frame_count': 1, 'merged': False,
              'reason': 'geometry_unavailable' if frame is None else 'insufficient_anchors', 'lines': current}
@@ -188,7 +188,7 @@ def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=No
     if frame is None:
         return draft
     if anchor is None:
-        if qualifies_as_anchor(frame) or visual_anchor:
+        if (allow_text_anchor and qualifies_as_anchor(frame)) or visual_anchor:
             draft.update(anchor_preview_id=preview_id, reason='anchor_started')
             if visual_anchor:
                 draft['alignment_method'] = 'local_orb_v1'

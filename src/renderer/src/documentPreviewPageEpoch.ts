@@ -1,7 +1,7 @@
-import type { DocumentFrameFeatures } from './documentFrameMonitor'
+import { contentChanged, type DocumentFrameFeatures } from './documentFrameMonitor'
 
 export type DocumentPreviewPageBoundary = Readonly<{
-  preview_boundary_reason: 'initial' | 'source_changed' | 'counter_reset' | 'blackout_or_page_missing' | 'page_changed_signal' | 'broad_spatial_change' | 'explicit_invalidation'
+  preview_boundary_reason: 'initial' | 'source_changed' | 'counter_reset' | 'explicit_invalidation'
   strong_cells?: number
   quadrants?: number
   mean_residual?: number
@@ -9,8 +9,14 @@ export type DocumentPreviewPageBoundary = Readonly<{
   missing_elapsed_ms: number
 }>
 type SpatialChange = { changed: boolean; strong_cells: number; quadrants: number; mean_residual: number; exposure_offset_abs: number }
+export type DocumentPreviewSceneChange = Readonly<Omit<DocumentPreviewPageBoundary, 'preview_boundary_reason'> & {
+  preview_scene_reason: 'blackout_or_page_missing' | 'page_changed_signal' | 'broad_spatial_change' | 'reference_returned' | 'registered'
+  scene_elapsed_ms: number
+}>
+type PendingScene = { reference?: DocumentFrameFeatures; at: number; changedFrame: number;
+  returnFirstAt?: number; returnLastAt?: number; returnCount: number }
 
-/** A page boundary isolates candidates; it never certifies that two papers are identical. */
+/** A token fences a continuous capture source, never physical paper identity. */
 export class DocumentPreviewPageEpoch {
   private source?: string
   private frameToken?: number
@@ -18,10 +24,13 @@ export class DocumentPreviewPageEpoch {
   private previous?: DocumentFrameFeatures
   private missingSince?: number
   private missingBoundary = false
+  private missingReference?: DocumentFrameFeatures
+  private pendingScene?: PendingScene
   private nextCreationReason?: DocumentPreviewPageBoundary['preview_boundary_reason']
 
   constructor(private readonly newToken: () => string = () => crypto.randomUUID(),
-    private readonly onBoundary?: (decision: DocumentPreviewPageBoundary) => void) {}
+    private readonly onBoundary?: (decision: DocumentPreviewPageBoundary) => void,
+    private readonly onSceneChange?: (decision: DocumentPreviewSceneChange) => void) {}
 
   private report(reason: DocumentPreviewPageBoundary['preview_boundary_reason'], spatial?: SpatialChange, missingElapsed = 0): void {
     const bound = (value: number, max: number) => Number.isFinite(value) ? Math.max(0, Math.min(max, value)) : 0
@@ -33,6 +42,28 @@ export class DocumentPreviewPageEpoch {
     catch { /* Optional diagnostics cannot affect token ownership or sampling. */ }
   }
 
+  private reportScene(reason: DocumentPreviewSceneChange['preview_scene_reason'], at: number, spatial?: SpatialChange): void {
+    if (!this.pendingScene) return
+    const bound = (value: number, max: number) => Number.isFinite(value) ? Math.max(0, Math.min(max, value)) : 0
+    const decision: DocumentPreviewSceneChange = { preview_scene_reason: reason,
+      scene_elapsed_ms: bound(at - this.pendingScene.at, 300_000),
+      missing_elapsed_ms: bound(this.missingSince === undefined ? 0 : at - this.missingSince, 300_000),
+      ...(spatial ? { strong_cells: bound(spatial.strong_cells, 48), quadrants: bound(spatial.quadrants, 4),
+        mean_residual: bound(spatial.mean_residual, 255), exposure_offset_abs: bound(spatial.exposure_offset_abs, 255) } : {}) }
+    try { this.onSceneChange?.(decision) }
+    catch { /* Optional diagnostics cannot affect the capture domain. */ }
+  }
+
+  acknowledgeRegistered(pageToken: string, frameToken: number, at: number): void {
+    // Only the caller's checked ORB + independent-text receipt may take this
+    // path. An old domain or a capture predating the last disturbance cannot.
+    if (pageToken !== this.pageToken || !Number.isSafeInteger(frameToken) || frameToken < 0
+        || !this.pendingScene || frameToken < this.pendingScene.changedFrame
+        || this.frameToken === undefined || frameToken > this.frameToken) return
+    this.reportScene('registered', at)
+    this.pendingScene = undefined
+  }
+
   reset(): void {
     if (this.pageToken) this.nextCreationReason = 'explicit_invalidation'
     this.source = undefined
@@ -41,6 +72,8 @@ export class DocumentPreviewPageEpoch {
     this.previous = undefined
     this.missingSince = undefined
     this.missingBoundary = false
+    this.missingReference = undefined
+    this.pendingScene = undefined
   }
 
   observe(source: string, frameToken: number, at: number, frame: DocumentFrameFeatures, pageChanged = false): string {
@@ -54,23 +87,46 @@ export class DocumentPreviewPageEpoch {
     }
     if (this.source === source && this.frameToken === frameToken) return this.pageToken
     const missing = frame.paperRatio < .1 || frame.brightness < 28
-    if (missing) this.missingSince ??= at
-    else { this.missingSince = undefined; this.missingBoundary = false }
+    if (missing && this.missingSince === undefined) {
+      this.missingSince = at
+      this.missingReference = this.previous
+    } else if (!missing) {
+      this.missingSince = undefined; this.missingBoundary = false; this.missingReference = undefined
+    }
     const missingBoundary = this.missingSince !== undefined && at - this.missingSince >= 1_000 && !this.missingBoundary
-    // Spatial changes can isolate a page before any formal capture. Warm paper
-    // and incomplete framing cannot establish or rule out a page boundary.
+    // Color, motion and elapsed missing-paper time only suggest a scene
+    // change. None can distinguish a hand from a physical page turn.
     const spatial = !newSource && this.previous ? broadSpatialChange(frame.fingerprint, this.previous.fingerprint) : undefined
     const broadChange = spatial?.changed
     if (!newSource && (pageChanged || missingBoundary || broadChange)) {
-      this.pageToken = this.newToken()
-      // Match the existing OR-branch priority when multiple signals coincide.
-      this.report(pageChanged ? 'page_changed_signal' : missingBoundary ? 'blackout_or_page_missing' : 'broad_spatial_change',
-        spatial, this.missingSince === undefined ? 0 : at - this.missingSince)
+      if (!this.pendingScene) {
+        this.pendingScene = { reference: missingBoundary ? this.missingReference : this.previous,
+          at, changedFrame: frameToken, returnCount: 0 }
+        this.reportScene(pageChanged ? 'page_changed_signal' : missingBoundary ? 'blackout_or_page_missing' : 'broad_spatial_change', at, spatial)
+      } else this.pendingScene.changedFrame = frameToken
     }
     if (missingBoundary) this.missingBoundary = true
+    const pending = this.pendingScene
+    const reference = pending?.reference
+    const returning = reference ? broadSpatialChange(frame.fingerprint, reference.fingerprint) : undefined
+    if (pending && reference && !missing && frame.contrast >= 7 && returning && returning.mean_residual <= 4.5
+        && reference.contentFingerprint && frame.contentFingerprint
+        && !contentChanged(reference.contentFingerprint, frame.contentFingerprint)) {
+      const continuous = pending.returnLastAt !== undefined && at > pending.returnLastAt && at - pending.returnLastAt <= 1_250
+      pending.returnFirstAt = continuous ? pending.returnFirstAt : at
+      pending.returnLastAt = at
+      pending.returnCount = continuous ? pending.returnCount + 1 : 1
+      if (pending.returnCount >= 4 && pending.returnFirstAt !== undefined && at - pending.returnFirstAt >= 1_500) {
+        this.reportScene('reference_returned', at, returning)
+        this.pendingScene = undefined
+      }
+    } else if (pending) {
+      pending.returnFirstAt = undefined; pending.returnLastAt = undefined; pending.returnCount = 0
+    }
     this.source = source
     this.frameToken = frameToken
-    this.previous = { ...frame, fingerprint: frame.fingerprint.slice() }
+    this.previous = { ...frame, fingerprint: frame.fingerprint.slice(), contentFingerprint: frame.contentFingerprint
+      ? { ...frame.contentFingerprint, pixels: frame.contentFingerprint.pixels.slice() } : undefined }
     return this.pageToken
   }
 }
@@ -93,8 +149,8 @@ function broadSpatialChange(a: Uint8Array, b: Uint8Array): SpatialChange | undef
     const row = Math.floor(index / columns), column = index % columns
     quadrants.add((row >= rows / 2 ? 2 : 0) + (column >= columns / 2 ? 1 : 0))
   }
-  // This is a conservative isolation boundary, never proof of physical page
-  // identity. A local mark/hand and an exposure-only shift stay in one group.
+  // This is only a scene-change hint. It must never establish or cut a
+  // physical page identity, including when a large hand meets every threshold.
   return { changed: strongCells >= Math.ceil(cells * .35) && quadrants.size >= 3 && totalResidual / cells >= 18,
     strong_cells: strongCells, quadrants: quadrants.size, mean_residual: totalResidual / cells, exposure_offset_abs: Math.abs(exposureShift) }
 }

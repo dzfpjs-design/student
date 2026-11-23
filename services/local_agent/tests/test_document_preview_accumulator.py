@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from home_study_agent.local_ocr.service import RapidOcrEngine
+from home_study_agent.local_ocr import service as ocr_service
 from test_app import client_for
 from test_document_ocr_preview import start_homework
 
@@ -27,11 +28,24 @@ OLD_ANSWER = ('The intermediate value is 9.', .24, .69)
 NEW_ANSWER = ('The intermediate value is 4.', .24, .69)
 
 
-def raw_frame(index):
-    # A fresh exact source identity without affecting the page's optical bounds.
-    image = np.full((800, 800, 3), 50, dtype=np.uint8)
-    cv2.rectangle(image, (80, 60), (720, 740), (255, 255, 255), -1)
-    cv2.rectangle(image, (250, 240), (540, 480), (0, 0, 0), 3)
+def raw_frame(index, entries, move):
+    """Render the reported text inside its actual source boxes, then move both."""
+    image = np.full((1600, 1600, 3), 248, dtype=np.uint8)
+    height, width = image.shape[:2]
+    for text, x, y in entries:
+        (text_width, text_height), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)
+        tile = np.full((text_height + baseline + 8, text_width + 8, 3), 248, dtype=np.uint8)
+        cv2.putText(tile, text, (4, text_height + 4), cv2.FONT_HERSHEY_SIMPLEX, 1.2,
+                    (10, 10, 10), 2, cv2.LINE_AA)
+        left, right = (round(value * (width - 1)) for value in (x - .086, x + .086))
+        top, bottom = (round(value * (height - 1)) for value in (y - .012, y + .012))
+        image[top:bottom + 1, left:right + 1] = cv2.resize(tile, (right - left + 1, bottom - top + 1))
+    source = np.array([[0., 0.], [1., 0.], [0., 1.]])
+    destination = np.asarray([move(*point) for point in source])
+    matrix = cv2.getAffineTransform((source * (width - 1, height - 1)).astype(np.float32),
+                                    (destination * (width - 1, height - 1)).astype(np.float32))
+    image = cv2.warpAffine(image, matrix, (width, height), borderValue=(248, 248, 248))
+    # A fresh exact source identity outside every text mask.
     image[3, 4] = index
     return cv2.imencode('.png', image)[1].tobytes()
 
@@ -44,8 +58,15 @@ def transform(degrees=0, shift=(0, 0)):
 
 @pytest.fixture
 def cpu_observations(monkeypatch):
-    """Supply deterministic detector blocks through the real OCR/persistence pipeline."""
+    """Control OCR readings while retaining real ink, ORB, quality and persistence."""
     received = {'entries': [], 'move': transform()}
+    prepare_page = ocr_service._prepare_page
+
+    def prepare_without_crop(image):
+        _, quality, _ = prepare_page(image)
+        quality['transforms'].update(perspective_correction=False, frame_to_prepared=np.eye(3).tolist(),
+                                     prepared_size=[image.shape[1], image.shape[0]])
+        return image.copy(), quality, image.copy()
 
     def recognize(_, image, route):
         height, width = image.shape[:2]
@@ -61,6 +82,7 @@ def cpu_observations(monkeypatch):
     monkeypatch.setattr(RapidOcrEngine, 'health', lambda _: {'ready': True, 'routes': ['cpu']})
     monkeypatch.setattr(RapidOcrEngine, 'recognize', recognize)
     monkeypatch.setattr(RapidOcrEngine, 'recognize_page_orientation', recognize)
+    monkeypatch.setattr(ocr_service, '_prepare_page', prepare_without_crop)
     return received
 
 
@@ -68,7 +90,7 @@ def upload(client, route, generation, received, entries, index, *, token=PAGE, m
            phase='homework_capture', lease='preview-lease', action_id=None):
     received['entries'] = entries
     received['move'] = move or transform()
-    raw = raw_frame(index)
+    raw = raw_frame(index, entries, received['move'])
     body = {'image_base64': base64.b64encode(raw).decode(), 'frame_signature': sha256(raw).hexdigest(),
             'client_action_id': action_id or f'page-observation-frame-{index}', 'expected_generation': generation,
             'expected_lease_id': lease, 'expected_phase': phase}
@@ -92,6 +114,8 @@ def test_http_combines_complementary_visible_regions_preserves_conflict_and_rest
         two = second.json()
         draft = two['page_draft']
         assert draft['merged'] and draft['frame_count'] == 2, draft['reason']
+        assert draft['alignment_method'] == 'local_orb_v1'
+        assert draft['registration']['matches'] >= 32 and draft['registration']['inliers'] >= 24
         assert draft['anchor_preview_id'] == one['preview_id']
         assert HIDDEN_LEFT[0] not in two['text'] and HIDDEN_RIGHT[0] not in one['text']
         lines = {line['text']: line for line in draft['lines']}
@@ -176,18 +200,30 @@ def test_http_rejects_same_token_wrong_alignment_template_and_chain_drift(tmp_pa
         assert drifted.json()['page_draft']['frame_count'] == 1
         assert HIDDEN_LEFT[0] not in {line['text'] for line in drifted.json()['page_draft']['lines']}
 
+        # Once the eight-degree view becomes the candidate, replaying the old
+        # pixels must not restore that older anchor or its accumulated history.
+        returned, _ = upload(client, route, generation, cpu_observations, ANCHORS + [HIDDEN_LEFT], 20,
+                             action_id='return-to-old-geometry')
+        assert returned.status_code == 200, returned.text
+        returned_draft = returned.json()['page_draft']
+        assert not returned_draft['merged'] and returned_draft['frame_count'] == 1
+        assert returned_draft['anchor_preview_id'] == returned.json()['preview_id']
+        assert returned_draft['anchor_preview_id'] != first.json()['preview_id']
+        assert {line['preview_id'] for line in returned_draft['lines']} == {returned.json()['preview_id']}
+        assert HIDDEN_RIGHT[0] not in {line['text'] for line in returned_draft['lines']}
+        repeated, _ = upload(client, route, generation, cpu_observations, ANCHORS + [HIDDEN_LEFT], 20,
+                             action_id='same-pixels-synthetic-retry')
+        assert repeated.status_code == 200 and repeated.json()['page_draft']['reason'] == 'duplicate_frame'
+
         template = [('Name and identification number', x, y) for _, x, y in ANCHORS]
         duplicate_heading, _ = upload(client, route, generation, cpu_observations, template + [HIDDEN_RIGHT],
                                       23, token=ANOTHER_PAGE)
         assert duplicate_heading.status_code == 200
         assert duplicate_heading.json()['page_draft']['reason'] == 'insufficient_anchors'
         assert duplicate_heading.json()['page_draft']['anchor_preview_id'] is None
-        repeated, _ = upload(client, route, generation, cpu_observations, ANCHORS, 20,
-                             action_id='same-jpeg-synthetic-retry')
-        assert repeated.status_code == 200 and repeated.json()['page_draft']['reason'] == 'duplicate_frame'
 
 
-def test_large_contradiction_across_regions_is_a_single_frame_candidate(tmp_path, cpu_observations):
+def test_answer_revisions_across_regions_keep_fixed_anchor_and_history(tmp_path, cpu_observations):
     first_page = [
         ('The measurement is exactly 917.', .25, .32),
         ('The allowed difference is twelve.', .7, .48),
@@ -206,18 +242,64 @@ def test_large_contradiction_across_regions_is_a_single_frame_candidate(tmp_path
         conflicting, _ = upload(client, route, generation, cpu_observations, ANCHORS + other_page, 31)
         assert conflicting.status_code == 200, conflicting.text
         draft = conflicting.json()['page_draft']
-        assert draft['reason'] == 'conflicting_page'
-        assert all(line['status'] == 'current' for line in draft['lines'])
-        assert not any(line['text'] in {item[0] for item in first_page} for line in draft['lines'])
-        assert draft['anchor_preview_id'] == conflicting.json()['preview_id']
-        # After only one of page B's conflicting lines remains visible, B
-        # must still align to its own preceding observation and never to A.
+        assert draft['merged'] and draft['frame_count'] == 2
+        assert draft['alignment_method'] == 'local_orb_v1'
+        assert draft['anchor_preview_id'] == first.json()['preview_id']
+        lines = {line['text']: line for line in draft['lines']}
+        for old, new in zip(first_page, other_page):
+            assert lines[old[0]]['status'] == 'historical' and lines[old[0]]['conflict']
+            assert lines[new[0]]['status'] == 'current' and lines[new[0]]['conflict']
+        # Corrections are competing readings on this checked visual anchor.
+        # Occluding the corrected text preserves both versions and provenance.
         partial, _ = upload(client, route, generation, cpu_observations, ANCHORS + other_page[:1], 32)
         assert partial.status_code == 200, partial.text
         next_draft = partial.json()['page_draft']
-        assert next_draft['merged'] and next_draft['anchor_preview_id'] == conflicting.json()['preview_id']
-        assert other_page[1][0] in {line['text'] for line in next_draft['lines']}
-        assert not any(line['text'] in {item[0] for item in first_page} for line in next_draft['lines'])
+        assert next_draft['merged'] and next_draft['frame_count'] == 3
+        assert next_draft['anchor_preview_id'] == first.json()['preview_id']
+        retained = {line['text']: line for line in next_draft['lines']}
+        assert all(item[0] in retained for item in first_page + other_page)
+        assert retained[other_page[1][0]]['status'] == 'historical'
+        assert retained[other_page[1][0]]['preview_id'] == conflicting.json()['preview_id']
+
+
+def test_changed_independent_content_starts_new_candidate_without_reviving_old_anchor(tmp_path, cpu_observations):
+    replacement_text = [
+        'Resolve the sequence through division',
+        'List the complete set of prime factors',
+        'Draw the corresponding vertical segment',
+        'Explain the ratio between both lengths',
+        'Arrange the objects into equal groups',
+        'Measure the total capacity in litres',
+    ]
+    replacement = [(text, x, y) for text, (_, x, y) in zip(replacement_text, ANCHORS)]
+    new_detail = ('Evaluate the newly supplied diameter', .71, .55)
+    with client_for(tmp_path) as client:
+        root, _, generation = start_homework(client)
+        route = root + '/previews'
+        first, _ = upload(client, route, generation, cpu_observations, ANCHORS + [HIDDEN_LEFT], 34)
+        assert first.status_code == 200 and first.json()['page_draft']['reason'] == 'anchor_started'
+        changed, _ = upload(client, route, generation, cpu_observations, replacement + [new_detail], 35)
+        assert changed.status_code == 200, changed.text
+        candidate = changed.json()
+        draft = candidate['page_draft']
+        assert not draft['merged'] and draft['frame_count'] == 1
+        assert draft['anchor_preview_id'] == candidate['preview_id']
+        assert {line['preview_id'] for line in draft['lines']} == {candidate['preview_id']}
+        assert not {text for text, _, _ in ANCHORS + [HIDDEN_LEFT]} & {line['text'] for line in draft['lines']}
+        partial, _ = upload(client, route, generation, cpu_observations, replacement, 36)
+        assert partial.status_code == 200, partial.text
+        resumed = partial.json()['page_draft']
+        assert resumed['merged'] and resumed['frame_count'] == 2
+        assert resumed['anchor_preview_id'] == candidate['preview_id']
+        historical = next(line for line in resumed['lines'] if line['text'] == new_detail[0])
+        assert historical['status'] == 'historical' and historical['preview_id'] == candidate['preview_id']
+        returned, _ = upload(client, route, generation, cpu_observations, ANCHORS + [HIDDEN_LEFT], 34,
+                             action_id='older-page-pixels-reappear')
+        assert returned.status_code == 200, returned.text
+        returned_draft = returned.json()['page_draft']
+        assert not returned_draft['merged'] and returned_draft['frame_count'] == 1
+        assert returned_draft['anchor_preview_id'] == returned.json()['preview_id']
+        assert {line['preview_id'] for line in returned_draft['lines']} == {returned.json()['preview_id']}
 
 
 def test_http_rejects_geometry_from_a_different_frame(tmp_path, cpu_observations, monkeypatch):
@@ -320,6 +402,7 @@ def test_http_keeps_reading_past_32_captures_with_a_bounded_provenance_window(tm
         latest = response.json()
         draft = latest['page_draft']
         assert draft['merged'] and draft['frame_count'] == 35
+        assert draft['alignment_method'] == 'local_orb_v1'
         assert draft['anchor_preview_id'] == anchor['preview_id']
         origins = {line['preview_id'] for line in draft['lines']}
         assert origins == {anchor['preview_id'], latest['preview_id']}

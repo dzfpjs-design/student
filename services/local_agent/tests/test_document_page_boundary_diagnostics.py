@@ -15,33 +15,38 @@ REASONS = (
 )
 NUMBERS = {
     'strong_cells': 48, 'quadrants': 4, 'mean_residual': 255,
-    'exposure_offset_abs': 255, 'missing_elapsed_ms': 300_000,
+    'exposure_offset_abs': 255, 'missing_elapsed_ms': 300_000, 'scene_elapsed_ms': 300_000,
 }
+SCENE_REASONS = ('broad_spatial_change', 'page_changed_signal', 'blackout_or_page_missing', 'reference_returned', 'registered')
 
 
-def test_page_boundary_zip_preserves_closed_reasons_and_bounded_statistics_only(tmp_path):
+@pytest.mark.parametrize('event,reason_field,reasons', [
+    ('document.preview.page_boundary', 'preview_boundary_reason', REASONS),
+    ('document.preview.scene_change', 'preview_scene_reason', SCENE_REASONS),
+])
+def test_page_boundary_zip_preserves_closed_reasons_and_bounded_statistics_only(tmp_path, event, reason_field, reasons):
     start = datetime(2026, 11, 23, tzinfo=timezone.utc)
     directory = tmp_path / 'diagnostics' / 'logs'
     directory.mkdir(parents=True)
     rows = [{
         'privacy_policy_version': 'diagnostic_metadata_v2',
         'timestamp': (start + timedelta(seconds=index + 1)).isoformat(),
-        'source': 'renderer', 'level': 'info', 'event': 'document.preview.page_boundary',
+        'source': 'renderer', 'level': 'info', 'event': event,
         'details': {
-            'preview_boundary_reason': reason, **NUMBERS,
+            reason_field: reason, **NUMBERS,
             'source': 'PRIVATE_CAMERA', 'source_id': 'PRIVATE_SOURCE', 'page_token': 'PRIVATE_TOKEN',
             'child_id': 'PRIVATE_CHILD', 'client_action_id': 'PRIVATE_ACTION',
             'fingerprint': [14, 82, 91], 'text': 'PRIVATE_PAPER', 'image_base64': 'PRIVATE_IMAGE',
         },
-    } for index, reason in enumerate(REASONS)]
+    } for index, reason in enumerate(reasons)]
     (directory / 'runtime.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows), encoding='utf-8')
     bundle = diagnostic.build_daily_diagnostic_bundle(tmp_path, start_utc=start, end_utc=start + timedelta(days=1))
     with zipfile.ZipFile(BytesIO(bundle.content)) as archive:
         raw = archive.read('events.jsonl')
         exported = [json.loads(line) for line in raw.splitlines()]
-    assert [row['event'] for row in exported] == ['document.preview.page_boundary'] * len(REASONS)
+    assert [row['event'] for row in exported] == [event] * len(reasons)
     assert [row['details'] for row in exported] == [
-        {'preview_boundary_reason': reason, **NUMBERS} for reason in REASONS
+        {reason_field: reason, **NUMBERS} for reason in reasons
     ]
     assert b'PRIVATE_' not in raw
     assert b'fingerprint' not in raw
@@ -69,3 +74,6 @@ def test_page_boundary_reason_is_a_closed_enum():
     assert diagnostic._details({'preview_boundary_reason': 'PRIVATE_SCENE'}, Counter()) == {}
     for reason in REASONS:
         assert diagnostic._details({'preview_boundary_reason': reason}, Counter()) == {'preview_boundary_reason': reason}
+    assert diagnostic._details({'preview_scene_reason': 'PRIVATE_SCENE'}, Counter()) == {}
+    for reason in SCENE_REASONS:
+        assert diagnostic._details({'preview_scene_reason': reason}, Counter()) == {'preview_scene_reason': reason}

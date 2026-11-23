@@ -217,14 +217,14 @@ class DocumentOcrPreviewService:
 
     def _page_draft(self, connection, scope, page_token, preview_id, frame, landmarks=None):
         if frame is None:
-            return build_page_draft(page_token, preview_id, frame)
+            return build_page_draft(page_token, preview_id, frame, allow_text_anchor=False)
         where = ("session_id=? AND child_id=? AND phase=? AND lease_id=? AND monitor_generation=? AND page_token=?")
         parameters = (*scope, page_token)
         anchor = connection.execute(f"""SELECT preview_id,geometry_json,page_draft_json FROM document_ocr_preview
             WHERE {where} AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page')
             ORDER BY rowid DESC LIMIT 1""", parameters).fetchone()
         if anchor is None:
-            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None)
+            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None, allow_text_anchor=False)
         anchor_frame = json.loads(anchor['geometry_json'])
         anchor_draft = json.loads(anchor['page_draft_json'])
         fixed = self._visual_landmarks.get((*scope, page_token), anchor['preview_id'], anchor_frame['frame_sha256'])
@@ -232,7 +232,7 @@ class DocumentOcrPreviewService:
             # No raw frame/descriptor is persisted. After restart/expiry the
             # durable old draft stays readable, but a new coordinate anchor is
             # required rather than silently continuing without its evidence.
-            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None)
+            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None, allow_text_anchor=False)
         latest = connection.execute(f"""SELECT page_draft_json FROM document_ocr_preview
             WHERE {where} AND json_extract(page_draft_json,'$.anchor_preview_id')=?
             AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page','merged')
@@ -242,10 +242,26 @@ class DocumentOcrPreviewService:
             AND json_extract(page_draft_json,'$.reason') IN ('anchor_started','conflicting_page','merged') LIMIT 1""",
             (*parameters, anchor['preview_id'], frame['frame_sha256'])).fetchone()
         matrix, conflict, evidence = register(anchor_frame, frame, fixed, landmarks)
-        return build_page_draft(page_token, preview_id, frame, anchor_id=anchor['preview_id'],
-                                anchor=anchor_frame, previous=json.loads(latest['page_draft_json']),
-                                duplicate=duplicate is not None, visual_matrix=matrix,
-                                visual_conflict=conflict, registration=evidence)
+        if matrix is None:
+            # Live previews require checked image geometry AND independent
+            # text agreement. The standalone text-only utility is not a live
+            # fallback. A qualified new source starts its own candidate; it
+            # never inherits the old draft or claims a physical page turn.
+            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None,
+                                    registration=evidence, allow_text_anchor=False)
+        draft = build_page_draft(page_token, preview_id, frame, anchor_id=anchor['preview_id'],
+                                 anchor=anchor_frame, previous=json.loads(latest['page_draft_json']),
+                                 duplicate=duplicate is not None, visual_matrix=matrix,
+                                 visual_conflict=conflict, registration=evidence)
+        if (not draft['merged'] and draft['reason'] != 'duplicate_frame'
+                and draft['anchor_preview_id'] != preview_id):
+            # A checked transform may still leave a newly visible OCR region
+            # outside the old reference. Preserve that source as its own
+            # candidate instead of keeping an unusable pointer to the old one.
+            return build_page_draft(page_token, preview_id, frame, visual_anchor=landmarks is not None,
+                                    registration={**(evidence or {}), 'status': 'unconfirmed_alignment',
+                                                  'candidate_reason': draft['reason']}, allow_text_anchor=False)
+        return draft
 
     def create(self, session_id, image, client_action_id, generation, expected_lease_id, frame_signature=None,
                inspection_turn_id=None, expected_phase=None, page_token=None):

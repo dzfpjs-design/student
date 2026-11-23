@@ -1430,6 +1430,8 @@ export type DocumentPreviewPageDraft = {
   frame_count: number
   merged: boolean
   reason: string
+  alignment_method?: string
+  registration?: { method: string; status: string }
   lines: {
     text: string
     status: 'current' | 'historical'

@@ -191,6 +191,8 @@ for (const event of ['document.capture.frame_state', 'document.capture.ocr_pendi
 for (const event of ['frame_state','frame_stalled','ocr_started','ocr_pending','ocr_result','ocr_discarded','ocr_retry_considered','revision_saved','revision_inflight_interrupted','revision_historical','ocr_failed','ocr_unconfirmed','revision_failed','revision_unconfirmed','post_revision_failed']) EVENTS.add(`document.monitor.${event}`)
 for (const event of ['started', 'saved', 'unconfirmed', 'resolve_saved', 'resolve_retired', 'resolve_source_blocked', 'refresh_due']) EVENTS.add(`document.preview.${event}`)
 EVENTS.add('document.preview.page_boundary')
+EVENTS.add('document.preview.scene_change')
+ENUMS.preview_scene_reason = new Set(['broad_spatial_change', 'page_changed_signal', 'blackout_or_page_missing', 'reference_returned', 'registered'])
 ENUMS.preview_boundary_reason = new Set(['initial', 'source_changed', 'counter_reset', 'blackout_or_page_missing', 'page_changed_signal', 'broad_spatial_change', 'explicit_invalidation'])
 for (const code of ['DOCUMENT_PREVIEW_RESULT_UNCONFIRMED', 'DOCUMENT_PREVIEW_SOURCE_CHANGED', 'DOCUMENT_PREVIEW_ACTION_CONFLICT',
   'DOCUMENT_PREVIEW_RETIRED', 'DOCUMENT_PREVIEW_OCR_FAILED', 'DOCUMENT_PREVIEW_RESOLUTION_MISMATCH', 'DOCUMENT_OCR_BUSY']) ERROR_CODES.add(code)
@@ -211,7 +213,7 @@ for(const value of ['deadline','read_failed'])ENUMS.reason.add(value)
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const PREVIEW_BOUNDARY_NUMBERS: Record<string, number> = { strong_cells: 48, quadrants: 4, mean_residual: 255,
-  exposure_offset_abs: 255, missing_elapsed_ms: 300_000 }
+  exposure_offset_abs: 255, missing_elapsed_ms: 300_000, scene_elapsed_ms: 300_000 }
 
 function knownError(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined

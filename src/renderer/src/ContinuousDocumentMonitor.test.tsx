@@ -522,7 +522,7 @@ describe('continuous document monitor device lifecycle', () => {
       }
     })
 
-    it('records the actual page-boundary branch once without frame, page or source identities', async () => {
+    it('keeps broad scene changes in the candidate domain and records them separately from token creation', async () => {
       const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
       const record = vi.fn().mockResolvedValue(undefined)
       Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
@@ -533,16 +533,52 @@ describe('continuous document monitor device lifecycle', () => {
         const fingerprint = new Uint8Array(48).fill(140)
         for (const index of [0, 1, 2, 8, 9, 10, 16, 17, 18, 4, 5, 12, 13, 24, 25, 32, 33]) fingerprint[index] = 220
         features = { ...features, fingerprint }
-        await advance(13_000)
+        await advance(23_000)
         const entries = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event === 'document.preview.page_boundary')
-        expect(entries.map(entry => entry.details.preview_boundary_reason)).toEqual(['initial', 'broad_spatial_change'])
-        expect(entries[1].details).toMatchObject({ strong_cells: 17, quadrants: 3, exposure_offset_abs: 0, missing_elapsed_ms: 0 })
-        expect(Object.keys(entries[1].details).sort()).toEqual(['exposure_offset_abs', 'mean_residual', 'missing_elapsed_ms',
-          'preview_boundary_reason', 'quadrants', 'strong_cells'])
-        const output = JSON.stringify(entries)
+        expect(entries.map(entry => entry.details.preview_boundary_reason)).toEqual(['initial'])
+        const scene = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event === 'document.preview.scene_change')
+        expect(scene).toHaveLength(1)
+        expect(scene[0].details).toMatchObject({ preview_scene_reason: 'broad_spatial_change', strong_cells: 17, quadrants: 3,
+          exposure_offset_abs: 0, missing_elapsed_ms: 0, scene_elapsed_ms: 0 })
+        expect(preview).toHaveBeenCalledTimes(2)
+        expect(preview.mock.calls[1][9]).toBe(preview.mock.calls[0][9])
+        const output = JSON.stringify([...entries, ...scene])
         for (const value of [warmPreview.text, 'dGVzdA==', 'lease-document', preview.mock.calls[0][3], preview.mock.calls[0][9]]) {
           expect(output).not.toContain(value)
         }
+      } finally {
+        if (previous) Object.defineProperty(window, 'desktop', previous)
+        else Reflect.deleteProperty(window, 'desktop')
+      }
+    })
+
+    it.each(['verified', 'text_identity_unconfirmed', 'conflicting_page', 'text_only', 'wrong_action'])('leaves draft grouping to the backend after %s scene evidence', async status => {
+      const previous = Object.getOwnPropertyDescriptor(window, 'desktop')
+      const record = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(window, 'desktop', { configurable: true, value: { recordRendererDiagnostic: record } })
+      try {
+        const preview = prepareWarmPreview().mockResolvedValueOnce(warmPreview)
+          .mockImplementationOnce(async (...args) => ({ ...warmPreview, preview_id: 'next-candidate',
+            client_action_id: status === 'wrong_action' ? 'another-action' : args[3], page_draft: {
+            page_token: args[9]!, anchor_preview_id: status === 'conflicting_page' ? 'new-backend-anchor' : 'first-anchor',
+            merged: status === 'verified' || status === 'text_only' || status === 'wrong_action', frame_count: status === 'verified' ? 2 : 1,
+            reason: status === 'conflicting_page' ? 'conflicting_page' : status === 'verified' ? 'merged' : 'insufficient_anchors',
+            alignment_method: status === 'text_only' ? undefined : 'local_orb_v1',
+            registration: status === 'text_only' ? undefined : { method: 'local_orb_v1', status: status === 'wrong_action' ? 'verified' : status }, lines: []
+          } }))
+        await act(async () => { render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+        await advance(3000)
+        const fingerprint = new Uint8Array(48).fill(140)
+        for (const index of [0, 1, 2, 8, 9, 10, 16, 17, 18, 4, 5, 12, 13, 24, 25, 32, 33]) fingerprint[index] = 220
+        features = { ...features, fingerprint }
+        await advance(23_000)
+        expect(preview).toHaveBeenCalledTimes(2)
+        expect(preview.mock.calls[1][9]).toBe(preview.mock.calls[0][9])
+        const scene = record.mock.calls.map(([entry]) => entry).filter(entry => entry.event === 'document.preview.scene_change')
+        expect(scene.map(entry => entry.details.preview_scene_reason)).toEqual(status === 'verified'
+          ? ['broad_spatial_change', 'registered'] : ['broad_spatial_change'])
+        expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
+        expect(voiceCaptureReference('session', 'child').question_reference).toBeNull()
       } finally {
         if (previous) Object.defineProperty(window, 'desktop', previous)
         else Reflect.deleteProperty(window, 'desktop')
@@ -753,6 +789,104 @@ describe('continuous document monitor device lifecycle', () => {
       expect(resolve).toHaveBeenCalledExactlyOnceWith(true)
       expect(localApi.recordDocumentMonitorRevision).not.toHaveBeenCalled()
       expect(voiceCaptureReference('session', 'child').question_reference).toBeNull()
+    })
+
+    it.each([{ recovery: 'resolve_saved', consumerThrows: false }, { recovery: 'history_hit_saved', consumerThrows: false },
+      { recovery: 'resolve_saved', consumerThrows: true }])('settles the interrupted owning inspection unavailable after $recovery (consumer throws: $consumerThrows) and lets a new turn read current pixels', async ({ recovery, consumerThrows }) => {
+      const original = deferred<typeof warmPreview>()
+      const next = deferred<Awaited<ReturnType<typeof localApi.createDocumentMonitorPreview>>>()
+      const preview = prepareWarmPreview().mockReturnValueOnce(original.promise).mockReturnValueOnce(next.promise)
+      const recovered = deferred<Awaited<ReturnType<typeof localApi.resolveDocumentMonitorPreview>>>()
+      vi.mocked(localApi.resolveDocumentMonitorPreview).mockReturnValueOnce(recovered.promise)
+      const savedOriginal = () => ({ ...warmPreview, preview_id: 'historical-interrupted-A', text: '已保存的旧画面A',
+        client_action_id: preview.mock.calls[0][3] })
+      if (recovery === 'history_hit_saved') vi.mocked(localApi.documentMonitorPreviews)
+        .mockResolvedValueOnce({ items: [] }).mockImplementationOnce(async () => ({ items: [savedOriginal()] }))
+      const oldResolve = vi.fn(() => { if (consumerThrows) throw new Error('inspection consumer unavailable') })
+      const oldReport = vi.fn(), nextResolve = vi.fn(), nextReport = vi.fn()
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(700)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'interrupted-turn-A', resolve: oldResolve, report: oldReport }
+      })))
+      await advance(2400)
+      expect(preview).toHaveBeenCalledOnce()
+      const oldCall = preview.mock.calls[0]
+      features = { ...features, fingerprint: new Uint8Array(48).fill(151) }
+      await advance(600)
+      expect(oldCall[4].aborted).toBe(true)
+      await act(async () => { original.reject(new DOMException('Aborted', 'AbortError')) })
+      if (recovery === 'resolve_saved') await act(async () => { recovered.resolve({
+        status: 'saved', client_action_id: oldCall[3], generation: 7, phase: 'homework_capture', preview: savedOriginal()
+      }) })
+      expect(oldResolve).toHaveBeenCalledExactlyOnceWith(false)
+      expect(oldReport).not.toHaveBeenCalled()
+      expect(view.getByLabelText('本机待核对预览').textContent).toContain('已保存的旧画面A')
+      await advance(2500)
+      expect(preview).toHaveBeenCalledOnce()
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'fresh-turn-B', resolve: nextResolve, report: nextReport }
+      })))
+      await advance(2500)
+      expect(preview).toHaveBeenCalledTimes(2)
+      expect(preview.mock.calls[1][7]).toBe('fresh-turn-B')
+      expect(preview.mock.calls[1][9]).toBe(oldCall[9])
+      if (recovery === 'history_hit_saved') await act(async () => { recovered.resolve({
+        status: 'saved', client_action_id: oldCall[3], generation: 7, phase: 'homework_capture', preview: savedOriginal()
+      }) })
+      expect(nextResolve).not.toHaveBeenCalled()
+      expect(nextReport).not.toHaveBeenCalled()
+      const nextCall = preview.mock.calls[1]
+      await act(async () => { next.resolve({ ...warmPreview, preview_id: 'current-B', client_action_id: nextCall[3],
+        inspection_turn_id: 'fresh-turn-B', inspection_response_text: '这是当前B画面的试读。' }) })
+      expect(oldResolve).toHaveBeenCalledExactlyOnceWith(false)
+      expect(oldReport).not.toHaveBeenCalled()
+      expect(nextResolve).toHaveBeenCalledExactlyOnceWith(true)
+      expect(nextReport).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ preview_id: 'current-B' }))
+      expect(preview.mock.calls.map(call => call[7])).toEqual(['interrupted-turn-A', 'fresh-turn-B'])
+    })
+
+    it.each(['phase', 'child', 'session', 'lease'] as const)('ignores a late interrupted inspection recovery after %s changes without settling the new owner', async boundary => {
+      const original = deferred<typeof warmPreview>()
+      const next = deferred<Awaited<ReturnType<typeof localApi.createDocumentMonitorPreview>>>()
+      const preview = prepareWarmPreview().mockReturnValueOnce(original.promise).mockReturnValueOnce(next.promise)
+      const recovered = deferred<Awaited<ReturnType<typeof localApi.resolveDocumentMonitorPreview>>>()
+      vi.mocked(localApi.resolveDocumentMonitorPreview).mockReturnValueOnce(recovered.promise)
+      const oldResolve = vi.fn(), nextResolve = vi.fn(), nextReport = vi.fn()
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(700)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', { cancelable: true,
+        detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'old-scope-turn', resolve: oldResolve } })))
+      await advance(2400)
+      const oldCall = preview.mock.calls[0]
+      features = { ...features, fingerprint: new Uint8Array(48).fill(151) }
+      await advance(600)
+      await act(async () => { original.reject(new DOMException('Aborted', 'AbortError')) })
+      const phase = boundary === 'phase' ? 'study' : 'homework_capture'
+      const nextSession = boundary === 'session' ? 'next-session' : 'session'
+      await act(async () => {
+        if (boundary === 'lease') trackListeners.get('ended')?.()
+        else view.rerender(<ContinuousDocumentMonitor sessionId={nextSession} childId={boundary === 'child' ? 'next-child' : 'child'} active localOcrPreviewPhase={phase} />)
+      })
+      await advance(boundary === 'lease' ? 2700 : 700)
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', { cancelable: true,
+        detail: { sessionId: nextSession, action: 'inspect', inspectionTurnId: 'new-scope-turn', resolve: nextResolve, report: nextReport } })))
+      await advance(2400)
+      expect(preview).toHaveBeenCalledTimes(boundary === 'lease' ? 1 : 2)
+      await act(async () => { recovered.resolve({ status: 'saved', client_action_id: oldCall[3], generation: 7,
+        phase: 'homework_capture', preview: { ...warmPreview, client_action_id: oldCall[3], text: '旧scope文字不能结束新请求' } }) })
+      expect(oldResolve).toHaveBeenCalledExactlyOnceWith(false)
+      expect(nextResolve).not.toHaveBeenCalled()
+      expect(nextReport).not.toHaveBeenCalled()
+      if (boundary === 'lease') await advance(2500)
+      expect(preview).toHaveBeenCalledTimes(2)
+      const nextCall = preview.mock.calls[1]
+      await act(async () => { next.resolve({ ...warmPreview, phase, client_action_id: nextCall[3],
+        inspection_turn_id: 'new-scope-turn', inspection_response_text: '新scope当前文字。' }) })
+      expect(nextResolve).toHaveBeenCalledExactlyOnceWith(true)
+      expect(nextReport).toHaveBeenCalledOnce()
     })
 
     it('keeps a warm inspection exclusive when the camera then sees a formally stable clear page', async () => {

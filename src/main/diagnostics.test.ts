@@ -175,7 +175,7 @@ describe('voice media observation metadata', () => {
     expect(raw).not.toMatch(/PRIVATE_|fingerprint/)
     expect(sanitizeDiagnosticValue({ preview_boundary_reason: 'PRIVATE_REASON' })).toEqual({})
   })
-  it.each(Object.entries({ strong_cells: 48, quadrants: 4, mean_residual: 255, exposure_offset_abs: 255, missing_elapsed_ms: 300_000 }))(
+  it.each(Object.entries({ strong_cells: 48, quadrants: 4, mean_residual: 255, exposure_offset_abs: 255, missing_elapsed_ms: 300_000, scene_elapsed_ms: 300_000 }))(
     'rejects invalid page-boundary metadata for %s', (key, max) => {
       for (const value of [-1, max + 1, Infinity, -Infinity, NaN, true, 'PRIVATE_NUMBER', [0]]) {
         expect(sanitizeDiagnosticValue({ [key]: value })).toEqual({})
@@ -184,6 +184,20 @@ describe('voice media observation metadata', () => {
       expect(sanitizeDiagnosticValue({ [key]: 0 })).toEqual({ [key]: 0 })
       expect(sanitizeDiagnosticValue({ [key]: max })).toEqual({ [key]: max })
     })
+  it('persists scene pending and cancellation stages without paper identity or pixels', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'hsc-scene-diagnostics-')); roots.push(root)
+    const recorder = new DiagnosticRecorder(root)
+    const reasons = ['broad_spatial_change', 'page_changed_signal', 'blackout_or_page_missing', 'reference_returned', 'registered']
+    for (const preview_scene_reason of reasons) await recorder.record({ source: 'renderer', event: 'document.preview.scene_change', details: {
+      preview_scene_reason, scene_elapsed_ms: 300_000, strong_cells: 17, source: 'PRIVATE_SOURCE', token: 'PRIVATE_TOKEN',
+      fingerprint: [1, 2, 3], image_base64: 'PRIVATE_IMAGE', text: 'PRIVATE_TEXT', child_id: 'PRIVATE_CHILD'
+    } })
+    const raw = await readFile(recorder.logPath, 'utf8'), entries = raw.trim().split('\n').map(line => JSON.parse(line))
+    expect(entries.map(entry => entry.event)).toEqual(reasons.map(() => 'document.preview.scene_change'))
+    expect(entries.map(entry => entry.details)).toEqual(reasons.map(preview_scene_reason => ({ preview_scene_reason, scene_elapsed_ms: 300_000, strong_cells: 17 })))
+    expect(raw).not.toMatch(/PRIVATE_|fingerprint/)
+    expect(sanitizeDiagnosticValue({ preview_scene_reason: 'PRIVATE_REASON' })).toEqual({})
+  })
   it('retains actionable SMTP outcomes across reopen without recording mailbox credentials or content', async () => {
     const root = await mkdtemp(join(tmpdir(), 'hsc-smtp-diagnostics-')); roots.push(root)
     const recorder = new DiagnosticRecorder(root)

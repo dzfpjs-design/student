@@ -3,7 +3,7 @@ import { ApiError, localApi } from './api'
 import type { DocumentInspectionOutput } from './cameraDeviceRuntime'
 import { contentChanged, extractDocumentFrameFeatures, type DocumentFrameFeatures } from './documentFrameMonitor'
 import type { DocumentOcrPreview, DocumentOcrPreviewPhase } from './types'
-import { DocumentPreviewPageEpoch, type DocumentPreviewPageBoundary } from './documentPreviewPageEpoch'
+import { DocumentPreviewPageEpoch, type DocumentPreviewPageBoundary, type DocumentPreviewSceneChange } from './documentPreviewPageEpoch'
 
 const sampleCount = 4
 const minimumSpan = 1_500
@@ -38,6 +38,23 @@ function previewBoundaryDiagnostic(decision: DocumentPreviewPageBoundary): void 
   catch { /* Optional diagnostics cannot affect token ownership or sampling. */ }
 }
 
+function previewSceneDiagnostic(decision: DocumentPreviewSceneChange): void {
+  const details = { preview_scene_reason: decision.preview_scene_reason, scene_elapsed_ms: decision.scene_elapsed_ms,
+    strong_cells: decision.strong_cells, quadrants: decision.quadrants, mean_residual: decision.mean_residual,
+    exposure_offset_abs: decision.exposure_offset_abs, missing_elapsed_ms: decision.missing_elapsed_ms }
+  try { void window.desktop?.recordRendererDiagnostic?.({ event: 'document.preview.scene_change', level: 'info', details })?.catch(() => undefined) }
+  catch { /* Optional diagnostics cannot affect the capture domain. */ }
+}
+
+function acknowledgeRegisteredPreview(epoch: DocumentPreviewPageEpoch, attempt: PreviewAttempt, preview: DocumentOcrPreview): void {
+  const draft = preview.page_draft
+  if (attempt.pageToken && attempt.frameToken !== undefined && preview.client_action_id === attempt.actionId
+      && preview.generation === attempt.generation && preview.phase === attempt.phase
+      && draft?.page_token === attempt.pageToken && draft.merged
+      && draft.alignment_method === 'local_orb_v1' && draft.registration?.method === 'local_orb_v1'
+      && draft.registration.status === 'verified') epoch.acknowledgeRegistered(attempt.pageToken, attempt.frameToken, Date.now())
+}
+
 type PreviewSample = {
   video: HTMLVideoElement
   features: DocumentFrameFeatures
@@ -64,10 +81,17 @@ type PreviewAttempt = {
   leaseId?: string
   phase?: DocumentOcrPreviewPhase
   pageToken?: string
+  frameToken?: number
   inspectionTurnId?: string
+  inspectionInvalidated?: boolean
+  inspectionSettled?: boolean
+  inspectionUnavailable?: () => void
   at: number
   frame: DocumentFrameFeatures
   state: 'pending' | 'saved' | 'interrupted' | 'unconfirmed'
+}
+function settleRecoveredInspection(attempt: PreviewAttempt): void {
+  if (attempt.inspectionInvalidated) attempt.inspectionUnavailable?.()
 }
 type SampleWindow = {
   cameraKey: string
@@ -163,7 +187,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
   const resolution = useRef<{ attempt: PreviewAttempt; controller: AbortController } | null>(null)
   const resolutionRetryAt = useRef(0)
   const historyWriteVersion = useRef(0)
-  const pageEpoch = useRef(new DocumentPreviewPageEpoch(undefined, previewBoundaryDiagnostic))
+  const pageEpoch = useRef(new DocumentPreviewPageEpoch(undefined, previewBoundaryDiagnostic, previewSceneDiagnostic))
   const pageTokenRef = useRef<string | undefined>(undefined)
   const busyRetryAt = useRef(0)
   const retiredRetryAt = useRef(0)
@@ -175,6 +199,10 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
     const current = pending.current
     if (current && !current.controller.signal.aborted) {
       current.controller.abort()
+      if (current.attempt?.inspectionTurnId) {
+        current.attempt.inspectionInvalidated = true
+        if (current.attempt.state === 'saved') settleRecoveredInspection(current.attempt)
+      }
       if (current.attempt?.state === 'pending') {
         current.attempt.state = 'interrupted'
         unresolved.current = current.attempt
@@ -210,10 +238,13 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
       if (result.status === 'saved') {
         const preview = result.preview
         if (!preview?.preview_id || preview.client_action_id !== attempt.actionId || preview.generation !== attempt.generation
-            || preview.phase !== attempt.phase || preview.page_draft && preview.page_draft.page_token !== attempt.pageToken) {
+            || preview.phase !== attempt.phase || preview.page_draft && preview.page_draft.page_token !== attempt.pageToken
+            || attempt.inspectionTurnId && preview.inspection_turn_id !== undefined && preview.inspection_turn_id !== attempt.inspectionTurnId) {
           throw new Error('DOCUMENT_PREVIEW_RESOLUTION_MISMATCH')
         }
+        settleRecoveredInspection(attempt)
         attempt.state = 'saved'
+        acknowledgeRegisteredPreview(pageEpoch.current, attempt, preview)
         previewDiagnostic('resolve_saved', startedAt, preview.question_count)
         historyWriteVersion.current += 1
         setHistory(previous => previous.scope === owner.scope ? ({ ...previous,
@@ -259,10 +290,14 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
             : [...previous.items, ...result.items.filter(item => !previous.items.some(saved => saved.preview_id === item.preview_id))].slice(0, 10),
           loaded: true, unavailable: false }))
         const last = unresolved.current ?? attempts.current
-        if (last?.scope === owner.scope && last.actionId && result.items.some(item => item.client_action_id === last.actionId
+        const saved = last?.scope === owner.scope && last.actionId ? result.items.find(item => item.client_action_id === last.actionId
             && item.generation === last.generation && item.phase === last.phase
-            && (!item.page_draft || item.page_draft.page_token === last.pageToken))) {
+            && (!item.page_draft || item.page_draft.page_token === last.pageToken)
+            && (!last.inspectionTurnId || item.inspection_turn_id === undefined || item.inspection_turn_id === last.inspectionTurnId)) : undefined
+        if (last && saved) {
+          settleRecoveredInspection(last)
           last.state = 'saved'
+          acknowledgeRegisteredPreview(pageEpoch.current, last, saved)
           if (unresolved.current === last) unresolved.current = null
           setCaptureStatus(status => status === 'unconfirmed' || status === 'interrupted' ? 'idle' : status)
         }
@@ -378,8 +413,13 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
           return
         }
         const actionId = crypto.randomUUID()
-        const attempt: PreviewAttempt = { scope: owner.scope, actionId, inspectionTurnId, generation, leaseId, phase, pageToken,
-          frame: frozen.features, at: now, state: 'pending' }
+        const attempt: PreviewAttempt = { scope: owner.scope, actionId, inspectionTurnId, generation, leaseId, phase, pageToken, frameToken: token,
+          frame: frozen.features, at: now, state: 'pending',
+          inspectionUnavailable: inspection ? () => {
+            if (attempt.inspectionSettled || ownerRef.current !== owner || !current()) return
+            attempt.inspectionSettled = true
+            try { inspection.unavailable() } catch { /* The saved receipt remains a fact if its consumer throws. */ }
+          } : undefined }
         capture.attempt = attempts.current = attempt
         setCaptureStatus('reading')
         if (refreshDue && !inspection) previewDiagnostic('refresh_due', now)
@@ -393,6 +433,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
           throw new Error('DOCUMENT_PREVIEW_INSPECTION_RESPONSE_MISMATCH')
         }
         attempt.state = 'saved'
+        acknowledgeRegisteredPreview(pageEpoch.current, attempt, result)
         previewDiagnostic('saved', now, result.question_count)
         historyWriteVersion.current += 1
         setHistory(previous => previous.scope === owner.scope ? ({
@@ -400,6 +441,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
         }) : previous)
         setCaptureStatus('idle')
         if (inspection && inspectionText) {
+          attempt.inspectionSettled = true
           inspection.report({ preview_id: result.preview_id, page_status: 'partial_local_preview', response_text: inspectionText })
         }
       } catch (error) {
@@ -422,7 +464,7 @@ export function useDocumentMonitorPreviews(sessionId: string, childId: string | 
           // The POST may have saved before the response was lost. Recover by
           // reading history instead of submitting another image.
           refresh()
-          inspection?.unavailable()
+          capture.attempt.inspectionUnavailable?.()
         }
       } finally {
         if (pending.current === capture) {

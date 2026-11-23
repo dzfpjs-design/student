@@ -17,7 +17,10 @@ SAFE_KEYS = {'method', 'status', 'reason', 'line_count', 'high_confidence_lines'
              'text_span', 'text_quadrants', 'expected_frame_size', 'decoded_frame_size', 'brightness', 'contrast',
              'raw_keypoints', 'bounded_keypoints', 'landmark_span', 'landmark_quadrants', 'error_code', 'opencv_code',
              'text_hull_frame_area', 'text_hull_bbox_ratio', 'text_support_cells',
-             'landmark_hull_frame_area', 'landmark_hull_bbox_ratio', 'landmark_support_cells'}
+             'landmark_hull_frame_area', 'landmark_hull_bbox_ratio', 'landmark_support_cells',
+             'text_min_width_diagonal', 'text_diameter_diagonal', 'text_width_diameter_ratio',
+             'landmark_min_width_diagonal', 'landmark_diameter_diagonal', 'landmark_width_diameter_ratio',
+             'text_support_basis', 'text_support_span'}
 
 
 def assert_safe(diagnostic):
