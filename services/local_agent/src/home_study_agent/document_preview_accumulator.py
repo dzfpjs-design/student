@@ -119,24 +119,51 @@ def _alignment(anchor, frame):
     return None
 
 
-def _observations(preview_id, frame, *, anchor=None, matrix=None):
+def partition_registered_lines(frame, *, anchor=None, matrix=None):
+    """Keep source-only readings separate from a checked reference projection.
+
+    A new marginal reading may be outside the fixed frame even though body
+    registration is reliable. It retains its original coordinates and source;
+    it must never be clipped into a made-up canonical position or passed to
+    overlap matching as if it were registered.
+    """
     if frame is None:
-        return []
-    rows = []
+        return [], []
+    rows, unmapped = [], []
     for source in frame['lines']:
         original = np.asarray(source['original_polygon'])
         canonical = original
+        reason = None
         if matrix is not None:
             aligned = (original * _scale(frame)) @ matrix[:, :2].T + matrix[:, 2]
             canonical = aligned / _scale(anchor)
-            if np.any(canonical < -.006) or np.any(canonical > 1.006):
-                return None
-            canonical = np.clip(canonical, 0, 1)
-            if cv2.contourArea(canonical.astype(np.float32)) <= 0:
-                return None
-        rows.append({**source, 'canonical_polygon': canonical.tolist(), 'frame_sha256': frame['frame_sha256'],
-                     'preview_id': preview_id, 'status': 'current', 'conflict': False})
-    return rows
+            if not np.isfinite(canonical).all():
+                reason = 'degenerate_projection'
+            elif np.any(canonical < -.006) or np.any(canonical > 1.006):
+                reason = 'outside_reference_frame'
+            else:
+                canonical = np.clip(canonical, 0, 1)
+                if cv2.contourArea(canonical.astype(np.float32)) <= 0:
+                    reason = 'degenerate_projection'
+        observation = dict(source)
+        if reason:
+            observation.pop('canonical_polygon', None)
+            unmapped.append({**observation, 'reason': reason})
+        else:
+            rows.append({**observation, 'canonical_polygon': canonical.tolist()})
+    return rows, unmapped
+
+
+def partition_registered_observations(preview_id, frame, *, anchor=None, matrix=None):
+    mapped, unmapped = partition_registered_lines(frame, anchor=anchor, matrix=matrix)
+    def bind(line):
+        return {**line, 'frame_sha256': frame['frame_sha256'], 'preview_id': preview_id,
+                'status': 'current', 'conflict': False}
+    return [bind(line) for line in mapped], [bind(line) for line in unmapped]
+
+
+def _observations(preview_id, frame):
+    return partition_registered_observations(preview_id, frame)[0]
 
 
 def _boxes(lines):
@@ -201,14 +228,19 @@ def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=No
     matrix = visual_matrix if visual_matrix is not None else _alignment(anchor, frame)
     if matrix is None:
         return draft
-    aligned = _observations(preview_id, frame, anchor=anchor, matrix=matrix)
-    if aligned is None:
+    aligned, unmapped = partition_registered_observations(preview_id, frame, anchor=anchor, matrix=matrix)
+    if unmapped and visual_matrix is None:
+        # The standalone text-only utility has no checked image registration.
+        # Its legacy conservative boundary must not become a live fallback.
         return {**draft, 'reason': 'geometry_outside_anchor'}
     # On a strongly registered source, several corrections are revisions of
     # this reading, not proof that the child physically turned the page.
     lines, reason = _merge(previous['lines'], aligned, anchor_id, allow_page_reset=visual_matrix is None)
+    if lines is not None and len(lines) + len(unmapped) > MAX_LINES:
+        lines, reason = None, 'line_limit'
     if reason in {'line_limit', 'source_limit'}:
-        limited = {**previous, 'reason': reason, 'merged': True,
+        limited = {**{key: value for key, value in previous.items() if key != 'unmapped_lines'},
+                   'reason': reason, 'merged': False,
                    'lines': [{**line, 'status': 'historical'} for line in previous['lines']]}
         if visual_matrix is not None:
             limited.update(alignment_method='local_orb_v1', registration=registration)
@@ -226,6 +258,8 @@ def build_page_draft(page_token, preview_id, frame, *, anchor_id=None, anchor=No
         min(point[0] for point in line['canonical_polygon']),
     ))
     result = {**draft, 'lines': lines, 'frame_count': previous['frame_count'] + 1, 'merged': True, 'reason': reason}
+    if unmapped:
+        result['unmapped_lines'] = unmapped
     if visual_matrix is not None:
         result.update(alignment_method='local_orb_v1', registration=registration)
     return result

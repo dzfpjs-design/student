@@ -255,10 +255,17 @@ describe('continuous document monitor device lifecycle', () => {
     } as Awaited<ReturnType<typeof localApi.recordDocumentMonitorRevision>>
     let features: frameMonitor.DocumentFrameFeatures
     let previousPlaybackQuality: PropertyDescriptor | undefined
+    let previousSubtle: PropertyDescriptor | undefined
     const intervention = vi.fn()
 
     beforeEach(() => {
       vi.useFakeTimers()
+      // Keep real SHA-256 bytes while completion follows the fake media clock.
+      previousSubtle = Object.getOwnPropertyDescriptor(crypto, 'subtle')
+      Object.defineProperty(crypto, 'subtle', { configurable: true, value: {
+        digest: async (_algorithm: string, bytes: Uint8Array) =>
+          Uint8Array.from(createHash('sha256').update(bytes).digest()).buffer
+      } })
       previousPlaybackQuality = Object.getOwnPropertyDescriptor(HTMLVideoElement.prototype, 'getVideoPlaybackQuality')
       // Model decoded camera frames separately from currentTime: the media
       // clock can advance even when the source is frozen.
@@ -283,6 +290,8 @@ describe('continuous document monitor device lifecycle', () => {
       window.removeEventListener('hsc-agent-intervention', intervention)
       if (previousPlaybackQuality) Object.defineProperty(HTMLVideoElement.prototype, 'getVideoPlaybackQuality', previousPlaybackQuality)
       else Reflect.deleteProperty(HTMLVideoElement.prototype, 'getVideoPlaybackQuality')
+      if (previousSubtle) Object.defineProperty(crypto, 'subtle', previousSubtle)
+      else Reflect.deleteProperty(crypto, 'subtle')
     })
 
     const advance = async (ms: number): Promise<void> => { await act(async () => { await vi.advanceTimersByTimeAsync(ms) }) }
@@ -760,6 +769,37 @@ describe('continuous document monitor device lifecycle', () => {
       await advance(4000)
       expect(localApi.documentMonitorPreviews).not.toHaveBeenCalled()
       expect(preview).not.toHaveBeenCalled()
+    })
+
+    it.each([false, true])('keeps a delayed frame hash bound to its inspection owner (scope changes: %s)', async (changeScope) => {
+      const preview = prepareWarmPreview()
+      const hash = deferred<ArrayBuffer>()
+      const resolve = vi.fn(), report = vi.fn()
+      let view!: ReturnType<typeof render>
+      await act(async () => { view = render(<ContinuousDocumentMonitor sessionId="session" childId="child" active localOcrPreviewPhase="homework_capture" />) })
+      await advance(3000)
+      expect(preview).toHaveBeenCalledTimes(1)
+      vi.spyOn(crypto.subtle, 'digest').mockReturnValueOnce(hash.promise)
+      preview.mockImplementationOnce(async (_session, _image, _generation, actionId, _signal, _lease, _signature, inspectionTurnId) =>
+        ({ ...warmPreview, preview_id: 'hashed-current', inspection_turn_id: inspectionTurnId,
+          inspection_response_text: '这次画面中的读值', client_action_id: actionId }))
+      act(() => window.dispatchEvent(new CustomEvent('hsc-document-monitor-voice-action', {
+        cancelable: true, detail: { sessionId: 'session', action: 'inspect', inspectionTurnId: 'hash-owned', resolve, report }
+      })))
+      await advance(3000)
+      expect(preview).toHaveBeenCalledTimes(1)
+      expect(report).not.toHaveBeenCalled()
+      if (changeScope) {
+        await act(async () => { view.rerender(<ContinuousDocumentMonitor sessionId="session" childId="other" active localOcrPreviewPhase="homework_capture" />) })
+      }
+      await act(async () => { hash.resolve(Uint8Array.from(createHash('sha256').update('test').digest()).buffer as ArrayBuffer) })
+      if (changeScope) {
+        expect(preview.mock.calls.some(call => call[7] === 'hash-owned')).toBe(false)
+        expect(report).not.toHaveBeenCalled()
+      } else {
+        expect(preview.mock.calls[1][7]).toBe('hash-owned')
+        expect(report).toHaveBeenCalledExactlyOnceWith({ preview_id: 'hashed-current', page_status: 'partial_local_preview', response_text: '这次画面中的读值' })
+      }
     })
 
     it('reads a new warm frame for the owning inspect command and does not reuse historical OCR', async () => {

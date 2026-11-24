@@ -253,7 +253,7 @@ class DocumentOcrPreviewService:
                                  anchor=anchor_frame, previous=json.loads(latest['page_draft_json']),
                                  duplicate=duplicate is not None, visual_matrix=matrix,
                                  visual_conflict=conflict, registration=evidence)
-        if (not draft['merged'] and draft['reason'] != 'duplicate_frame'
+        if (not draft['merged'] and draft['reason'] not in {'duplicate_frame', 'line_limit', 'source_limit'}
                 and draft['anchor_preview_id'] != preview_id):
             # A checked transform may still leave a newly visible OCR region
             # outside the old reference. Preserve that source as its own

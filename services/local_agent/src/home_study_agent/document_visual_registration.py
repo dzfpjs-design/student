@@ -14,8 +14,9 @@ from weakref import WeakKeyDictionary, WeakSet
 import cv2
 import numpy as np
 
-from .document_preview_accumulator import _scale, _spread, _text_key, _TEMPLATE
+from .document_preview_accumulator import _scale, _spread, _text_key, _TEMPLATE, partition_registered_lines
 from .document_text_overlap import compare as compare_text_overlap
+from .document_frame_overlap import reference_overlap
 
 METHOD = 'local_orb_v1'
 EXTRACTION_REASONS = frozenset({'ready', 'geometry', 'sha', 'no_text', 'text_spread', 'shape', 'dark',
@@ -305,15 +306,19 @@ def _text_evidence(anchor, frame, matrix, diagnostics=None):
     # Single digits/operators may be fragments of one arithmetic reading. They
     # participate in exact split/join checks but cannot alone prove identity.
     fixed = [line for line in anchor['lines'] if line['confidence'] >= .9 and not _TEMPLATE.match(_text_key(line['text']))]
-    moving = [line for line in frame['lines'] if line['confidence'] >= .9 and not _TEMPLATE.match(_text_key(line['text']))]
+    mapped, unmapped = partition_registered_lines(frame, anchor=anchor, matrix=matrix)
+    moving = [line for line in mapped if line['confidence'] >= .9 and not _TEMPLATE.match(_text_key(line['text']))]
     if diagnostics is not None:
-        diagnostics['content_conflict_count'] = 0
+        diagnostics.update(content_conflict_count=0, mapped_line_count=len(mapped), unmapped_line_count=len(unmapped))
     if not fixed or not moving:
         return False, False
     target = np.asarray([line['original_polygon'] for line in fixed])
     original = np.asarray([line['original_polygon'] for line in moving])
     aligned = ((original * _scale(frame)) @ matrix[:, :2].T + matrix[:, 2]) / _scale(anchor)
     previous = [{**line, 'canonical_polygon': polygon.tolist()} for line, polygon in zip(fixed, target)]
+    # Keep the original independent-text distance calculation. The partition
+    # determines admissibility; its tolerated edge clipping must not make an
+    # otherwise nonmatching group closer to a reference label.
     incoming = [{**line, 'canonical_polygon': polygon.tolist()} for line, polygon in zip(moving, aligned)]
     accepted, keys, conflicts, fixed_glyphs, moving_glyphs, fixed_groups = [], set(), [], [], [], []
     for group in compare_text_overlap(previous, incoming):
@@ -401,7 +406,7 @@ def register(anchor, frame, fixed, moving):
             return None, False, None
         corners = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=float)
         transformed = ((corners * incoming_scale) @ matrix[:, :2].T + matrix[:, 2]) / anchor_scale
-        intersection, _ = cv2.intersectConvexConvex(corners.astype(np.float32), transformed.astype(np.float32))
+        intersection = reference_overlap(transformed)
         if intersection < .80:
             return None, False, None
         stable, holdout = _spatial_holdout(source[inliers], target[inliers])

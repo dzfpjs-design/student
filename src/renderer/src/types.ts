@@ -1424,6 +1424,16 @@ export type DocumentPageRevision = {
 
 export type DocumentOcrPreviewPhase = 'homework_capture' | 'plan_review' | 'study'
 
+type DocumentPreviewObservation = {
+  text: string
+  status: 'current' | 'historical'
+  conflict: boolean
+  frame_sha256: string
+  preview_id: string
+  confidence: number
+  original_polygon: number[][]
+}
+
 export type DocumentPreviewPageDraft = {
   page_token: string
   anchor_preview_id: string
@@ -1431,17 +1441,14 @@ export type DocumentPreviewPageDraft = {
   merged: boolean
   reason: string
   alignment_method?: string
-  registration?: { method: string; status: string }
-  lines: {
-    text: string
-    status: 'current' | 'historical'
-    conflict: boolean
-    frame_sha256: string
-    preview_id: string
-    confidence: number
-    original_polygon: number[][]
+  registration?: { method: string; status: string; mapped_line_count?: number; unmapped_line_count?: number }
+  lines: (DocumentPreviewObservation & {
     canonical_polygon: number[][]
-  }[]
+  })[]
+  unmapped_lines?: (Omit<DocumentPreviewObservation, 'status'> & {
+    status: 'current'
+    reason: 'outside_reference_frame' | 'degenerate_projection'
+  })[]
 }
 
 export type DocumentOcrPreview = {

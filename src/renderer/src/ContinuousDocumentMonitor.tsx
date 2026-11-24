@@ -1253,7 +1253,7 @@ export function ContinuousDocumentMonitor({
         {localPreviewVisible && (localPreviewHistory.items.length > 0 || localPreviewStatus !== 'idle' || localPreviewHistory.unavailable) &&
           <section className="document-ocr-preview-history" aria-label="本机待核对预览">
             <strong>本机待核对预览</strong>
-            <small>可查看每次实际读值及同页累计草稿，可能缺题或混读。请对照原卷核对。</small>
+            <small>此处显示最近 10 次预览，可查看对应读值及累计草稿，可能缺题或混读。请对照原卷核对。</small>
             {localPreviewStatus === 'reading' && <small role="status">正在本机读取可见文字…</small>}
             {localPreviewStatus === 'interrupted' && <small role="status">画面变化，预览已中断。可以刷新查看已保存的预览。</small>}
             {localPreviewStatus === 'unconfirmed' && <small role="status">暂未确认保存。可以刷新查看已保存的预览。</small>}
@@ -1264,8 +1264,7 @@ export function ContinuousDocumentMonitor({
               <summary><time dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time> · {item.question_count} 个题目候选</summary>
               {item.page_draft?.lines.length ? <DocumentPageDraft draft={item.page_draft} />
                 : <div className="document-ocr-preview-text">{item.text || '这次未读出可核对的文字。'}</div>}
-              {item.page_draft && ['source_limit', 'line_limit'].includes(item.page_draft.reason) && <>
-                <small>累计草稿已达本页容量，先前内容仍保存；这次新读值单独保留，请对照核对。</small>
+              {item.page_draft && item.page_draft.lines.length > 0 && ['source_limit', 'line_limit'].includes(item.page_draft.reason) && <>
                 <div className="document-ocr-preview-text">{item.text || '这次未读出可核对的文字。'}</div>
               </>}
               {item.page_draft && !item.page_draft.lines.length && item.text && <small>本次文字缺少可配准的位置来源，单独保留，未参与跨帧累计。</small>}

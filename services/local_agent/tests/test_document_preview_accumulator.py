@@ -371,7 +371,7 @@ def test_draft_caps_preserve_the_previous_history_after_insufficient_line_budget
                                    for index in range(300 - len(prior['lines']))]
     capped = build_page_draft(PAGE, 'line-limit', current, anchor_id='anchor', anchor=anchor,
                               previous={**prior, 'lines': past_lines})
-    assert capped['reason'] == 'line_limit' and capped['merged'] and len(capped['lines']) == 300
+    assert capped['reason'] == 'line_limit' and not capped['merged'] and len(capped['lines']) == 300
     assert all(line['status'] == 'historical' for line in capped['lines'])
     assert 'Visible new sentence' not in {line['text'] for line in capped['lines']}
     distinct_sources = prior['lines'] + [
@@ -380,7 +380,7 @@ def test_draft_caps_preserve_the_previous_history_after_insufficient_line_budget
     ]
     capped = build_page_draft(PAGE, 'source-limit', current, anchor_id='anchor', anchor=anchor,
                               previous={**prior, 'lines': distinct_sources, 'frame_count': 32})
-    assert capped['reason'] == 'source_limit' and capped['merged'] and capped['frame_count'] == 32
+    assert capped['reason'] == 'source_limit' and not capped['merged'] and capped['frame_count'] == 32
     assert {line['text'] for line in capped['lines']} == {line['text'] for line in distinct_sources}
     assert all(line['status'] == 'historical' for line in capped['lines'])
 

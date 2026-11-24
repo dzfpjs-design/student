@@ -210,7 +210,7 @@ def test_visual_source_limit_preserves_old_draft_and_current_source_remains_sepa
     previous = {**prior, 'lines': prior['lines'] + history, 'frame_count': 32}
     limited = build_page_draft(PAGE, 'next', frame, anchor_id='anchor', anchor=frame, previous=previous,
                               visual_matrix=np.array([[1, 0, 0], [0, 1, 0]]))
-    assert limited['reason'] == 'source_limit' and limited['frame_count'] == 32
+    assert limited['reason'] == 'source_limit' and not limited['merged'] and limited['frame_count'] == 32
     assert len(limited['lines']) == len(previous['lines'])
     assert all(line['status'] == 'historical' for line in limited['lines'])
     assert not any(line['preview_id'] == 'next' for line in limited['lines'])
